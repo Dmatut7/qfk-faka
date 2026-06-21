@@ -58,8 +58,8 @@ try {
   // ===== 2) 平台 UI 审批通过 =====
   log('2) 平台审批通过打款');
   const a = await loginGo('平台登录', 'admin', 'admin123', '提现审核');
-  // 找到待审核行的「通过打款」按钮
-  const approveBtn = a.page.getByRole('button', { name: /通过打款|通过/ }).first();
+  // 找到待审核行的「通过打款」按钮(精确,避免误匹配「已通过」筛选 tab)
+  const approveBtn = a.page.getByRole('button', { name: '通过打款', exact: true }).first();
   await approveBtn.waitFor({ timeout: 8000 });
   await approveBtn.click();
   await a.page.waitForTimeout(2500);
