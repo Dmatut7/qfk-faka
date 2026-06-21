@@ -25,8 +25,12 @@ class RateLimit
             return apiError(Code::RATE_LIMITED, '请求过于频繁,请稍后再试');
         }
 
-        // 首次置入时设置窗口 TTL;窗口内累加
-        Cache::set($key, $count + 1, $window);
+        // 固定窗口:key 不存在时置 1 并设窗口 TTL;已存在则只自增,保留剩余 TTL(窗口自然结束)
+        if ($count === 0) {
+            Cache::set($key, 1, $window);
+        } else {
+            Cache::inc($key);
+        }
 
         return $next($request);
     }

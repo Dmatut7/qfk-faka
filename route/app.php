@@ -28,7 +28,7 @@ Route::rule('pay/notify/:channel', 'pay.Notify/index')->middleware(\app\middlewa
 
 // ============ 平台后台 admin ============
 Route::group('admin', function () {
-    Route::post('login', 'admin.Auth/login');
+    Route::post('login', 'admin.Auth/login')->middleware(\app\middleware\RateLimit::class, 10, 60); // 登录暴破限流(按 IP 10 次/分)
 
     Route::group(function () {
         Route::post('logout', 'admin.Auth/logout');
@@ -81,7 +81,7 @@ Route::group('admin', function () {
 
 // ============ 商户后台 merchant ============
 Route::group('merchant', function () {
-    Route::post('login', 'merchant.Auth/login');
+    Route::post('login', 'merchant.Auth/login')->middleware(\app\middleware\RateLimit::class, 10, 60); // 登录暴破限流(按 IP 10 次/分)
     Route::post('register', 'merchant.Auth/register')->middleware(\app\middleware\RateLimit::class, 5, 3600); // 商户自助注册(公开,落库待审核;按 IP 限流 5 次/小时)
 
     Route::group(function () {

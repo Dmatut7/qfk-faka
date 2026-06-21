@@ -21,9 +21,12 @@ export function useAsync(fn, deps = []) {
 
 /* 金额(表格数字 + 两位小数) */
 export function Money({ amount, strong, color }) {
+  // 脏数据兜底:非有限数(NaN / 空串 / 科学计数无法解析)显示「—」,不渲染 NaN
+  const n = Number(amount);
+  const text = Number.isFinite(n) ? `¥${n.toFixed(2)}` : '—';
   return (
     <span className="tnum" style={{ fontWeight: strong ? 800 : 600, color: color || 'var(--text-strong)', whiteSpace: 'nowrap' }}>
-      ¥{Number(amount || 0).toFixed(2)}
+      {text}
     </span>
   );
 }
@@ -126,7 +129,7 @@ export function DataTable({ columns, rows, loading, error, onReload, rowKey = 'i
           {rows.map((r, i) => (
             <tr key={r[rowKey] ?? i} style={{ borderBottom: '1px solid var(--slate-100)' }}>
               {columns.map((c) => (
-                <td key={c.key} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle' }}>
+                <td key={c.key} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle', maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.render ? c.render(r) : r[c.key]}
                 </td>
               ))}
@@ -177,7 +180,7 @@ export function StatCard({ label, value, icon, tone = 'brand', sub }) {
         <span style={{ width: 28, height: 28, borderRadius: 8, background: bg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon size={16} color={fg} /></span>
         {label}
       </div>
-      <div style={{ marginTop: 10, fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>{value}</div>
+      <div style={{ marginTop: 10, fontSize: 26, fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       {sub && <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
     </div>
   );

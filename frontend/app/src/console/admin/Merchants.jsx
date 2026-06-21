@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Money, Pill, Modal, Field, StatCard } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Money, Pill, Modal, Field, StatCard, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -38,14 +38,17 @@ export default function Merchants({ api }) {
   // 行操作弹窗状态:{ type: 'commission'|'reset', row }
   const [dlg, setDlg] = React.useState(null);
   const [busyId, setBusyId] = React.useState(null);
+  const [rowErr, setRowErr] = React.useState('');
 
   const runAction = async (id, fn) => {
+    if (busyId) return; // 防跨行并发审批:已有进行中操作时直接忽略
     setBusyId(id);
+    setRowErr('');
     try {
       await fn();
       list.reload();
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : '操作失败,请重试');
+      setRowErr(e instanceof ApiError ? e.message : '操作失败,请重试');
     } finally {
       setBusyId(null);
     }
@@ -88,26 +91,28 @@ export default function Merchants({ api }) {
     {
       key: 'ops', title: '操作', align: 'right', width: 1, render: (r) => {
         const busy = busyId === r.id;
+        // 任一行操作进行中时,禁用所有行内按钮(防跨行并发审批)
+        const otherBusy = busyId != null && busyId !== r.id;
         return (
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             {r.status === 0 && (
-              <Button size="sm" variant="success" loading={busy}
+              <Button size="sm" variant="success" loading={busy} disabled={otherBusy}
                 iconLeft={<Icons.Check size={15} />}
                 onClick={() => runAction(r.id, () => api.approveMerchant(r.id))}>通过</Button>
             )}
             {r.status === 2 && (
-              <Button size="sm" variant="secondary" loading={busy}
+              <Button size="sm" variant="secondary" loading={busy} disabled={otherBusy}
                 iconLeft={<Icons.ShieldCheck size={15} />}
                 onClick={() => runAction(r.id, () => api.unfreezeMerchant(r.id))}>解冻</Button>
             )}
             {r.status !== 2 && (
-              <Button size="sm" variant="danger" loading={busy}
+              <Button size="sm" variant="danger" loading={busy} disabled={otherBusy}
                 iconLeft={<Icons.Lock size={15} />}
                 onClick={() => runAction(r.id, () => api.freezeMerchant(r.id))}>冻结</Button>
             )}
-            <Button size="sm" variant="neutral" disabled={busy}
+            <Button size="sm" variant="neutral" disabled={busy || otherBusy}
               onClick={() => setDlg({ type: 'commission', row: r })}>改抽佣</Button>
-            <Button size="sm" variant="ghost" disabled={busy}
+            <Button size="sm" variant="ghost" disabled={busy || otherBusy}
               iconLeft={<Icons.Lock size={14} />}
               onClick={() => setDlg({ type: 'reset', row: r })}>重置密码</Button>
           </div>
@@ -129,6 +134,11 @@ export default function Merchants({ api }) {
 
       <Panel title="商户审核" subtitle="审核入驻、冻结/解冻、调整抽佣率与重置密码" padded={false}>
         <div style={{ padding: 18 }}>
+          {rowErr ? (
+            <div style={{ marginBottom: 12 }}>
+              <ErrorBar message={rowErr} onClose={() => setRowErr('')} />
+            </div>
+          ) : null}
           <Toolbar right={
             <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
               onClick={list.reload}>刷新</Button>

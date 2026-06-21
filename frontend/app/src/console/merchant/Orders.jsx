@@ -94,6 +94,7 @@ export default function Orders({ api, session }) {
   const [actErr, setActErr] = React.useState('');
 
   async function runAction(id, fn) {
+    if (actBusy) return; // 防补发/关单双发:已有进行中操作时忽略
     setActBusy(id);
     setActErr('');
     try {
@@ -112,14 +113,20 @@ export default function Orders({ api, session }) {
 
   /* 二次确认:{ kind: 'close'|'redeliver', order } | null */
   const [confirm, setConfirm] = React.useState(null);
+  const [confirming, setConfirming] = React.useState(false);
   function askClose(order) { setConfirm({ kind: 'close', order }); }
   function askRedeliver(order) { setConfirm({ kind: 'redeliver', order }); }
   async function doConfirm() {
-    if (!confirm) return;
+    if (!confirm || confirming) return;
     const { kind, order } = confirm;
-    setConfirm(null);
-    if (kind === 'close') await closeOrder(order.id);
-    else await redeliverOrder(order.id);
+    setConfirming(true);
+    try {
+      if (kind === 'close') await closeOrder(order.id);
+      else await redeliverOrder(order.id);
+      setConfirm(null);
+    } finally {
+      setConfirming(false);
+    }
   }
 
   const canClose = (s) => Number(s) === STATUS_PENDING;
@@ -294,7 +301,8 @@ export default function Orders({ api, session }) {
 
       <ConfirmActionModal
         confirm={confirm}
-        onCancel={() => setConfirm(null)}
+        confirming={confirming}
+        onCancel={() => { if (!confirming) setConfirm(null); }}
         onConfirm={doConfirm}
       />
     </Panel>
@@ -302,7 +310,7 @@ export default function Orders({ api, session }) {
 }
 
 /* 关单 / 补发 二次确认弹窗 */
-function ConfirmActionModal({ confirm, onCancel, onConfirm }) {
+function ConfirmActionModal({ confirm, confirming, onCancel, onConfirm }) {
   const open = confirm != null;
   const kind = confirm && confirm.kind;
   const order = (confirm && confirm.order) || {};
@@ -321,10 +329,12 @@ function ConfirmActionModal({ confirm, onCancel, onConfirm }) {
       onClose={onCancel}
       footer={
         <>
-          <Button variant="ghost" onClick={onCancel}>取消</Button>
+          <Button variant="ghost" onClick={onCancel} disabled={confirming}>取消</Button>
           <Button
             variant={isRedeliver ? 'primary' : 'danger'}
             iconLeft={isRedeliver ? <Icons.RefreshCw /> : <Icons.Lock />}
+            loading={confirming}
+            disabled={confirming}
             onClick={onConfirm}
           >
             {isRedeliver ? '确认补发' : '确认关单'}

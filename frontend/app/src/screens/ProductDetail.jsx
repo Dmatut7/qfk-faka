@@ -268,7 +268,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       <div style={{ marginTop: 16, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>购买数量</span>
-          <QuantityStepper value={safeQty} min={minBuy} max={effMax} onChange={setQty} {...(out ? { 'aria-disabled': true } : {})} />
+          {out
+            ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger-fg)' }}>暂时缺货</span>
+            : <QuantityStepper value={safeQty} min={minBuy} max={effMax} onChange={setQty} />}
         </div>
         <Input
           label="接收邮箱"
@@ -287,10 +289,12 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
           <InfoRow label="单价">¥{p.price.toFixed(2)}</InfoRow>
-          <InfoRow label="数量">×{safeQty}</InfoRow>
+          <InfoRow label="数量">{out ? '—' : `×${safeQty}`}</InfoRow>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>预计应付</span>
-            <PriceTag amount={total} size="md" />
+            {out
+              ? <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>—</span>
+              : <PriceTag amount={total} size="md" />}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>最终金额以提交后订单为准</div>
         </div>
@@ -317,7 +321,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>预计应付</span>
-              <PriceTag amount={total} size="md" />
+              {out
+                ? <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>—</span>
+                : <PriceTag amount={total} size="md" />}
             </div>
             <Button
               variant="primary"

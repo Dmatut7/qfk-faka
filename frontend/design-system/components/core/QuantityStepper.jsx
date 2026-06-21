@@ -65,7 +65,7 @@ export function QuantityStepper({
       <button type="button" className="mk-qty__btn" aria-label="减少" disabled={value <= min} onClick={() => set(value - 1)}>−</button>
       <input
         className="mk-qty__input" type="number" inputMode="numeric" value={draft} min={min} max={hi}
-        disabled={invalidRange}
+        disabled={invalidRange || hi === min}
         onChange={handleChange}
         onBlur={handleBlur}
       />
