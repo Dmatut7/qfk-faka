@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, DataTable, Money, StatCard } from '../ui.jsx';
+import { useAsync, Panel, DataTable, Money, StatCard, Delta } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 
 /* 按时段问候(对标鲸发卡「早上好,又是元气满满的一天」) */
@@ -85,18 +85,30 @@ export default function Stats({ api, session, onNavigate }) {
       {/* 数据卡区 */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
         <StatCard
-          label="销售额"
-          value={<Money amount={Number(s.sales || 0)} strong />}
+          label="今日成交额"
+          value={<Money amount={Number(s.sales_today || 0)} strong />}
           icon="Zap"
           tone="brand"
-          sub="已支付 + 已发货订单"
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 <Money amount={Number(s.sales_yesterday || 0)} /></span>
+              <Delta money today={Number(s.sales_today || 0)} yesterday={Number(s.sales_yesterday || 0)} />
+              <span style={{ color: 'var(--text-subtle)' }}>累计 <Money amount={Number(s.sales || 0)} /></span>
+            </span>
+          }
         />
         <StatCard
-          label="订单数"
-          value={s.order_count != null ? s.order_count : (summary.loading ? '—' : 0)}
+          label="今日订单"
+          value={s.orders_today != null ? s.orders_today : (summary.loading ? '—' : 0)}
           icon="Package"
           tone="success"
-          sub="计入有效订单"
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 {s.orders_yesterday != null ? s.orders_yesterday : 0}</span>
+              <Delta today={Number(s.orders_today || 0)} yesterday={Number(s.orders_yesterday || 0)} />
+              <span style={{ color: 'var(--text-subtle)' }}>累计 {s.order_count != null ? s.order_count : 0}</span>
+            </span>
+          }
         />
       </div>
 

@@ -19,11 +19,38 @@ class MerchantStatsService
         $sales = $this->rangeQuery($merchantId, $start, $end)->sum('total_amount');
         $count = $this->rangeQuery($merchantId, $start, $end)->count();
 
+        // 今日 = create_time ∈ [今日 00:00, 明日 00:00);昨日 = [昨日 00:00, 今日 00:00)
+        $todayStart     = date('Y-m-d 00:00:00');
+        $tomorrow       = date('Y-m-d 00:00:00', strtotime('+1 day'));
+        $yesterdayStart = date('Y-m-d 00:00:00', strtotime('-1 day'));
+
+        // 销售额口径:已发货(DELIVERED)total_amount 合计(同平台仪表盘);订单数同 summary 口径(已支付+已发货)
+        $salesToday     = (string) $this->deliveredQuery($merchantId, $todayStart, $tomorrow)->sum('total_amount');
+        $salesYesterday = (string) $this->deliveredQuery($merchantId, $yesterdayStart, $todayStart)->sum('total_amount');
+        $ordersToday    = $this->rangeQuery($merchantId, $todayStart, $tomorrow)->count();
+        $ordersYesterday = $this->rangeQuery($merchantId, $yesterdayStart, $todayStart)->count();
+
         return [
             // SUM 经 DB 返回,统一规整为两位小数字符串(与 AdminReportService 对账口径一致)
-            'sales'       => Money::add((string) $sales, '0'),
-            'order_count' => $count,
+            'sales'           => Money::add((string) $sales, '0'),
+            'order_count'     => $count,
+            'sales_today'     => Money::add($salesToday, '0'),
+            'sales_yesterday' => Money::add($salesYesterday, '0'),
+            'orders_today'    => $ordersToday,
+            'orders_yesterday' => $ordersYesterday,
         ];
+    }
+
+    /**
+     * 已发货(DELIVERED)订单查询,限定本商户,create_time 半开区间 [start, end)。
+     * 用于今日/昨日销售额口径(与平台仪表盘一致)。
+     */
+    private function deliveredQuery(int $merchantId, string $start, string $end)
+    {
+        return Order::where('merchant_id', $merchantId)
+            ->where('status', Order::STATUS_DELIVERED)
+            ->where('create_time', '>=', $start)
+            ->where('create_time', '<', $end);
     }
 
     public function topProducts(int $merchantId, string $start = '', string $end = '', int $limit = 10): array

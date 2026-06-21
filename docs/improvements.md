@@ -89,3 +89,9 @@
 - 后端:admin/merchant login 挂限流10/分(防暴破);RateLimit 改固定窗口(不再每请求重置TTL)。309测试绿。查单/支付限流记blockers待owner(避免误伤并发测试)。
 - 前端:缺货不显数量步进器/金额(显—);QuantityStepper 单值只读;Merchants alert→页面ErrorBar+跨行并发守卫;Orders 确认弹窗loading防补发/关单双发;Money非有限值守卫+表格长文本省略防溢出。
 - 验证:309测试 + vite build + e2e 5/5。
+
+## 第23-25轮(2026-06-22):控制台对标diff + 仪表盘/商户统计/响应式
+- R23 对标diff找出:仪表盘缺平台利润/昨日环比/今日注册/异常待处理、admin商品无分页、移动端侧栏不可用等。
+- R24 仪表盘对标:平台抽佣卡+今日vs昨日Delta环比+今日注册+异常待人工订单待处理;admin商品分页;邀请码去alert改Modal;费率配置。310测试绿。
+- R25 商户概览今日/昨日维度+Delta(对齐平台);控制台移动端抽屉侧栏(汉堡+遮罩,宽屏不变)。311测试绿(+1)。
+- 验证:composer test 311 + vite build + e2e 全绿。

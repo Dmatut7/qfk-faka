@@ -284,6 +284,30 @@ function RegisterScreen({ onCancel, onRegistered }) {
   );
 }
 
+/* 窄屏检测:监听 max-width:860px,窄屏时侧栏变抽屉 */
+function useIsNarrow() {
+  const query = '(max-width:860px)';
+  const [narrow, setNarrow] = React.useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia(query).matches
+      : false
+  );
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setNarrow(e.matches);
+    setNarrow(mql.matches);
+    // Safari 旧版用 addListener / removeListener
+    if (mql.addEventListener) mql.addEventListener('change', onChange);
+    else mql.addListener(onChange);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener('change', onChange);
+      else mql.removeListener(onChange);
+    };
+  }, []);
+  return narrow;
+}
+
 /* ============ 控制台布局 ============ */
 function Dashboard({ session, onLogout }) {
   const nav = session.role === 'admin' ? ADMIN_NAV : MERCHANT_NAV;
@@ -291,13 +315,38 @@ function Dashboard({ session, onLogout }) {
   const [active, setActive] = React.useState(flatNav[0].key);
   const ActiveScreen = SCREENS[active];
 
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-page)' }}>
-      {/* 侧栏 */}
-      <aside style={{
+  const isNarrow = useIsNarrow();
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // 切回宽屏时强制关闭抽屉,避免遮罩/位移残留
+  React.useEffect(() => { if (!isNarrow) setDrawerOpen(false); }, [isNarrow]);
+
+  // 点导航项:切换页面,窄屏下顺手收起抽屉
+  const selectNav = (key) => { setActive(key); if (isNarrow) setDrawerOpen(false); };
+
+  // 窄屏抽屉样式:fixed 覆盖层,默认 translateX(-100%) 隐藏
+  const asideStyle = isNarrow
+    ? {
+        width: 224, flex: 'none', background: '#fff', borderRight: '1px solid var(--border)',
+        display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh',
+        zIndex: 40, transform: drawerOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.22s ease', boxShadow: drawerOpen ? 'var(--shadow-lg, 0 8px 32px rgba(0,0,0,0.18))' : 'none',
+      }
+    : {
         width: 224, flex: 'none', background: '#fff', borderRight: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', position: 'sticky', top: 0, height: '100vh',
-      }}>
+      };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-page)' }}>
+      {/* 窄屏遮罩:抽屉打开时显示,点击收起 */}
+      {isNarrow && drawerOpen && (
+        <div
+          onClick={() => setDrawerOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 35 }}
+        />
+      )}
+      {/* 侧栏(宽屏 sticky / 窄屏 fixed 抽屉) */}
+      <aside style={asideStyle}>
         <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>
             秒卡 {session.role === 'admin' ? '· 平台' : '· 商户'}
@@ -316,7 +365,7 @@ function Dashboard({ session, onLogout }) {
                 const Icon = Icons[item.icon] || Icons.Package;
                 const on = active === item.key;
                 return (
-                  <button key={item.key} onClick={() => setActive(item.key)}
+                  <button key={item.key} onClick={() => selectNav(item.key)}
                     aria-current={on ? 'page' : undefined}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 2,
@@ -342,10 +391,26 @@ function Dashboard({ session, onLogout }) {
         {/* 顶栏:左面包屑 + 右用户菜单 */}
         <header style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-          height: 56, flex: 'none', padding: '0 28px', background: '#fff',
+          height: 56, flex: 'none', padding: isNarrow ? '0 14px' : '0 28px', background: '#fff',
           borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 20,
         }}>
           <nav aria-label="面包屑" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, fontSize: 13.5 }}>
+            {isNarrow && (
+              <button type="button" aria-label="打开菜单" aria-expanded={drawerOpen}
+                onClick={() => setDrawerOpen((v) => !v)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none',
+                  width: 36, height: 36, marginRight: 2, border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)', background: '#fff', cursor: 'pointer', color: 'var(--text-body)',
+                }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+            )}
             <span style={{ color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
               秒卡 · {session.role === 'admin' ? '平台' : '商户'}
             </span>
@@ -364,7 +429,7 @@ function Dashboard({ session, onLogout }) {
         </header>
 
         {/* 主内容 */}
-        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px', maxWidth: 1180 }}>
+        <main style={{ flex: 1, minWidth: 0, padding: isNarrow ? '16px 14px' : '24px 28px', maxWidth: 1180 }}>
           <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', margin: '0 0 18px' }}>
             {flatNav.find((n) => n.key === active)?.label}
           </h1>
