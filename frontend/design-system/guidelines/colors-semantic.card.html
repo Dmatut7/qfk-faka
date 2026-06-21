@@ -1,0 +1,21 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="语义色 · Status" subtitle="有货/已支付=绿,待支付=琥珀,缺货/失败=红,担保=青" -->
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;padding:20px;background:#fff;font-family:var(--font-sans);}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .cell{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;}
+  .bar{height:40px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;}
+  .soft{height:34px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;}
+  .lbl{padding:7px 10px;font-size:11px;color:var(--text-muted);}
+  b{color:var(--text-strong);}
+</style></head>
+<body>
+<div class="grid">
+  <div class="cell"><div class="bar" style="background:var(--success-solid)">有货 · 已支付</div><div class="soft" style="background:var(--success-bg);color:var(--success-fg)">Success</div><div class="lbl"><b>green-500</b> #15A65A</div></div>
+  <div class="cell"><div class="bar" style="background:var(--pending-solid)">待支付</div><div class="soft" style="background:var(--pending-bg);color:var(--pending-fg)">Pending</div><div class="lbl"><b>amber-500</b> #E8920C</div></div>
+  <div class="cell"><div class="bar" style="background:var(--danger-solid)">缺货 · 失败</div><div class="soft" style="background:var(--danger-bg);color:var(--danger-fg)">Danger</div><div class="lbl"><b>red-500</b> #E0444A</div></div>
+  <div class="cell"><div class="bar" style="background:var(--secure-solid)">担保 · 加密</div><div class="soft" style="background:var(--secure-bg);color:var(--secure-fg)">Secure</div><div class="lbl"><b>teal-500</b> #0FA9A0</div></div>
+</div>
+</body></html>

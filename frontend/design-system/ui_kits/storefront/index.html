@@ -1,0 +1,31 @@
+<!-- @dsCard group="Storefront 买家前台" viewport="1180x800" name="买家前台 · 完整流程" subtitle="浏览 → 下单 → 付款 → 取卡,可交互" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>极客发卡 · 买家前台</title>
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { background: var(--bg-page); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 99px; border: 2px solid var(--bg-page); }
+  div[style*="overflow-x: auto"]::-webkit-scrollbar, div[style*="overflowX"]::-webkit-scrollbar { height: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="data.js"></script>
+<script type="text/babel" src="Icons.jsx"></script>
+<script type="text/babel" src="TopBar.jsx"></script>
+<script type="text/babel" src="StorefrontHome.jsx"></script>
+<script type="text/babel" src="ProductDetail.jsx"></script>
+<script type="text/babel" src="PaymentScreen.jsx"></script>
+<script type="text/babel" src="OrderLookup.jsx"></script>
+<script type="text/babel" src="App.jsx"></script>
+</body>
+</html>

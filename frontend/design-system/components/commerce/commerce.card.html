@@ -1,0 +1,77 @@
+<!-- @dsCard group="Components" viewport="700x720" name="Commerce 交易组件" subtitle="ProductCard · CardKey · OrderStatus · PaymentOption · CheckoutSteps" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-page); }
+  .grid { display: flex; flex-direction: column; gap: 22px; max-width: 652px; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { ProductCard, ProductListItem, CardKey, OrderStatusBadge, PaymentOption, CheckoutSteps } = window.MiaoKa_cadc89;
+function Demo() {
+  const [m, setM] = React.useState('wechat');
+  return (
+    <div className="grid">
+      <div>
+        <div className="sec">Checkout Steps</div>
+        <CheckoutSteps current={2} />
+      </div>
+
+      <div>
+        <div className="sec">Product Cards</div>
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
+          <ProductCard name="Netflix 高级会员 1个月" desc="独享车位 · 自动发货 · 秒到账" price={29.9} original={49} stock={128} sold={2304} thumb="🎬" />
+          <ProductCard name="ChatGPT Plus 充值" desc="官方直充 · 稳定不掉" price={119} stock={0} thumb="🤖" />
+        </div>
+      </div>
+
+      <div>
+        <div className="sec">Product List Item · 列表行</div>
+        <ProductListItem name="CRMChat 客服系统" desc="开源 · 一键部署 · 含源码" price={20} category="源码" date="06-21" stock={12} thumb="📦" />
+      </div>
+
+      <div>
+        <div className="sec">Order Status</div>
+        <div className="row">
+          <OrderStatusBadge status="pending" />
+          <OrderStatusBadge status="paid" />
+          <OrderStatusBadge status="delivered" />
+          <OrderStatusBadge status="failed" />
+          <OrderStatusBadge status="refunded" />
+        </div>
+      </div>
+
+      <div>
+        <div className="sec">Card Key · 卡密</div>
+        <div style={{display:'flex', flexDirection:'column', gap:10}}>
+          <CardKey index={1} label="Netflix 卡密" code="NFLX-7K2M-9QZP-44XB-2810" />
+          <CardKey locked label="卡密" lockedHint="支付完成后自动显示,请放心下单" />
+        </div>
+      </div>
+
+      <div>
+        <div className="sec">Payment Options</div>
+        <div style={{display:'flex', flexDirection:'column', gap:10}}>
+          <PaymentOption name="微信支付" desc="数亿用户的选择" tag="推荐" icon="💚" selected={m==='wechat'} onSelect={() => setM('wechat')} />
+          <PaymentOption name="支付宝" desc="安全便捷,支持花呗" icon="🅰️" selected={m==='alipay'} onSelect={() => setM('alipay')} />
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+/* ============================================================
+   秒卡 MiaoKa · Color tokens
+   Clean, fresh, trustworthy. Trust-blue primary, cool slate
+   neutrals, green = paid/in-stock, amber = pending, red = sold out.
+   ============================================================ */
+:root {
+  /* --- Cool slate neutrals --- */
+  --slate-50:  #F6F8FB;
+  --slate-100: #EDF1F7;
+  --slate-150: #E4EAF2;
+  --slate-200: #DCE3ED;
+  --slate-300: #C3CEDC;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #4B5A70;
+  --slate-700: #354155;
+  --slate-800: #1F2A3C;
+  --slate-900: #121B2A;
+
+  /* --- Trust blue (primary) --- */
+  --blue-50:  #EAF1FF;
+  --blue-100: #D6E3FF;
+  --blue-200: #B0C8FF;
+  --blue-300: #7FA3FF;
+  --blue-400: #5283FB;
+  --blue-500: #2F6BFF;  /* primary */
+  --blue-600: #1F54E6;  /* hover */
+  --blue-700: #1A45BD;  /* active */
+  --blue-900: #11297A;
+
+  /* --- Green (success / paid / in-stock) --- */
+  --green-50:  #E7F8EF;
+  --green-100: #C9EFD9;
+  --green-500: #15A65A;
+  --green-600: #128A4B;
+  --green-700: #0E6E3C;
+
+  /* --- Amber (pending / awaiting payment) --- */
+  --amber-50:  #FEF4E2;
+  --amber-100: #FCE6BC;
+  --amber-500: #E8920C;
+  --amber-600: #C5790A;
+
+  /* --- Red (danger / sold out / failed) --- */
+  --red-50:  #FDECEC;
+  --red-100: #FAD4D5;
+  --red-500: #E0444A;
+  --red-600: #C5343A;
+
+  /* --- Teal accent (secure / encrypted / delivery) --- */
+  --teal-50:  #E3F7F6;
+  --teal-500: #0FA9A0;
+  --teal-600: #0C8C85;
+
+  /* ============================================================
+     Semantic aliases
+     ============================================================ */
+  --brand:        var(--blue-500);
+  --brand-hover:  var(--blue-600);
+  --brand-active: var(--blue-700);
+  --brand-soft:   var(--blue-50);
+  --brand-soft-border: var(--blue-100);
+
+  --bg-page:      var(--slate-50);
+  --bg-page-alt:  #FFFFFF;
+  --surface-card: #FFFFFF;
+  --surface-sunken: var(--slate-100);
+  --surface-raised: #FFFFFF;
+  --surface-overlay: rgba(18, 27, 42, 0.55);
+
+  --text-strong:  var(--slate-900);
+  --text-body:    var(--slate-700);
+  --text-muted:   var(--slate-500);
+  --text-subtle:  var(--slate-400);
+  --text-on-brand: #FFFFFF;
+  --text-link:    var(--blue-600);
+
+  --border:        var(--slate-200);
+  --border-strong: var(--slate-300);
+  --border-brand:  var(--blue-300);
+
+  /* state: success */
+  --success-fg:   var(--green-700);
+  --success-bg:   var(--green-50);
+  --success-solid: var(--green-500);
+  --success-border: var(--green-100);
+  /* state: pending */
+  --pending-fg:   var(--amber-600);
+  --pending-bg:   var(--amber-50);
+  --pending-solid: var(--amber-500);
+  --pending-border: var(--amber-100);
+  /* state: danger */
+  --danger-fg:    var(--red-600);
+  --danger-bg:    var(--red-50);
+  --danger-solid: var(--red-500);
+  --danger-border: var(--red-100);
+  /* accent: secure */
+  --secure-fg:    var(--teal-600);
+  --secure-bg:    var(--teal-50);
+  --secure-solid: var(--teal-500);
+
+  /* price / money emphasis */
+  --price-color:  var(--slate-900);
+  --price-accent: #E5484D;
+}

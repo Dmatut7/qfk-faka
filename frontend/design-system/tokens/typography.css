@@ -1,0 +1,40 @@
+/* ============================================================
+   秒卡 MiaoKa · Typography tokens
+   Manrope (Latin/UI) + Noto Sans SC (CJK) + JetBrains Mono
+   (card keys, order ids, amounts).
+   ============================================================ */
+:root {
+  --font-sans: 'Manrope', 'Noto Sans SC', -apple-system, BlinkMacSystemFont,
+               'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo,
+               Consolas, monospace;
+
+  /* type scale (px) — mobile-first, never below 12px */
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-md:   16px;
+  --text-lg:   18px;
+  --text-xl:   20px;
+  --text-2xl:  24px;
+  --text-3xl:  30px;
+  --text-4xl:  36px;
+  --text-display: 44px;
+
+  /* weights */
+  --fw-regular: 400;   /* @kind font */
+  --fw-medium:  500;   /* @kind font */
+  --fw-semibold: 600;  /* @kind font */
+  --fw-bold:    700;   /* @kind font */
+  --fw-extra:   800;   /* @kind font */
+
+  /* line heights */
+  --lh-tight: 1.18;    /* @kind font */
+  --lh-snug:  1.34;    /* @kind font */
+  --lh-normal: 1.55;   /* @kind font */
+
+  /* letter spacing */
+  --ls-tight: -0.02em;
+  --ls-snug:  -0.01em;
+  --ls-wide:  0.04em;
+}

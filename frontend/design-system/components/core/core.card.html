@@ -1,0 +1,91 @@
+<!-- @dsCard group="Components" viewport="700x620" name="Core 基础组件" subtitle="Button · Input · Badge · PriceTag · Quantity · Card" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  body { margin: 0; padding: 24px; background: var(--bg-page); }
+  .grid { display: flex; flex-direction: column; gap: 22px; max-width: 652px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-subtle); margin-bottom: 10px; }
+  .block { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-xs); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { Button, Input, Badge, PriceTag, QuantityStepper, Card } = window.MiaoKa_cadc89;
+function Demo() {
+  const [q, setQ] = React.useState(2);
+  return (
+    <div className="grid">
+      <div>
+        <div className="sec">Buttons</div>
+        <div className="row">
+          <Button variant="primary">立即购买</Button>
+          <Button variant="secondary">查看详情</Button>
+          <Button variant="neutral">取消</Button>
+          <Button variant="ghost">返回</Button>
+          <Button variant="success">确认收货</Button>
+          <Button variant="danger">删除</Button>
+        </div>
+        <div className="row" style={{marginTop:12}}>
+          <Button size="sm">Small</Button>
+          <Button size="md">Medium</Button>
+          <Button size="lg">Large</Button>
+          <Button loading>处理中</Button>
+          <Button disabled>已售罄</Button>
+        </div>
+      </div>
+
+      <div>
+        <div className="sec">Badges · 状态</div>
+        <div className="row">
+          <Badge variant="success" dot>有货</Badge>
+          <Badge variant="danger" dot>缺货</Badge>
+          <Badge variant="pending" dot>待支付</Badge>
+          <Badge variant="success">已发货</Badge>
+          <Badge variant="secure">担保交易</Badge>
+          <Badge variant="brand" solid>热卖</Badge>
+          <Badge variant="neutral">自动发货</Badge>
+        </div>
+      </div>
+
+      <div className="row" style={{alignItems:'flex-start', gap:22}}>
+        <div style={{flex:'1 1 260px'}}>
+          <div className="sec">Input</div>
+          <Input label="接收邮箱" required placeholder="you@example.com" hint="卡密将发送到此邮箱" />
+        </div>
+        <div>
+          <div className="sec">Price · Quantity</div>
+          <div className="row" style={{gap:18}}>
+            <PriceTag amount={29.9} original={49} size="lg" />
+            <QuantityStepper value={q} min={1} max={9} onChange={setQ} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="sec">Card</div>
+        <Card interactive style={{maxWidth:300}}>
+          <div style={{fontWeight:700, color:'var(--text-strong)', fontSize:16, marginBottom:4}}>Netflix 高级会员 1个月</div>
+          <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:12}}>独享车位 · 自动发货 · 秒到账</div>
+          <div className="row" style={{justifyContent:'space-between'}}>
+            <PriceTag amount={29.9} size="md" />
+            <Badge variant="success" dot>有货 128</Badge>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

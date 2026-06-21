@@ -1,0 +1,41 @@
+/* ============================================================
+   秒卡 MiaoKa · Base resets & helpers
+   Minimal, opt-in. Cards/HTML link styles.css and get these.
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--lh-normal);
+  color: var(--text-body);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'tnum' 0;
+}
+
+h1, h2, h3, h4, p { margin: 0; }
+
+a { color: var(--text-link); text-decoration: none; }
+
+/* numbers that should align in columns (prices, amounts, ids) */
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+
+/* money */
+.ds-money {
+  font-family: var(--font-sans);
+  font-weight: var(--fw-extra);
+  font-variant-numeric: tabular-nums;
+  color: var(--price-color);
+  letter-spacing: var(--ls-snug);
+}
+.ds-money__symbol { font-size: 0.7em; font-weight: var(--fw-bold); margin-right: 1px; }
+
+/* monospace for card keys / order ids */
+.ds-mono { font-family: var(--font-mono); font-variant-ligatures: none; }
+
+:focus-visible { outline: none; box-shadow: var(--shadow-focus); border-radius: var(--radius-sm); }

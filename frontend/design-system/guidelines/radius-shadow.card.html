@@ -1,0 +1,19 @@
+<!-- @dsCard group="Spacing" viewport="700x200" name="圆角与阴影 · Radius & Shadow" subtitle="柔和低扩散阴影 + 慷慨圆角,营造可信感" -->
+<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body{margin:0;padding:24px;background:var(--bg-page);font-family:var(--font-sans);}
+  .row{display:flex;gap:18px;flex-wrap:wrap;}
+  .box{width:96px;height:72px;background:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-size:11px;color:var(--text-muted);font-family:var(--font-mono);}
+  .lab{margin-top:18px;}
+</style></head>
+<body>
+<div class="row">
+  <div class="box" style="border-radius:var(--radius-sm);box-shadow:var(--shadow-xs)">xs · sm</div>
+  <div class="box" style="border-radius:var(--radius-md);box-shadow:var(--shadow-sm)">sm · md</div>
+  <div class="box" style="border-radius:var(--radius-lg);box-shadow:var(--shadow-md)">md · lg</div>
+  <div class="box" style="border-radius:var(--radius-xl);box-shadow:var(--shadow-lg)">lg · xl</div>
+  <div class="box" style="border-radius:var(--radius-pill);box-shadow:var(--shadow-brand);background:var(--brand);color:#fff">pill · brand</div>
+</div>
+</body></html>
