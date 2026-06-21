@@ -13,6 +13,9 @@ use think\facade\Route;
 // 健康检查 / 探活接口
 Route::get('health', 'Health/index');
 
+// 平台公开配置(无鉴权)
+Route::get('config', 'Config/index');
+
 // ============ 买家前台 buyer(公开) ============
 Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');

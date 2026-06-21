@@ -26,7 +26,23 @@ function SupportHint({ text }) {
   );
 }
 
-export default function OrderLookup({ initialResult, onBack }) {
+/* 平台查单风险提示(纯文本渲染,保留换行;为空不显示)。对标鲸发卡查单页安全提示。 */
+function OrderQueryTips({ text }) {
+  const t = (text || '').trim();
+  if (!t) return null;
+  return (
+    <div style={{
+      marginTop: 16, display: 'flex', gap: 10, padding: '12px 14px',
+      background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+      borderRadius: 'var(--radius-md)',
+    }}>
+      <Icons.ShieldCheck size={17} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+      <span style={{ fontSize: 12.5, color: 'var(--pending-fg, #92600a)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{t}</span>
+    </div>
+  );
+}
+
+export default function OrderLookup({ initialResult, onBack, queryTips }) {
   const [orderNo, setOrderNo] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [fieldErr, setFieldErr] = React.useState({ orderNo: '', email: '' });
@@ -95,6 +111,9 @@ export default function OrderLookup({ initialResult, onBack }) {
           ? '以下是您本次订单的详情与卡密,请妥善保管。'
           : '输入下单时的订单号和邮箱,即可查看订单状态并领取卡密。'}
       </p>
+
+      {/* 平台查单风险提示(表单上方;directMode 付款后直达结果不展示) */}
+      {!directMode && <OrderQueryTips text={queryTips} />}
 
       {/* 查询表单(directMode 下不展示) */}
       {!directMode && (

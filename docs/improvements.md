@@ -49,3 +49,9 @@
 - R7 审计抓出:注册并发TOCTOU→500、Button variant=solid/tone=danger 样式失效、图片破图无回退、起购>限购不可买、搜索分类计数错位、4002态卡死等。
 - R8 全修:注册捕获1062→业务码(+pcntl并发测试)、商品起购/限购校验、Button variant 全修(grep验证)、破图 onError 回退、搜索时隐藏分类计数、公告轮播重置、详情失败提示、4002态。
 - 验证:composer test 281绿(+5)、vite build、e2e 4/4 全绿。
+
+## 第9轮(2026-06-21):平台客服 + 站点配置 + 查单风险提示 — 已完成✅
+- 后端:GET /config 公开接口(site/kefu/order_query_tips,读 system_settings)。新增 5 测试,composer test 286 全绿。
+- 买家:平台客服悬浮按钮(全局,QQ/微信/手机/二维码)+ OrderLookup 查单风险提示条(对标鲸发卡 order_query_tips)。
+- 控制台:admin 平台配置改为友好表单(站点/客服/订单提示分组 + 兜底KV)。
+- 验证:286测试 + vite build + e2e 4/4 + /config 实测全绿。

@@ -78,6 +78,10 @@ export const api = {
   /** 查单/取卡:返回订单 +(仅 status=2)cards[] */
   queryOrder: ({ orderNo, email }) =>
     call('/buyer/order/query', { method: 'POST', body: { order_no: orderNo, email } }),
+  /** 平台公开配置(无鉴权):
+   *  { site:{title,name}, kefu:{qq,wechat,mobile,qrcode}, order_query_tips }
+   *  缺省键返回空串。 */
+  config: () => call('/config'),
 };
 
 /* ------------------------------------------------------------

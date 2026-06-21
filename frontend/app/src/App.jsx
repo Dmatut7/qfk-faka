@@ -4,6 +4,7 @@ import StorefrontHome from './screens/StorefrontHome.jsx';
 import ProductDetail from './screens/ProductDetail.jsx';
 import PaymentScreen from './screens/PaymentScreen.jsx';
 import OrderLookup from './screens/OrderLookup.jsx';
+import PlatformKefu from './components/PlatformKefu.jsx';
 import { api, normalizeProduct } from './api.js';
 
 /* App 外壳:浏览 → 下单 → 付款 → 取卡。状态在此集中,各屏只收 props。 */
@@ -19,6 +20,14 @@ export default function App() {
   const [products, setProducts] = React.useState([]);
   const [homeLoading, setHomeLoading] = React.useState(true);
   const [homeError, setHomeError] = React.useState('');
+
+  // 平台公开配置(站点信息 + 平台客服 + 查单风险提示)。无鉴权,启动即拉一次;失败静默(不阻塞商城)。
+  const [config, setConfig] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    api.config().then((c) => { if (alive) setConfig(c); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const loadShop = React.useCallback(() => {
     setHomeLoading(true);
@@ -107,10 +116,13 @@ export default function App() {
       )}
 
       {screen === 'result' && result && (
-        <OrderLookup initialResult={result} onBack={() => go('home')} />
+        <OrderLookup initialResult={result} onBack={() => go('home')} queryTips={config?.order_query_tips} />
       )}
 
-      {screen === 'lookup' && <OrderLookup onBack={() => go('home')} />}
+      {screen === 'lookup' && <OrderLookup onBack={() => go('home')} queryTips={config?.order_query_tips} />}
+
+      {/* 全局平台客服悬浮按钮(买家所有页面共用,区别于店铺商户客服) */}
+      <PlatformKefu kefu={config?.kefu} />
     </div>
   );
 }
