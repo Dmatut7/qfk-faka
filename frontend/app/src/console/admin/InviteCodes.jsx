@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -24,22 +24,37 @@ export default function InviteCodes({ api }) {
 
   const [showCreate, setShowCreate] = React.useState(false);
   const [busyId, setBusyId] = React.useState(null);
+  const [actErr, setActErr] = React.useState('');
+
+  // 删除二次确认:{ row } | null
+  const [confirmDel, setConfirmDel] = React.useState(null);
+  const [confirming, setConfirming] = React.useState(false);
 
   const runAction = async (id, fn) => {
     setBusyId(id);
+    setActErr('');
     try {
       await fn();
       list.reload();
     } catch (e) {
-      alert(e instanceof ApiError ? e.message : '操作失败,请重试');
+      setActErr(e instanceof ApiError ? e.message : '操作失败,请重试');
     } finally {
       setBusyId(null);
     }
   };
 
-  const onDelete = (r) => {
-    if (!window.confirm(`确认删除邀请码「${r.code}」?该操作不可撤销。`)) return;
-    runAction(r.id, () => api.deleteInviteCode(r.id));
+  const onDelete = (r) => setConfirmDel({ row: r });
+
+  const doDelete = async () => {
+    if (!confirmDel || confirming) return;
+    const r = confirmDel.row;
+    setConfirming(true);
+    try {
+      await runAction(r.id, () => api.deleteInviteCode(r.id));
+      setConfirmDel(null);
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const columns = [
@@ -92,6 +107,12 @@ export default function InviteCodes({ api }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Panel title="邀请码" subtitle="批量生成注册邀请码,控制商户自助开店准入" padded={false}>
         <div style={{ padding: 18 }}>
+          {actErr ? (
+            <div style={{ marginBottom: 12 }}>
+              <ErrorBar message={actErr} onClose={() => setActErr('')} />
+            </div>
+          ) : null}
+
           <Toolbar right={
             <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
               onClick={list.reload}>刷新</Button>
@@ -119,7 +140,53 @@ export default function InviteCodes({ api }) {
           onCreated={() => list.reload()}
         />
       )}
+
+      <ConfirmDeleteModal
+        confirm={confirmDel}
+        confirming={confirming}
+        onCancel={() => { if (!confirming) setConfirmDel(null); }}
+        onConfirm={doDelete}
+      />
     </div>
+  );
+}
+
+/* 删除邀请码 二次确认弹窗(对齐控制台 ConfirmActionModal 写法) */
+function ConfirmDeleteModal({ confirm, confirming, onCancel, onConfirm }) {
+  const open = confirm != null;
+  const code = (confirm && confirm.row && confirm.row.code) || '';
+  return (
+    <Modal
+      open={open}
+      title="确认删除邀请码"
+      width={420}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={confirming}>取消</Button>
+          <Button
+            variant="danger"
+            size="sm"
+            iconLeft={<Icons.X size={14} />}
+            loading={confirming}
+            disabled={confirming}
+            onClick={onConfirm}
+          >
+            确认删除
+          </Button>
+        </>
+      }
+    >
+      <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.7 }}>
+        {code ? (
+          <div style={{ marginBottom: 8 }}>
+            邀请码:
+            <span style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-strong)', fontWeight: 700 }}>{code}</span>
+          </div>
+        ) : null}
+        <div>将删除该邀请码,操作不可撤销。</div>
+      </div>
+    </Modal>
   );
 }
 

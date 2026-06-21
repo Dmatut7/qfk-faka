@@ -5,29 +5,37 @@ import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
 
+const PAGE_SIZE = 20;
+
 export default function Products({ api, session }) {
   const [merchantId, setMerchantId] = React.useState('');
   const [status, setStatus] = React.useState('');
   const [keyword, setKeyword] = React.useState('');
   const [query, setQuery] = React.useState({});
+  const [page, setPage] = React.useState(1);
 
-  const x = useAsync(() => api.products(query), [query]);
+  const x = useAsync(() => api.products({ ...query, page }), [query, page]);
 
   const apply = () => {
     const params = {};
     if (merchantId.trim() !== '') params.merchant_id = merchantId.trim();
     if (status !== '') params.status = status;
     if (keyword.trim() !== '') params.keyword = keyword.trim();
+    setPage(1);
     setQuery(params);
   };
   const reset = () => {
     setMerchantId('');
     setStatus('');
     setKeyword('');
+    setPage(1);
     setQuery({});
   };
 
   const rows = x.data?.items || [];
+  const total = x.data?.total || 0;
+  const curPage = x.data?.page || page;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const columns = [
     { key: 'id', title: 'ID', width: 72, render: (r) => <span style={{ color: 'var(--color-text-muted)' }}>#{r.id}</span> },
@@ -143,6 +151,16 @@ export default function Products({ api, session }) {
         onReload={x.reload}
         empty="暂无商品"
       />
+
+      {total > 0 && pages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>共 {total} 项 · 第 {curPage} / {pages} 页</span>
+          <Button size="sm" variant="ghost" disabled={curPage <= 1 || x.loading}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</Button>
+          <Button size="sm" variant="ghost" disabled={curPage >= pages || x.loading}
+            onClick={() => setPage((p) => p + 1)}>下一页</Button>
+        </div>
+      )}
     </Panel>
   );
 }

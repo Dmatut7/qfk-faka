@@ -31,6 +31,21 @@ export function Money({ amount, strong, color }) {
   );
 }
 
+/* 涨跌对比:今日 vs 昨日。↑绿 / ↓红 / 持平灰。amount 模式格式化为金额差。 */
+export function Delta({ today, yesterday, money }) {
+  const a = Number(today), b = Number(yesterday);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  const diff = a - b;
+  const up = diff > 0, down = diff < 0;
+  const color = up ? 'var(--success-fg)' : down ? 'var(--danger-fg)' : 'var(--text-subtle)';
+  const arrow = up ? '↑' : down ? '↓' : '→';
+  const mag = Math.abs(diff);
+  const text = money ? `¥${mag.toFixed(2)}` : `${mag}`;
+  return (
+    <span style={{ color, fontWeight: 700, whiteSpace: 'nowrap' }}>{arrow} {text}</span>
+  );
+}
+
 const TONE = {
   success: ['var(--success-fg)', 'var(--success-bg)', 'var(--success-border)'],
   pending: ['var(--pending-fg)', 'var(--pending-bg)', 'var(--pending-border)'],

@@ -14,6 +14,8 @@ const KNOWN_KEYS = [
   'kefu_mobile',
   'kefu_qrcode',
   'order_query_tips',
+  'default_commission_rate',
+  'withdraw_fee_rate',
 ];
 
 // 单项「保存」行:回填现值,变更后调 api.setSetting(key,value)。
@@ -272,6 +274,29 @@ export default function Settings({ api }) {
                   />
                 </div>
               ) : null}
+            </section>
+
+            {/* 费率配置 */}
+            <section>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icons.Zap /> 费率配置
+              </h3>
+              <SettingRow
+                api={api}
+                settingKey="default_commission_rate"
+                label="默认抽佣率(default_commission_rate)"
+                hint="平台对商户订单的默认抽佣比例,0~1 之间的小数(如 0.05 表示 5%)"
+                initial={get('default_commission_rate')}
+                onSaved={reload}
+              />
+              <SettingRow
+                api={api}
+                settingKey="withdraw_fee_rate"
+                label="提现手续费率(withdraw_fee_rate)"
+                hint="商户提现时扣取的手续费比例,0~1 之间的小数(如 0.01 表示 1%)"
+                initial={get('withdraw_fee_rate')}
+                onSaved={reload}
+              />
             </section>
 
             {/* 订单查询提示 */}

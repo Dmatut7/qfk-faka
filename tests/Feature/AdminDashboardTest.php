@@ -5,6 +5,7 @@ namespace tests\Feature;
 
 use app\model\Card;
 use app\model\Merchant;
+use app\model\MerchantFundLog;
 use app\model\Order;
 use app\model\Product;
 use app\service\AdminViewService;
@@ -51,6 +52,22 @@ class AdminDashboardTest extends TestCase
             Order::where('id', $o->id)->update(['create_time' => $createTime]);
         }
         return $o;
+    }
+
+    /** 平台佣金流水(amount 存负数,口径同 AdminReportService),可指定 create_time */
+    private function commissionLog(int $merchantId, string $negAmount, ?string $createTime = null): MerchantFundLog
+    {
+        $log = MerchantFundLog::create([
+            'merchant_id'   => $merchantId,
+            'type'          => MerchantFundLog::TYPE_COMMISSION,
+            'amount'        => $negAmount,
+            'balance_after' => '0.00',
+            'remark'        => '平台佣金',
+        ]);
+        if ($createTime !== null) {
+            MerchantFundLog::where('id', $log->id)->update(['create_time' => $createTime]);
+        }
+        return $log;
     }
 
     private function card(int $merchantId, int $productId, int $status): Card
@@ -106,8 +123,16 @@ class AdminDashboardTest extends TestCase
         $this->order($mid, $pid, Order::STATUS_DELIVERED, '25.00', $yesterday);
         // 今日已支付 1 笔:99(paid 计数 +1、今日订单 +1,不计销售额)
         $this->order($mid, $pid, Order::STATUS_PAID, '99.00', $todayMid);
-        // 昨日待支付 1 笔(总订单 +1,不计今日、不计 paid/delivered)
+        // 昨日待支付 1 笔(总订单 +1,昨日订单 +1,不计今日、不计 paid/delivered)
         $this->order($mid, $pid, Order::STATUS_PENDING, '7.00', $yesterday);
+        // 今日异常待人工 1 笔(总订单 +1、今日订单 +1、exception +1)
+        $this->order($mid, $pid, Order::STATUS_EXCEPTION, '8.00', $todayMid);
+
+        // ---- 平台抽佣流水(amount 负数)----
+        // 今日:-10 + -5 = 今日佣金 15;昨日:-3,计入总额、不计今日
+        $this->commissionLog($mid, '-10.00', $todayMid);
+        $this->commissionLog($mid, '-5.00', $todayMid);
+        $this->commissionLog($mid, '-3.00', $yesterday);
 
         // ---- 提现:待审 2 笔(20 + 30 = 50);非待审不计 ----
         $wallet = new MerchantWalletService();
@@ -123,21 +148,26 @@ class AdminDashboardTest extends TestCase
         $this->assertSame(0, $r['code']);
         $d = $r['data'];
 
-        // merchants: 本测试新增 5 个商户(pending1/active3(含 mw)/frozen1)
+        // merchants: 本测试新增 5 个商户(pending1/active3(含 mw)/frozen1),全部今日注册
         $this->assertSame($base['merchants']['total'] + 5, $d['merchants']['total']);
         $this->assertSame($base['merchants']['pending'] + 1, $d['merchants']['pending']);
         $this->assertSame($base['merchants']['active'] + 3, $d['merchants']['active']);
         $this->assertSame($base['merchants']['frozen'] + 1, $d['merchants']['frozen']);
+        $this->assertSame($base['merchants']['today'] + 5, $d['merchants']['today']);
 
-        // orders: 总 +5、今日 +3(2 delivered + 1 paid)、paid +1、delivered +3
-        $this->assertSame($base['orders']['total'] + 5, $d['orders']['total']);
-        $this->assertSame($base['orders']['today'] + 3, $d['orders']['today']);
+        // orders: 总 +6、今日 +4(2 delivered + 1 paid + 1 exception)、昨日 +2(1 delivered + 1 pending)、
+        //         paid +1、delivered +3、exception +1
+        $this->assertSame($base['orders']['total'] + 6, $d['orders']['total']);
+        $this->assertSame($base['orders']['today'] + 4, $d['orders']['today']);
+        $this->assertSame($base['orders']['yesterday'] + 2, $d['orders']['yesterday']);
         $this->assertSame($base['orders']['paid'] + 1, $d['orders']['paid']);
         $this->assertSame($base['orders']['delivered'] + 3, $d['orders']['delivered']);
+        $this->assertSame($base['orders']['exception'] + 1, $d['orders']['exception']);
 
-        // sales(已发货合计,Money 字符串):总 +125(40+60+25)、今日 +100(40+60)
+        // sales(已发货合计,Money 字符串):总 +125(40+60+25)、今日 +100(40+60)、昨日 +25
         $this->assertSame(Money::add($base['sales']['total'], '125.00'), $d['sales']['total']);
         $this->assertSame(Money::add($base['sales']['today'], '100.00'), $d['sales']['today']);
+        $this->assertSame(Money::add($base['sales']['yesterday'], '25.00'), $d['sales']['yesterday']);
 
         // withdrawals: 待审 +2、金额 +50.00
         $this->assertSame($base['withdrawals']['pending_count'] + 2, $d['withdrawals']['pending_count']);
@@ -149,6 +179,10 @@ class AdminDashboardTest extends TestCase
 
         // cards: 未售 +3
         $this->assertSame($base['cards']['unsold'] + 3, $d['cards']['unsold']);
+
+        // commission(平台抽佣,Money 字符串,佣金流水取绝对值):总 +18(10+5+3)、今日 +15(10+5)
+        $this->assertSame(Money::add($base['commission']['total'], '18.00'), $d['commission']['total']);
+        $this->assertSame(Money::add($base['commission']['today'], '15.00'), $d['commission']['today']);
 
         // 防止未使用变量被静态分析误判;同时验证对象确实落库
         $this->assertGreaterThan(0, (int) $w2->id);

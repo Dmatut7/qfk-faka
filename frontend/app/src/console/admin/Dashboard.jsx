@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, StatCard, Money, Spinner, ErrorBar } from '../ui.jsx';
+import { useAsync, Panel, StatCard, Money, Spinner, ErrorBar, Delta } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 
@@ -17,6 +17,7 @@ export default function Dashboard({ api, onNavigate }) {
   const withdrawals = data.withdrawals || {};
   const products = data.products || {};
   const cards = data.cards || {};
+  const commission = data.commission || {};
   const n = (v) => (v == null ? 0 : v);
   const go = (key) => { if (typeof onNavigate === 'function') onNavigate(key); };
 
@@ -40,17 +41,32 @@ export default function Dashboard({ api, onNavigate }) {
         <StatCard
           label="今日成交额" icon="Zap" tone="success"
           value={<Money amount={n(sales.today)} strong />}
-          sub={<span>累计成交 <Money amount={n(sales.total)} /></span>}
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 <Money amount={n(sales.yesterday)} /></span>
+              <Delta today={n(sales.today)} yesterday={n(sales.yesterday)} money />
+            </span>
+          }
         />
         <StatCard
           label="今日订单" icon="Search" tone="brand"
           value={n(orders.today)}
-          sub={`订单总数 ${n(orders.total)} · 已发货 ${n(orders.delivered)}`}
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 {n(orders.yesterday)}</span>
+              <Delta today={n(orders.today)} yesterday={n(orders.yesterday)} />
+            </span>
+          }
+        />
+        <StatCard
+          label="平台抽佣" icon="Lock" tone="brand"
+          value={<Money amount={n(commission.today)} strong />}
+          sub={<span>累计抽佣 <Money amount={n(commission.total)} /></span>}
         />
         <StatCard
           label="入驻商户" icon="Package" tone="secure"
           value={n(merchants.total)}
-          sub={`正常 ${n(merchants.active)} · 待审核 ${n(merchants.pending)} · 冻结 ${n(merchants.frozen)}`}
+          sub={`今日新增 ${n(merchants.today)} · 正常 ${n(merchants.active)} · 待审核 ${n(merchants.pending)} · 冻结 ${n(merchants.frozen)}`}
         />
         <StatCard
           label="在售商品" icon="Inbox" tone="pending"
@@ -75,6 +91,12 @@ export default function Dashboard({ api, onNavigate }) {
               label="待审核商户"
               count={n(merchants.pending)}
               onClick={() => go('a-merchants')}
+            />
+            <TodoRow
+              icon="AlertTriangle" tone="danger"
+              label="异常待人工订单"
+              count={n(orders.exception)}
+              onClick={() => go('a-orders')}
             />
           </div>
         </Panel>
@@ -135,6 +157,7 @@ const TONE_BG = {
   pending: ['var(--pending-fg)', 'var(--pending-bg)'],
   secure: ['var(--secure-fg)', 'var(--secure-bg)'],
   brand: ['var(--brand-active)', 'var(--brand-soft)'],
+  danger: ['var(--danger-fg)', 'var(--danger-bg)'],
   neutral: ['var(--text-body)', 'var(--surface-sunken)'],
 };
 
