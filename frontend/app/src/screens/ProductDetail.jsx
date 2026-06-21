@@ -32,6 +32,10 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const [product, setProduct] = React.useState(initialProduct || null);
   const [loading, setLoading] = React.useState(!initialProduct);
   const [loadErr, setLoadErr] = React.useState('');
+  // 首屏已有数据但详情请求失败:非阻断轻提示,可重试
+  const [partialErr, setPartialErr] = React.useState(false);
+  // 顶部大图加载失败 → 回退 emoji 占位
+  const [imgFailed, setImgFailed] = React.useState(false);
 
   const [qty, setQty] = React.useState(1);
   const [email, setEmail] = React.useState('');
@@ -44,17 +48,20 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     // 有首屏数据时不显示整屏 loading,后台静默刷新;无则正常 loading。
     setLoading((prev) => (product ? false : true));
     setLoadErr('');
+    setPartialErr(false);
     api.product(productId)
       .then((raw) => {
         if (!alive) return;
         // 合并:列表对象保留 image/原价等,详情补 detail/min_buy/max_buy/stock。
         setProduct((prev) => ({ ...(prev || {}), ...normalizeProduct(raw) }));
+        setPartialErr(false);
         setLoading(false);
       })
       .catch((e) => {
         if (!alive) return;
-        // 已有首屏数据时拉详情失败不致命,继续展示首屏。
+        // 已有首屏数据时拉详情失败不致命,继续展示首屏,但给出非阻断提示。
         if (!product) { setLoadErr(e instanceof ApiError ? e.message : '加载失败,请重试'); }
+        else { setPartialErr(true); }
         setLoading(false);
       });
     return () => { alive = false; };
@@ -62,6 +69,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   }, [productId]);
 
   React.useEffect(() => load(), [load]);
+
+  // 图片地址变化时重置失败态,避免新图沿用旧回退
+  React.useEffect(() => { setImgFailed(false); }, [product && product.image]);
 
   // ---- loading ----
   if (loading) {
@@ -135,13 +145,34 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
       <CheckoutSteps current={1} />
 
+      {/* 首屏有数据但详情请求失败:非阻断轻提示,可重试 */}
+      {partialErr && (
+        <div role="status" style={{
+          marginTop: 12, display: 'flex', alignItems: 'center', gap: 9, padding: '10px 13px',
+          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg, #92600a)',
+        }}>
+          <Icons.AlertTriangle size={16} color="var(--pending-fg, #92600a)" style={{ flex: 'none' }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>商品详情加载不完整,可重试</span>
+          <button
+            type="button"
+            onClick={load}
+            style={{
+              flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px',
+              border: '1px solid var(--pending-border, #fde7b8)', background: '#fff', color: 'var(--pending-fg, #92600a)',
+              borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
+            }}
+          ><Icons.RefreshCw size={13} />重试</button>
+        </div>
+      )}
+
       {/* 顶部大图 */}
       <div style={{
         marginTop: 18, width: '100%', aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
         background: 'var(--brand-soft)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        {p.image
-          ? <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        {p.image && !imgFailed
+          ? <img src={p.image} alt={p.name} onError={() => setImgFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           : <div style={{ fontSize: 64 }}>{p.thumb}</div>}
       </div>
 

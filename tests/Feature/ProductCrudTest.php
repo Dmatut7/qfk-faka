@@ -102,4 +102,74 @@ class ProductCrudTest extends TestCase
         $resp = $this->call('POST', '/merchant/products/' . $p->id, ['title' => 'hack'], $this->bearer($this->merchantToken((int) $other->id)));
         $this->assertSame(403, $resp->getCode());
     }
+
+    /**
+     * 创建时 max_buy>0 且 max_buy<min_buy → 该商品任何数量都买不了(不可买漏洞),
+     * 落库前必须拒绝并返回参数错误,且不创建商品。
+     */
+    public function testCreateRejectsMaxBuyLessThanMinBuy(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->merchantToken((int) $m->id);
+
+        $r = $this->callJson('POST', '/merchant/products', [
+            'title' => '坏限购', 'price' => '9.90', 'min_buy' => 5, 'max_buy' => 2,
+        ], $this->bearer($token));
+
+        $this->assertSame(Code::PARAM_ERROR, $r['code']);
+        $this->assertSame(0, Product::where('merchant_id', $m->id)->count(), '不合法的限购区间不应落库');
+    }
+
+    /** max_buy=0(不限购)合法,即便 min_buy 较大也应创建成功。 */
+    public function testCreateAllowsUnlimitedMaxBuy(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->merchantToken((int) $m->id);
+
+        $r = $this->callJson('POST', '/merchant/products', [
+            'title' => '不限购', 'price' => '9.90', 'min_buy' => 5, 'max_buy' => 0,
+        ], $this->bearer($token));
+
+        $this->assertSame(0, $r['code']);
+        $this->assertSame(5, (int) $r['data']['min_buy']);
+        $this->assertSame(0, (int) $r['data']['max_buy']);
+    }
+
+    /**
+     * 更新时仅改 min_buy,使其超过现有 max_buy → 用合并后有效值校验,应被拒;
+     * 现值保持不变。
+     */
+    public function testUpdateRejectsMinBuyExceedingExistingMaxBuy(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->merchantToken((int) $m->id);
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '限购品', 'price' => '9.90', 'min_buy' => 1, 'max_buy' => 3]);
+
+        $r = $this->callJson('POST', '/merchant/products/' . $p->id, [
+            'min_buy' => 10,
+        ], $this->bearer($token));
+
+        $this->assertSame(Code::PARAM_ERROR, $r['code']);
+        $reload = Product::find($p->id);
+        $this->assertSame(1, (int) $reload->min_buy, '非法更新不应改动 min_buy');
+        $this->assertSame(3, (int) $reload->max_buy);
+    }
+
+    /**
+     * 更新时仅改 max_buy,使其低于现有 min_buy → 应被拒,现值不变。
+     */
+    public function testUpdateRejectsMaxBuyBelowExistingMinBuy(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->merchantToken((int) $m->id);
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '限购品', 'price' => '9.90', 'min_buy' => 4, 'max_buy' => 0]);
+
+        $r = $this->callJson('POST', '/merchant/products/' . $p->id, [
+            'max_buy' => 2,
+        ], $this->bearer($token));
+
+        $this->assertSame(Code::PARAM_ERROR, $r['code']);
+        $reload = Product::find($p->id);
+        $this->assertSame(0, (int) $reload->max_buy, '非法更新不应改动 max_buy');
+    }
 }

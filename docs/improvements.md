@@ -44,3 +44,8 @@
 ## 第6轮(2026-06-21):收尾验证 + 修仪表盘数据 bug
 - **抓到并修复**:平台仪表盘所有数字显示 0——前端读扁平字段名(merchant_total...)而后端返回嵌套对象(merchants.total...),改为读嵌套结构。修后真实显示(商户2/订单17/成交额¥99/在售9/卡密72)。
 - 全量 e2e 终验 5/5 全绿(console-login/screens/money/buyer flow/lookup)。
+
+## 第7-8轮(2026-06-21):审计新代码 + 修缺陷 — 已完成✅
+- R7 审计抓出:注册并发TOCTOU→500、Button variant=solid/tone=danger 样式失效、图片破图无回退、起购>限购不可买、搜索分类计数错位、4002态卡死等。
+- R8 全修:注册捕获1062→业务码(+pcntl并发测试)、商品起购/限购校验、Button variant 全修(grep验证)、破图 onError 回退、搜索时隐藏分类计数、公告轮播重置、详情失败提示、4002态。
+- 验证:composer test 281绿(+5)、vite build、e2e 4/4 全绿。

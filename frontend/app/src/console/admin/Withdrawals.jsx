@@ -138,8 +138,7 @@ export default function Withdrawals({ api, session }) {
             </Button>
             <Button
               size="sm"
-              variant="ghost"
-              tone="danger"
+              variant="danger"
               iconLeft={<Icons.AlertTriangle />}
               disabled={busyId != null}
               onClick={() => openReject(r)}
@@ -189,7 +188,7 @@ export default function Withdrawals({ api, session }) {
               <Button
                 key={f.value}
                 size="sm"
-                variant={status === f.value ? 'solid' : 'ghost'}
+                variant={status === f.value ? 'primary' : 'ghost'}
                 onClick={() => setStatus(f.value)}
               >
                 {f.label}
@@ -233,7 +232,7 @@ export default function Withdrawals({ api, session }) {
             <Button variant="ghost" onClick={() => setRejecting(null)} disabled={rejectSaving}>
               取消
             </Button>
-            <Button tone="danger" onClick={submitReject} loading={rejectSaving} iconLeft={<Icons.AlertTriangle />}>
+            <Button variant="danger" onClick={submitReject} loading={rejectSaving} iconLeft={<Icons.AlertTriangle />}>
               确认拒绝并退回
             </Button>
           </>

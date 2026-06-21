@@ -53,6 +53,27 @@ function StockPill({ stock }) {
   );
 }
 
+/* —— 带图缩略(加载失败回退 emoji 占位,不破图) —— */
+function GoodsThumb({ src, alt, thumb, fontSize = 38 }) {
+  const [failed, setFailed] = React.useState(false);
+  // src 变化时重置失败态,避免新图沿用旧的回退态
+  React.useEffect(() => { setFailed(false); }, [src]);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
+    );
+  }
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize }}>{thumb}</div>
+  );
+}
+
 /* —— 带图商品卡(2 列网格用) —— */
 function GoodsCard({ p, onClick }) {
   const out = p.stock <= 0;
@@ -74,9 +95,7 @@ function GoodsCard({ p, onClick }) {
     >
       {/* 图片 16:9 */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
-        {p.image
-          ? <img src={p.image} alt={p.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }}>{p.thumb}</div>}
+        <GoodsThumb src={p.image} alt={p.name} thumb={p.thumb} fontSize={38} />
         <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} /></div>
       </div>
       {/* 内容 */}
@@ -250,12 +269,17 @@ function PlatformNoticeBar({ notices }) {
   const [idx, setIdx] = React.useState(0);
   const [showAll, setShowAll] = React.useState(false);
   const many = notices.length > 1;
+  // notices 内容的稳定标识:变化时需重置轮播下标与计时器
+  const noticesKey = notices.map((n) => n.id).join(',');
+
+  // notices 变化时重置到第一条,避免 idx 越界或停留在旧内容
+  React.useEffect(() => { setIdx(0); }, [noticesKey]);
 
   React.useEffect(() => {
     if (!many || closed) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % notices.length), 4500);
     return () => clearInterval(t);
-  }, [many, closed, notices.length]);
+  }, [many, closed, notices.length, noticesKey]);
 
   if (closed || notices.length === 0) return null;
   const cur = notices[idx % notices.length];
@@ -485,7 +509,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
                     fontFamily: 'var(--font-sans)', fontWeight: on ? 800 : 600, fontSize: 15,
                     color: on ? 'var(--brand-active)' : 'var(--text-muted)', whiteSpace: 'nowrap', transition: 'color .15s',
                   }}>
-                    {c.name}{c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}
+                    {c.name}{!q && c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}
                     {on && <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0, width: 22, height: 3, borderRadius: 3, background: 'var(--brand)' }} />}
                   </button>
                 );

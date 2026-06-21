@@ -1,0 +1,12 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await (await b.newContext({ viewport: { width: 430, height: 932 }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1' })).newPage();
+const apis = [];
+page.on('response', async r => { const ct = r.headers()['content-type'] || ''; if (ct.includes('json')) { try { apis.push({ u: r.url().replace(/^https?:\/\/[^/]+/, ''), d: await r.json() }); } catch {} } });
+await page.goto('https://fkdemo.jingsoft.com/item/jhye6r', { waitUntil: 'networkidle', timeout: 50000 }).catch(e => console.log('goto', e.message));
+await page.waitForTimeout(4000);
+console.log('===== ITEM innerText =====\n' + (await page.locator('body').innerText().catch(() => '')).slice(0, 3000));
+await page.screenshot({ path: 'e2e/jf-item.png', fullPage: true }).catch(() => {});
+console.log('\n===== APIs =====');
+for (const a of apis) if (/goods|item|detail|config/i.test(a.u)) console.log('\n→ ' + a.u + '\n' + JSON.stringify(a.d).slice(0, 2400));
+await b.close();

@@ -32,6 +32,10 @@ class ProductService
     {
         $this->assertCategory($merchantId, $d['category_id'] ?? null);
 
+        $minBuy = isset($d['min_buy']) ? max(1, (int) $d['min_buy']) : 1;
+        $maxBuy = isset($d['max_buy']) ? (int) $d['max_buy'] : 0;
+        $this->assertBuyRange($minBuy, $maxBuy);
+
         return Product::create([
             'merchant_id'      => $merchantId,
             'category_id'      => !empty($d['category_id']) ? (int) $d['category_id'] : null,
@@ -42,8 +46,8 @@ class ProductService
             'price'            => $d['price'],
             'market_price'     => (isset($d['market_price']) && $d['market_price'] !== '') ? $d['market_price'] : null,
             'type'             => isset($d['type']) ? (int) $d['type'] : Product::TYPE_AUTO,
-            'min_buy'          => isset($d['min_buy']) ? max(1, (int) $d['min_buy']) : 1,
-            'max_buy'          => isset($d['max_buy']) ? (int) $d['max_buy'] : 0,
+            'min_buy'          => $minBuy,
+            'max_buy'          => $maxBuy,
             'delivery_message' => $d['delivery_message'] ?? null,
             'status'           => isset($d['status']) ? (int) $d['status'] : Product::STATUS_ON,
             'sort'             => (int) ($d['sort'] ?? 0),
@@ -63,6 +67,17 @@ class ProductService
         if (array_key_exists('image', $d) && $d['image'] === '') {
             $d['image'] = null;
         }
+        if (array_key_exists('min_buy', $d)) {
+            $d['min_buy'] = max(1, (int) $d['min_buy']);
+        }
+        if (array_key_exists('max_buy', $d)) {
+            $d['max_buy'] = (int) $d['max_buy'];
+        }
+        // 用合并后的有效值校验:未传字段回退现值。
+        $minBuy = array_key_exists('min_buy', $d) ? (int) $d['min_buy'] : (int) $p->min_buy;
+        $maxBuy = array_key_exists('max_buy', $d) ? (int) $d['max_buy'] : (int) $p->max_buy;
+        $this->assertBuyRange($minBuy, $maxBuy);
+
         $patch = array_intersect_key($d, array_flip(self::EDITABLE));
         if ($patch) {
             $p->save($patch);
@@ -97,6 +112,17 @@ class ProductService
             throw new BizException(Code::FORBIDDEN, '无权操作他人资源');
         }
         return $p;
+    }
+
+    /**
+     * 校验起购/限购区间:max_buy=0 表示不限购;>0 时不得小于 min_buy,
+     * 否则该商品任何数量都买不了(min..max 区间为空)。
+     */
+    private function assertBuyRange(int $minBuy, int $maxBuy): void
+    {
+        if ($maxBuy > 0 && $maxBuy < $minBuy) {
+            throw new BizException(Code::PARAM_ERROR, '限购数量不能小于起购数量');
+        }
     }
 
     private function assertCategory(int $merchantId, $categoryId): void

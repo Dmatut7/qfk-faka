@@ -185,8 +185,7 @@ export default function Channels({ api, session }) {
           </Button>
           <Button
             size="sm"
-            variant="ghost"
-            tone={Number(row.status) === STATUS_ENABLED ? 'danger' : undefined}
+            variant={Number(row.status) === STATUS_ENABLED ? 'danger' : 'ghost'}
             loading={statusBusy === row.id}
             onClick={() => toggleStatus(row)}
           >

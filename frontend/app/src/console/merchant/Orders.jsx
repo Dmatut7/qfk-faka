@@ -185,8 +185,7 @@ export default function Orders({ api, session }) {
           {canClose(r.status) && (
             <Button
               size="sm"
-              variant="ghost"
-              tone="danger"
+              variant="danger"
               iconLeft={<Icons.Lock />}
               loading={actBusy === r.id}
               disabled={actBusy !== 0 && actBusy !== r.id}
@@ -254,7 +253,7 @@ export default function Orders({ api, session }) {
           <Button
             key={o.value || 'all'}
             size="sm"
-            variant={query.status === o.value ? 'solid' : 'ghost'}
+            variant={query.status === o.value ? 'primary' : 'ghost'}
             onClick={() => setStatus(o.value)}
           >
             {o.label}
@@ -324,7 +323,7 @@ function ConfirmActionModal({ confirm, onCancel, onConfirm }) {
         <>
           <Button variant="ghost" onClick={onCancel}>取消</Button>
           <Button
-            tone={isRedeliver ? undefined : 'danger'}
+            variant={isRedeliver ? 'primary' : 'danger'}
             iconLeft={isRedeliver ? <Icons.RefreshCw /> : <Icons.Lock />}
             onClick={onConfirm}
           >
@@ -381,7 +380,7 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
         o ? (
           <>
             {canClose(o.status) && (
-              <Button variant="ghost" tone="danger" iconLeft={<Icons.Lock />} loading={actBusy === o.id} onClick={() => onCloseOrder(o)}>
+              <Button variant="danger" iconLeft={<Icons.Lock />} loading={actBusy === o.id} onClick={() => onCloseOrder(o)}>
                 关单
               </Button>
             )}

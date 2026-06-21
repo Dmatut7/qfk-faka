@@ -107,7 +107,7 @@ export default function Categories({ api, session }) {
           <Button size="sm" variant="ghost" onClick={() => openEdit(row)}>
             编辑
           </Button>
-          <Button size="sm" variant="ghost" tone="danger" onClick={() => { setDelErr(''); setRemoving(row); }}>
+          <Button size="sm" variant="danger" onClick={() => { setDelErr(''); setRemoving(row); }}>
             删除
           </Button>
         </div>
@@ -176,13 +176,13 @@ export default function Categories({ api, session }) {
         <Field label="状态">
           <div style={{ display: 'flex', gap: 8 }}>
             <Button
-              variant={Number(form.status) === STATUS_SHOWN ? 'solid' : 'ghost'}
+              variant={Number(form.status) === STATUS_SHOWN ? 'primary' : 'ghost'}
               onClick={() => setForm((f) => ({ ...f, status: STATUS_SHOWN }))}
             >
               显示
             </Button>
             <Button
-              variant={Number(form.status) === STATUS_HIDDEN ? 'solid' : 'ghost'}
+              variant={Number(form.status) === STATUS_HIDDEN ? 'primary' : 'ghost'}
               onClick={() => setForm((f) => ({ ...f, status: STATUS_HIDDEN }))}
             >
               隐藏
@@ -200,7 +200,7 @@ export default function Categories({ api, session }) {
             <Button variant="ghost" onClick={() => setRemoving(null)} disabled={delBusy}>
               取消
             </Button>
-            <Button tone="danger" onClick={confirmDelete} loading={delBusy}>
+            <Button variant="danger" onClick={confirmDelete} loading={delBusy}>
               确认删除
             </Button>
           </>

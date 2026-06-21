@@ -63,21 +63,75 @@ class MerchantService
 
         $defaultRate = (new SettingService())->get('default_commission_rate', '0.0000') ?? '0.0000';
 
-        $m = Merchant::create([
-            'username'        => $username,
-            'password'        => password_hash((string) $d['password'], PASSWORD_BCRYPT),
-            'email'           => $email,
-            'store_name'      => (string) $d['store_name'],
-            'store_slug'      => $this->uniqueSlug(),
-            'status'          => Merchant::STATUS_PENDING,
-            'balance'         => '0.00',
-            'frozen_balance'  => '0.00',
-            'deposit'         => '0.00',
-            'verified'        => 0,
-            'commission_rate' => $defaultRate,
-        ]);
+        try {
+            $m = Merchant::create([
+                'username'        => $username,
+                'password'        => password_hash((string) $d['password'], PASSWORD_BCRYPT),
+                'email'           => $email,
+                'store_name'      => (string) $d['store_name'],
+                'store_slug'      => $this->uniqueSlug(),
+                'status'          => Merchant::STATUS_PENDING,
+                'balance'         => '0.00',
+                'frozen_balance'  => '0.00',
+                'deposit'         => '0.00',
+                'verified'        => 0,
+                'commission_rate' => $defaultRate,
+            ]);
+        } catch (\think\db\exception\PDOException $e) {
+            throw $this->mapUniqueViolation($e);
+        } catch (\PDOException $e) {
+            throw $this->mapUniqueViolation($e);
+        }
 
         return ['merchant_id' => (int) $m->id, 'status' => (int) $m->status];
+    }
+
+    /**
+     * 将数据库唯一键冲突(SQLSTATE 23000 / 错误码 1062)映射为业务异常,
+     * 以应对并发注册的 TOCTOU(先查后插之间被他人抢插)场景;
+     * 其它数据库错误原样抛出,不掩盖真实故障。
+     *
+     * @return \Throwable 待抛出的异常(业务异常或原异常)
+     */
+    private function mapUniqueViolation(\Throwable $e): \Throwable
+    {
+        if ($this->isUniqueViolation($e)) {
+            return new BizException(Code::STATE_INVALID, '用户名或邮箱已被使用', $e);
+        }
+        return $e;
+    }
+
+    /** 判断异常是否为唯一键冲突(SQLSTATE 23000 或 MySQL 错误码 1062) */
+    private function isUniqueViolation(\Throwable $e): bool
+    {
+        // 原生 \PDOException:getCode() 即 SQLSTATE,errorInfo[1] 为驱动错误码。
+        if ($e instanceof \PDOException) {
+            if ((string) $e->getCode() === '23000') {
+                return true;
+            }
+            if (isset($e->errorInfo[1]) && (int) $e->errorInfo[1] === 1062) {
+                return true;
+            }
+        }
+        // ThinkPHP 的 PDOException 重新封装原异常,SQLSTATE/驱动码存于 getData()。
+        if ($e instanceof \think\Exception) {
+            $info = $e->getData()['PDO Error Info'] ?? null;
+            if (is_array($info)) {
+                if ((string) ($info['SQLSTATE'] ?? '') === '23000') {
+                    return true;
+                }
+                if ((int) ($info['Driver Error Code'] ?? 0) === 1062) {
+                    return true;
+                }
+            }
+        }
+        // 兜底:逐层检查 previous 中的 1062。
+        for ($cur = $e->getPrevious(); $cur !== null; $cur = $cur->getPrevious()) {
+            if ($cur instanceof \PDOException && isset($cur->errorInfo[1]) && (int) $cur->errorInfo[1] === 1062) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 生成唯一的 store_slug(随机串,冲突重试) */

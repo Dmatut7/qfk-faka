@@ -114,26 +114,32 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       const ae = e instanceof ApiError ? e : null;
       // 4002 已支付:不算失败,取卡后进发货页
       if (ae && ae.code === 4002) {
+        // 已支付:仍处于异步流程,保持 paying=true + 等待态轮询;终态时再收尾,避免按钮卡死。
+        setPhase(PHASE.WAITING);
+        setWaitMsg('订单已支付,正在确认发货…');
         try {
           const o = await api.queryOrder({ orderNo: order.orderNo, email: order.email });
           if (!aliveRef.current) return;
           if (o && Number(o.status) === STATUS.DELIVERED) { onPaid(o); return; }
-          // 已支付但尚未发货 → 进等待态继续轮询
-          setWaitMsg('订单已支付,正在确认发货…');
+          // 已支付但尚未发货 → 继续轮询(此时 phase 已是 WAITING,等待态正确显示)
           const fin = await pollDelivery({ orderNo: order.orderNo, email: order.email });
           if (!aliveRef.current) return;
           if (fin && Number(fin.status) === STATUS.DELIVERED) { onPaid(fin); return; }
           if (fin && Number(fin.status) === STATUS.EXCEPTION) {
             setPhase(PHASE.EXCEPTION);
             setErr('款项处理异常,客服将尽快为您处理,请勿重复支付。');
+            setPaying(false);
             return;
           }
           setPhase(PHASE.TIMEOUT);
           setErr('订单已支付,卡密仍在发放中,可稍后到「取卡 / 查单」页查询。');
+          setPaying(false);
           return;
         } catch (e2) {
+          if (!aliveRef.current) return;
           setPhase(PHASE.TIMEOUT);
           setErr(e2 instanceof ApiError ? e2.message : '订单已支付,请稍后到「取卡 / 查单」页查询。');
+          setPaying(false);
           return;
         }
       }
@@ -141,6 +147,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       if (ae && ae.code === 4003) {
         setPhase(PHASE.CLOSED);
         setErr(ae.message);
+        setPaying(false);
         return;
       }
       setPhase(PHASE.IDLE);
