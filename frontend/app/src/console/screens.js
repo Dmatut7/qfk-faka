@@ -18,6 +18,8 @@ import AdminOrders from './admin/Orders.jsx';
 import AdminProducts from './admin/Products.jsx';
 import AdminSettings from './admin/Settings.jsx';
 import AdminLogs from './admin/Logs.jsx';
+import AdminBigScreen from './admin/BigScreen.jsx';
+import AdminCronJobs from './admin/CronJobs.jsx';
 
 export const SCREENS = {
   // 商户后台
@@ -30,6 +32,7 @@ export const SCREENS = {
   'm-wallet': MerchantWallet,
   // 平台后台
   'a-dashboard': AdminDashboard,
+  'a-bigscreen': AdminBigScreen,
   'a-merchants': AdminMerchants,
   'a-channels': AdminChannels,
   'a-withdrawals': AdminWithdrawals,
@@ -40,4 +43,5 @@ export const SCREENS = {
   'a-products': AdminProducts,
   'a-settings': AdminSettings,
   'a-logs': AdminLogs,
+  'a-cron': AdminCronJobs,
 };

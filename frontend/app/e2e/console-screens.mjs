@@ -6,7 +6,7 @@ const log = (...a) => console.log('[screens]', ...a);
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 
 const MERCHANT = ['数据概览', '商品管理', '店铺装修', '分类管理', '卡密管理', '订单管理', '钱包 / 提现'];
-const ADMIN = ['仪表盘', '商户审核', '支付渠道', '提现审核', '对账报表', '内容管理', '邀请码', '订单(跨商户)', '商品(跨商户)', '平台配置', '异常日志'];
+const ADMIN = ['仪表盘', '商户审核', '支付渠道', '提现审核', '对账报表', '内容管理', '邀请码', '订单(跨商户)', '商品(跨商户)', '平台配置', '异常日志', '大屏数据', '任务计划'];
 
 async function walk(roleLabel, user, pass, navs) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });

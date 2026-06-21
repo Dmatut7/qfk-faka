@@ -28,6 +28,7 @@ const MERCHANT_NAV = [
 const ADMIN_NAV = [
   { group: '概览', items: [
     { key: 'a-dashboard', label: '仪表盘', icon: 'Zap' },
+    { key: 'a-bigscreen', label: '大屏数据', icon: 'Zap' },
   ] },
   { group: '商户管理', items: [
     { key: 'a-merchants', label: '商户审核', icon: 'ShieldCheck' },
@@ -48,6 +49,7 @@ const ADMIN_NAV = [
   { group: '系统', items: [
     { key: 'a-settings', label: '平台配置', icon: 'Lock' },
     { key: 'a-logs', label: '异常日志', icon: 'AlertTriangle' },
+    { key: 'a-cron', label: '任务计划', icon: 'RefreshCw' },
   ] },
 ];
 
