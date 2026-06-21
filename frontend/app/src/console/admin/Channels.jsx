@@ -53,7 +53,8 @@ export default function Channels({ api, session }) {
       name: row.name ?? '',
       driver: row.driver ?? 'epay',
       pid: cfg.pid != null ? String(cfg.pid) : '',
-      key: cfg.key != null ? String(cfg.key) : '',
+      // 后端不再下发明文 key(脱敏为 has_key/key_mask);编辑时不预填,留空表示不修改
+      key: '',
       gateway: cfg.gateway != null ? String(cfg.gateway) : '',
       sort: String(row.sort ?? 0),
     });
@@ -74,13 +75,15 @@ export default function Channels({ api, session }) {
       setFormErr('驱动 driver 必填');
       return;
     }
-    if (!form.key.trim()) {
-      // 后端 assertConfig 会拒绝空 key,前端先拦一道
+    if (!editing && !form.key.trim()) {
+      // 新建必须有密钥;后端 assertConfig 也会拒绝空 key,前端先拦一道
       setFormErr('config.key(密钥)不能为空');
       return;
     }
 
-    const config = { key: form.key.trim() };
+    // 编辑时密钥留空表示「不修改」:不下发 key 字段,后端沿用原密钥
+    const config = {};
+    if (form.key.trim() !== '') config.key = form.key.trim();
     if (form.pid.trim() !== '') config.pid = form.pid.trim();
     if (form.gateway.trim() !== '') config.gateway = form.gateway.trim();
 
@@ -277,10 +280,19 @@ export default function Channels({ api, session }) {
             onChange={(e) => setForm((f) => ({ ...f, pid: e.target.value }))}
           />
         </Field>
-        <Field label="密钥 Key" hint="config.key,必填,空密钥会被后端拒绝">
+        <Field
+          label="密钥 Key"
+          hint={editing
+            ? 'config.key,出于安全不回显;留空表示不修改,填写则覆盖'
+            : 'config.key,必填,空密钥会被后端拒绝'}
+        >
           <Input
+            type="password"
             value={form.key}
-            placeholder="商户密钥"
+            autoComplete="new-password"
+            placeholder={editing
+              ? (editing.config && editing.config.has_key ? '留空表示不修改(已配置密钥)' : '留空表示不修改')
+              : '商户密钥'}
             onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
           />
         </Field>

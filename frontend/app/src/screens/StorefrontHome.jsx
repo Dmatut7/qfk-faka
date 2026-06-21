@@ -209,6 +209,7 @@ function StateWrap({ children }) {
 
 export default function StorefrontHome({ shop, categories, products, loading, error, onReload, onSelect }) {
   const [cat, setCat] = React.useState('all');
+  const [query, setQuery] = React.useState('');
   const [showContact, setShowContact] = React.useState(false);
   const list = products || [];
   const store = shop || {};
@@ -234,7 +235,10 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const allCount = list.length;
   const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
   // 真正按 category_id 精确筛选。
-  const shown = cat === 'all' ? list : list.filter((p) => p.category_id === cat);
+  const byCat = cat === 'all' ? list : list.filter((p) => p.category_id === cat);
+  // 客户端实时搜索:在分类筛选结果上,按 name 包含关键词(不区分大小写)叠加过滤。
+  const q = query.trim().toLowerCase();
+  const shown = q ? byCat.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byCat;
 
   const verified = Number(store.verified) === 1;
   const announcement = (store.announcement || '').trim();
@@ -318,6 +322,41 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         )}
       </div>
 
+      {/* 商品搜索框 */}
+      {!loading && !error && (
+        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, height: 42, padding: '0 14px',
+            background: 'var(--surface-sunken, #f2f4f7)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-pill)',
+          }}>
+            <Icons.Search size={18} color="var(--text-muted)" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="搜索商品名称"
+              aria-label="搜索商品"
+              style={{
+                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-strong)',
+              }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                aria-label="清除搜索"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, flex: 'none',
+                  border: 'none', background: 'var(--border)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-muted)',
+                }}
+              ><Icons.X size={13} /></button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 分类 tab(下划线样式) */}
       {tabs.length > 1 && !loading && !error && (
         <div style={{ position: 'sticky', top: 60, zIndex: 10, background: 'var(--bg-page)', marginTop: 16 }}>
@@ -370,7 +409,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
           <StateWrap>
             <Icons.Inbox size={44} color="var(--text-subtle)" />
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
-              {cat === 'all' ? '该店铺暂无在售商品' : '该分类下暂无商品'}
+              {q ? '没有找到相关商品' : (cat === 'all' ? '该店铺暂无在售商品' : '该分类下暂无商品')}
             </div>
           </StateWrap>
         ) : (

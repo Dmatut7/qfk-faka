@@ -45,6 +45,15 @@ export default function Orders({ api, session }) {
   const [query, setQuery] = React.useState({ status: '', order_no: '', buyer_email: '', page: 1 });
   const [form, setForm] = React.useState({ order_no: '', buyer_email: '' });
 
+  // 商品 id→标题 映射(用于把订单里的 #id 渲染成商品标题)
+  const products = useAsync(() => api.products(), []);
+  const productMap = React.useMemo(() => {
+    const m = {};
+    (products.data || []).forEach((p) => { m[p.id] = p.title; });
+    return m;
+  }, [products.data]);
+  const productTitle = (id) => productMap[id] || `#${id}`;
+
   const list = useAsync(
     () =>
       api.orders({
@@ -101,6 +110,18 @@ export default function Orders({ api, session }) {
   const closeOrder = (id) => runAction(id, api.closeOrder);
   const redeliverOrder = (id) => runAction(id, api.redeliverOrder);
 
+  /* 二次确认:{ kind: 'close'|'redeliver', order } | null */
+  const [confirm, setConfirm] = React.useState(null);
+  function askClose(order) { setConfirm({ kind: 'close', order }); }
+  function askRedeliver(order) { setConfirm({ kind: 'redeliver', order }); }
+  async function doConfirm() {
+    if (!confirm) return;
+    const { kind, order } = confirm;
+    setConfirm(null);
+    if (kind === 'close') await closeOrder(order.id);
+    else await redeliverOrder(order.id);
+  }
+
   const canClose = (s) => Number(s) === STATUS_PENDING;
   const canRedeliver = (s) => Number(s) === STATUS_PAID || Number(s) === STATUS_EXCEPTION;
 
@@ -116,9 +137,15 @@ export default function Orders({ api, session }) {
       key: 'product_id',
       title: '商品',
       render: (r) => (
-        <span style={{ color: 'var(--text-body)' }}>
-          #{r.product_id} <span style={{ color: 'var(--text-muted)' }}>×{r.quantity}</span>
-        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--text-strong)', fontWeight: 600 }}>
+            {productMap[r.product_id] || `#${r.product_id}`}{' '}
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>×{r.quantity}</span>
+          </div>
+          {productMap[r.product_id] ? (
+            <div className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>#{r.product_id}</div>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -163,7 +190,7 @@ export default function Orders({ api, session }) {
               iconLeft={<Icons.Lock />}
               loading={actBusy === r.id}
               disabled={actBusy !== 0 && actBusy !== r.id}
-              onClick={() => closeOrder(r.id)}
+              onClick={() => askClose(r)}
             >
               关单
             </Button>
@@ -175,7 +202,7 @@ export default function Orders({ api, session }) {
               iconLeft={<Icons.RefreshCw />}
               loading={actBusy === r.id}
               disabled={actBusy !== 0 && actBusy !== r.id}
-              onClick={() => redeliverOrder(r.id)}
+              onClick={() => askRedeliver(r)}
             >
               补发
             </Button>
@@ -261,10 +288,60 @@ export default function Orders({ api, session }) {
         actErr={actErr}
         canClose={canClose}
         canRedeliver={canRedeliver}
-        onCloseOrder={closeOrder}
-        onRedeliver={redeliverOrder}
+        onCloseOrder={askClose}
+        onRedeliver={askRedeliver}
+        productTitle={productTitle}
+      />
+
+      <ConfirmActionModal
+        confirm={confirm}
+        onCancel={() => setConfirm(null)}
+        onConfirm={doConfirm}
       />
     </Panel>
+  );
+}
+
+/* 关单 / 补发 二次确认弹窗 */
+function ConfirmActionModal({ confirm, onCancel, onConfirm }) {
+  const open = confirm != null;
+  const kind = confirm && confirm.kind;
+  const order = (confirm && confirm.order) || {};
+  const qty = Number(order.quantity || 0);
+  const isRedeliver = kind === 'redeliver';
+  const title = isRedeliver ? '确认补发卡密' : '确认关闭订单';
+  const message = isRedeliver
+    ? `将从库存分配 ${qty} 张新卡密并发货,操作不可撤销。`
+    : '将关闭该未支付订单,操作不可撤销。';
+
+  return (
+    <Modal
+      open={open}
+      title={title}
+      width={420}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel}>取消</Button>
+          <Button
+            tone={isRedeliver ? undefined : 'danger'}
+            iconLeft={isRedeliver ? <Icons.RefreshCw /> : <Icons.Lock />}
+            onClick={onConfirm}
+          >
+            {isRedeliver ? '确认补发' : '确认关单'}
+          </Button>
+        </>
+      }
+    >
+      <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.7 }}>
+        {order.order_no ? (
+          <div style={{ marginBottom: 8 }}>
+            订单号:<span className="tnum" style={{ color: 'var(--text-strong)', fontWeight: 700 }}>{order.order_no}</span>
+          </div>
+        ) : null}
+        <div>{message}</div>
+      </div>
+    </Modal>
   );
 }
 
@@ -277,7 +354,7 @@ function Row({ label, children }) {
   );
 }
 
-function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, canRedeliver, onCloseOrder, onRedeliver }) {
+function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, canRedeliver, onCloseOrder, onRedeliver, productTitle }) {
   const o = detail.data;
   const cards = (o && o.cards) || [];
 
@@ -304,12 +381,12 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
         o ? (
           <>
             {canClose(o.status) && (
-              <Button variant="ghost" tone="danger" iconLeft={<Icons.Lock />} loading={actBusy === o.id} onClick={() => onCloseOrder(o.id)}>
+              <Button variant="ghost" tone="danger" iconLeft={<Icons.Lock />} loading={actBusy === o.id} onClick={() => onCloseOrder(o)}>
                 关单
               </Button>
             )}
             {canRedeliver(o.status) && (
-              <Button variant="ghost" iconLeft={<Icons.RefreshCw />} loading={actBusy === o.id} onClick={() => onRedeliver(o.id)}>
+              <Button variant="ghost" iconLeft={<Icons.RefreshCw />} loading={actBusy === o.id} onClick={() => onRedeliver(o)}>
                 补发卡密
               </Button>
             )}
@@ -328,7 +405,12 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
 
           <Row label="订单号"><span className="tnum">{o.order_no}</span></Row>
           <Row label="状态"><StatusPill status={o.status} /></Row>
-          <Row label="商品">#{o.product_id} <span style={{ color: 'var(--text-muted)' }}>× {o.quantity}</span></Row>
+          <Row label="商品">
+            {productTitle ? productTitle(o.product_id) : `#${o.product_id}`} <span style={{ color: 'var(--text-muted)' }}>× {o.quantity}</span>
+            {productTitle && productTitle(o.product_id) !== `#${o.product_id}` ? (
+              <span className="tnum" style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>#{o.product_id}</span>
+            ) : null}
+          </Row>
           <Row label="单价"><Money amount={o.unit_price} /></Row>
           <Row label="实付金额"><Money amount={o.total_amount} strong /></Row>
           <Row label="收件邮箱">{o.buyer_email}</Row>

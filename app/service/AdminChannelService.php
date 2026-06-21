@@ -19,7 +19,37 @@ class AdminChannelService
     public function list(): array
     {
         $items = PaymentChannel::order('sort', 'asc')->order('id', 'asc')->select()->toArray();
+        foreach ($items as &$item) {
+            $item['config'] = $this->maskConfig($item['config'] ?? null);
+        }
+        unset($item);
         return ['items' => $items];
+    }
+
+    /**
+     * 脱敏 config:绝不下发明文 key。
+     * 返回非敏感字段(pid/gateway 等)原样;key 替换为 has_key + key_mask(保留后4位)。
+     */
+    private function maskConfig($config): array
+    {
+        if (!is_array($config)) {
+            return ['has_key' => false, 'key_mask' => ''];
+        }
+        $masked = $config;
+        $hasKey = array_key_exists('key', $config) && is_scalar($config['key']) && (string) $config['key'] !== '';
+        unset($masked['key']);
+        $masked['has_key']  = $hasKey;
+        $masked['key_mask'] = $hasKey ? $this->maskKey((string) $config['key']) : '';
+        return $masked;
+    }
+
+    private function maskKey(string $key): string
+    {
+        $len = strlen($key);
+        if ($len <= 4) {
+            return str_repeat('*', $len);
+        }
+        return str_repeat('*', $len - 4) . substr($key, -4);
     }
 
     /**
@@ -66,8 +96,20 @@ class AdminChannelService
             $update['driver'] = trim((string) $data['driver']);
         }
         if (array_key_exists('config', $data)) {
-            $this->assertConfig($data['config']);
-            $update['config'] = $data['config'];
+            $config = is_array($data['config']) ? $data['config'] : null;
+            if ($config === null) {
+                throw new BizException(Code::PARAM_ERROR, 'config 必须为对象');
+            }
+            // key 字段「缺省」(未传)则沿用原密钥,使前端无需持有明文即可改 pid/gateway。
+            // 注意:显式传入空字符串 key 仍视为非法输入,由 assertConfig 拒绝(防误清密钥)。
+            if (!array_key_exists('key', $config)) {
+                $existing = is_array($ch->config) ? $ch->config : [];
+                if (array_key_exists('key', $existing)) {
+                    $config['key'] = $existing['key'];
+                }
+            }
+            $this->assertConfig($config);
+            $update['config'] = $config;
         }
         if (array_key_exists('sort', $data) && $data['sort'] !== '' && $data['sort'] !== null) {
             $update['sort'] = (int) $data['sort'];

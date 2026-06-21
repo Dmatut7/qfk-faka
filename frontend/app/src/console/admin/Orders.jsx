@@ -29,6 +29,15 @@ export default function Orders({ api }) {
     [query.merchant_id, query.status, query.order_no, page]
   );
 
+  // 跨商户商品 id→标题 映射(把订单里的 #id 渲染成商品标题)
+  const products = useAsync(() => api.products(), []);
+  const productMap = React.useMemo(() => {
+    const m = {};
+    const arr = Array.isArray(products.data) ? products.data : (products.data && products.data.items) || [];
+    arr.forEach((p) => { m[p.id] = p.title; });
+    return m;
+  }, [products.data]);
+
   const items = list.data?.items || [];
   const total = list.data?.total || 0;
   const curPage = list.data?.page || page;
@@ -56,8 +65,13 @@ export default function Orders({ api }) {
     {
       key: 'product', title: '商品', render: (r) => (
         <div style={{ minWidth: 0 }}>
-          <span className="tnum" style={{ color: 'var(--text-strong)' }}>商品 #{r.product_id}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> ×{r.quantity}</span>
+          <div>
+            <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{productMap[r.product_id] || `商品 #${r.product_id}`}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> ×{r.quantity}</span>
+          </div>
+          {productMap[r.product_id] ? (
+            <div className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>#{r.product_id}</div>
+          ) : null}
         </div>
       ),
     },
