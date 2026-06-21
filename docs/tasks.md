@@ -23,8 +23,8 @@
 ---
 
 ## M1 — 通用基建(响应/异常/常量/基类)
-- [ ] **T1.1** 统一响应与错误码:`app/common.php` 助手 `apiSuccess($data)`/`apiError($code,$msg)`、错误码常量类 `app\common\Code`。
-  - 验收:单元测试断言响应结构 `{code,msg,data}` 与各错误码常量值。
+- [x] **T1.1** 统一响应与错误码:`app/common.php` 助手 `apiSuccess($data)`/`apiError($code,$msg)`、错误码常量类 `app\common\Code`。
+  - 验收:单元测试断言响应结构 `{code,msg,data}` 与各错误码常量值。✅ 7 tests green
 - [ ] **T1.2** 全局异常处理:验证异常 → 422+1001;业务异常 `BizException($code,$msg)` → 统一 JSON;404/500 统一格式。
   - 验收:Feature 测试:抛 `BizException` 返回对应 code;非法路由返回统一 404 JSON。
 - [ ] **T1.3** API 基类控制器 `BaseApiController` + 请求参数获取/校验封装。
