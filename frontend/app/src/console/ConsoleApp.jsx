@@ -9,6 +9,7 @@ import { SCREENS } from './screens.js';
 const MERCHANT_NAV = [
   { key: 'm-stats', label: '数据概览', icon: 'Zap' },
   { key: 'm-products', label: '商品管理', icon: 'Package' },
+  { key: 'm-shop', label: '店铺装修', icon: 'ShieldCheck' },
   { key: 'm-categories', label: '分类管理', icon: 'Inbox' },
   { key: 'm-cards', label: '卡密管理', icon: 'Lock' },
   { key: 'm-orders', label: '订单管理', icon: 'Search' },

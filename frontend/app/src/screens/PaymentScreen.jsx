@@ -2,7 +2,6 @@ import React from 'react';
 import { Button } from '../../../design-system/components/core/Button.jsx';
 import { PriceTag } from '../../../design-system/components/core/PriceTag.jsx';
 import { CheckoutSteps } from '../../../design-system/components/commerce/CheckoutSteps.jsx';
-import { PaymentOption } from '../../../design-system/components/commerce/PaymentOption.jsx';
 import { api, pollDelivery, statusKey, STATUS, ApiError } from '../api.js';
 import { Icons } from '../Icons.jsx';
 
@@ -32,7 +31,6 @@ const PHASE = { IDLE: 'idle', WAITING: 'waiting', EXCEPTION: 'exception', TIMEOU
 
 export default function PaymentScreen({ order, onBack, onPaid }) {
   const p = order.product || {};
-  const [method, setMethod] = React.useState('wechat');
   const [paying, setPaying] = React.useState(false);   // 已点击确认支付,进入异步流程
   const [phase, setPhase] = React.useState(PHASE.IDLE);
   const [err, setErr] = React.useState('');            // ApiError.message
@@ -71,7 +69,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
     setPhase(PHASE.WAITING);
     setWaitMsg('正在创建支付…');
     try {
-      // 渠道恒为 epay(api.pay 内部默认 PAY_CHANNEL);method 仅 UI 展示
+      // 渠道恒为 epay(api.pay 内部默认 PAY_CHANNEL),聚合支付,不区分钱包
       const { pay } = await api.pay(order.orderNo);
       // best-effort 打开模拟网关;本地演示无法真正回跳,故转入轮询发货
       try {
@@ -257,14 +255,25 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         </div>
       )}
 
-      {/* 支付方式(仅 idle 展示) */}
+      {/* 支付方式:聚合支付单入口(后端仅 epay,不让用户选具体钱包) */}
       {phase === PHASE.IDLE && (
         <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-subtle)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>选择支付方式</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <PaymentOption name="微信支付" desc="数亿用户的选择,即时到账" tag="推荐" icon="💚" selected={method === 'wechat'} onSelect={() => setMethod('wechat')} />
-            <PaymentOption name="支付宝" desc="安全便捷,支持花呗分期" icon="🅰️" selected={method === 'alipay'} onSelect={() => setMethod('alipay')} />
-            <PaymentOption name="USDT 数字货币" desc="TRC20 · 大额订单可用" icon="₮" selected={method === 'usdt'} onSelect={() => setMethod('usdt')} />
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-subtle)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>支付方式</div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
+            background: '#fff', border: '1.5px solid var(--brand)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12, flex: 'none', background: 'var(--brand-soft)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Icons.QrCode size={24} color="var(--brand-active)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong)' }}>扫码支付</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>聚合收银台 · 即时到账 · 付款后自动发货</div>
+            </div>
+            <Icons.Check size={20} color="var(--brand)" style={{ flex: 'none' }} />
           </div>
         </div>
       )}

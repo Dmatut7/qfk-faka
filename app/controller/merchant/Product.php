@@ -19,12 +19,14 @@ class Product extends BaseApiController
 
     public function create(ProductService $svc)
     {
-        $d = $this->params(['category_id', 'title', 'sku', 'description', 'price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'status', 'sort']);
+        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'status', 'sort']);
         $this->validate($d, [
-            'title'   => 'require|max:128',
-            'price'   => 'require|float|gt:0',
-            'min_buy' => 'integer|egt:1',
-            'max_buy' => 'integer|egt:0',
+            'title'        => 'require|max:128',
+            'image'        => 'max:500',
+            'price'        => 'require|float|gt:0',
+            'market_price' => 'float|egt:0',
+            'min_buy'      => 'integer|egt:1',
+            'max_buy'      => 'integer|egt:0',
         ], [
             'price.gt' => '价格必须大于 0',
         ]);
@@ -33,9 +35,12 @@ class Product extends BaseApiController
 
     public function update(ProductService $svc, $id)
     {
-        $d = $this->params(['category_id', 'title', 'sku', 'description', 'price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort']);
+        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort']);
         if (isset($d['price'])) {
             $this->validate($d, ['price' => 'float|gt:0'], ['price.gt' => '价格必须大于 0']);
+        }
+        if (isset($d['market_price']) && $d['market_price'] !== '') {
+            $this->validate($d, ['market_price' => 'float|egt:0']);
         }
         return $this->success($svc->update($this->authId(), (int) $id, $d)->toArray());
     }

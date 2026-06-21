@@ -1,19 +1,17 @@
 import React from 'react';
-import { ProductCard } from '../../../design-system/components/commerce/ProductCard.jsx';
 import { Icons } from '../Icons.jsx';
 
-/* Storefront home — store header (cover + avatar + 认证/trust band),
-   dynamic category tabs (from product.category_id), product grid via ProductCard.
-   Data comes from props (already normalized); no window.MK_*. */
+/* 鲸发卡风格发卡商城首页 —
+   店招(cover 横幅 + 圆形 logo 叠左下 + 店名 + 认证 + 三联统计 + 联系客服)
+   + 公告条 + 分类 tab(按 category_id 精确筛选)+ 2 列带图商品网格 + 联系客服弹窗。
+   数据全部来自 props(已 normalize),无 window.MK_*。 */
 
-function TrustChip({ icon, children }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--text-body)', whiteSpace: 'nowrap' }}>
-      <span style={{ display: 'flex', color: 'var(--secure-solid)' }}>{icon}</span>{children}
-    </div>
-  );
-}
+const money = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+};
 
+/* —— 已认证徽章 —— */
 function VerifiedBadge() {
   return (
     <span style={{
@@ -26,102 +24,306 @@ function VerifiedBadge() {
   );
 }
 
-const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 12 };
-/* @media(max-width:480px): minmax(min(100%,320px),1fr) already collapses to single column on narrow screens. */
+/* —— 三联统计单元 —— */
+function Stat({ value, label, icon }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+        fontSize: 17, fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums',
+      }}>
+        {icon}{value}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }}>{label}</div>
+    </div>
+  );
+}
+
+/* —— 库存标签 —— */
+function StockPill({ stock }) {
+  let bg = 'var(--success-bg)', fg = 'var(--success-fg)', bd = 'var(--success-border)', txt = '库存充足';
+  if (stock <= 0) { bg = 'var(--surface-sunken)'; fg = 'var(--text-muted)'; bd = 'var(--border)'; txt = '缺货'; }
+  else if (stock <= 20) { bg = 'var(--pending-bg)'; fg = 'var(--pending-fg)'; bd = 'var(--pending-border)'; txt = '库存少量'; }
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 8px',
+      background: bg, color: fg, border: `1px solid ${bd}`, borderRadius: 'var(--radius-pill)',
+      fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none',
+    }}>{txt}</span>
+  );
+}
+
+/* —— 带图商品卡(2 列网格用) —— */
+function GoodsCard({ p, onClick }) {
+  const out = p.stock <= 0;
+  const hasOriginal = p.original != null && p.original > p.price;
+  return (
+    <button
+      type="button"
+      onClick={out ? undefined : onClick}
+      disabled={out}
+      style={{
+        display: 'flex', flexDirection: 'column', textAlign: 'left', padding: 0, width: '100%',
+        background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+        overflow: 'hidden', cursor: out ? 'default' : 'pointer', opacity: out ? 0.66 : 1,
+        boxShadow: 'var(--shadow-xs)', fontFamily: 'var(--font-sans)',
+        transition: 'transform .15s, box-shadow .15s, border-color .15s',
+      }}
+      onMouseEnter={(e) => { if (!out) { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.transform = 'none'; }}
+    >
+      {/* 图片 16:9 */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
+        {p.image
+          ? <img src={p.image} alt={p.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }}>{p.thumb}</div>}
+        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} /></div>
+      </div>
+      {/* 内容 */}
+      <div style={{ padding: '10px 11px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{
+          fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.35,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.7em',
+        }}>{p.name}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--price-accent)', fontWeight: 800, fontSize: 18, fontVariantNumeric: 'tabular-nums' }}>
+            <span style={{ fontSize: 12, marginRight: 1 }}>¥</span>{money(p.price)}
+          </span>
+          {hasOriginal && (
+            <span style={{ color: 'var(--text-subtle)', textDecoration: 'line-through', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+              ¥{money(p.original)}
+            </span>
+          )}
+        </div>
+        {p.sales_count != null && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-subtle)', marginTop: 6 }}>已售 {p.sales_count}</div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+/* —— 可复制联系方式行 —— */
+function ContactRow({ icon, label, value }) {
+  const [copied, setCopied] = React.useState(false);
+  if (!value) return null;
+  const copy = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(String(value));
+      else {
+        const ta = document.createElement('textarea');
+        ta.value = String(value); document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      }
+      setCopied(true); setTimeout(() => setCopied(false), 1500);
+    } catch { /* 复制失败静默 */ }
+  };
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ display: 'flex', color: 'var(--brand-active)', flex: 'none' }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)', wordBreak: 'break-all' }}>{value}</div>
+      </div>
+      <button type="button" onClick={copy} style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px', flex: 'none',
+        border: '1px solid var(--brand-soft-border)', background: copied ? 'var(--success-bg)' : 'var(--brand-soft)',
+        color: copied ? 'var(--success-fg)' : 'var(--brand-active)', borderRadius: 'var(--radius-pill)',
+        fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>
+        {copied ? <><Icons.Check size={14} />已复制</> : <><Icons.Copy size={14} />复制</>}
+      </button>
+    </div>
+  );
+}
+
+/* —— 联系客服弹窗 —— */
+function ContactModal({ contact, onClose }) {
+  const c = contact || {};
+  const empty = !c.qq && !c.wechat && !c.mobile;
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(18,27,42,.5)',
+        backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="联系客服"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 460, background: '#fff', borderRadius: '18px 18px 0 0',
+          padding: '18px 18px calc(18px + env(safe-area-inset-bottom, 0px))', boxShadow: 'var(--shadow-lg, 0 -10px 40px rgba(18,27,42,.18))',
+          animation: 'mk-sheet-up .22s ease-out',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800, color: 'var(--text-strong)' }}>
+            <Icons.Headset size={20} color="var(--brand-active)" />联系客服
+          </div>
+          <button type="button" onClick={onClose} aria-label="关闭" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
+            border: 'none', background: 'var(--surface-sunken)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-muted)',
+          }}><Icons.X size={18} /></button>
+        </div>
+        {empty ? (
+          <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
+            商家暂未提供联系方式
+          </div>
+        ) : (
+          <div>
+            <ContactRow icon={<Icons.MessageCircle size={18} />} label="QQ" value={c.qq} />
+            <ContactRow icon={<Icons.MessageCircle size={18} />} label="微信" value={c.wechat} />
+            <ContactRow icon={<Icons.Phone size={18} />} label="手机" value={c.mobile} />
+          </div>
+        )}
+        <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text-subtle)', textAlign: 'center', lineHeight: 1.5 }}>
+          请通过以上方式联系商家;平台担保交易,谨防站外私下转账。
+        </div>
+      </div>
+      <style>{'@keyframes mk-sheet-up{from{transform:translateY(100%)}to{transform:translateY(0)}}'}</style>
+    </div>
+  );
+}
+
+const GRID = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 };
 
 function StateWrap({ children }) {
   return (
     <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 14, textAlign: 'center', minHeight: 220, padding: '48px 16px',
-        color: 'var(--text-muted)',
-      }}>
-        {children}
-      </div>
+        gap: 14, textAlign: 'center', minHeight: 220, padding: '48px 16px', color: 'var(--text-muted)',
+      }}>{children}</div>
     </div>
   );
 }
 
-export default function StorefrontHome({ shop, products, loading, error, onReload, onSelect }) {
+export default function StorefrontHome({ shop, categories, products, loading, error, onReload, onSelect }) {
   const [cat, setCat] = React.useState('all');
+  const [showContact, setShowContact] = React.useState(false);
   const list = products || [];
+  const store = shop || {};
 
-  // Build category tabs from product.category_id (only when present).
+  // 分类 tab:优先用后端 categories;缺省时从商品 category_id 兜底推导。
   const cats = React.useMemo(() => {
+    const cs = Array.isArray(categories) ? categories : [];
+    if (cs.length) {
+      return cs.map((c) => ({
+        id: Number.isNaN(Number(c.id)) ? c.id : Number(c.id),
+        name: c.name || ('分类 ' + c.id),
+        goods_count: c.goods_count,
+      }));
+    }
     const seen = new Map();
     for (const p of list) {
       const id = p.category_id;
-      if (id != null && !seen.has(id)) {
-        seen.set(id, p.category_name || ('分类 ' + id));
-      }
+      if (id != null && !seen.has(id)) seen.set(id, '分类 ' + id);
     }
     return Array.from(seen, ([id, name]) => ({ id, name }));
-  }, [list]);
+  }, [categories, list]);
 
-  const tabs = [{ id: 'all', name: '全部' }, ...cats];
-  const shown = cat === 'all' ? list : list.filter(p => p.category_id === cat);
+  const allCount = list.length;
+  const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
+  // 真正按 category_id 精确筛选。
+  const shown = cat === 'all' ? list : list.filter((p) => p.category_id === cat);
 
-  const store = shop || {};
+  const verified = Number(store.verified) === 1;
+  const announcement = (store.announcement || '').trim();
+  const intro = (store.intro || '').trim();
+  const salesCount = store.sales_count != null ? store.sales_count : 0;
+  const deposit = money(store.deposit);
 
   return (
     <div>
-      {/* cover banner */}
+      {/* 店招封面横幅 */}
       <div style={{
-        height: 150, position: 'relative',
+        height: 150, position: 'relative', overflow: 'hidden',
         background: 'radial-gradient(120% 140% at 80% 0%, #2F6BFF 0%, #1A45BD 45%, #11297A 100%)',
-        overflow: 'hidden',
       }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(15,169,160,.5), transparent 60%)' }} />
-        <div style={{ position: 'absolute', right: 18, bottom: 12, color: 'rgba(255,255,255,.5)', fontSize: 12, fontWeight: 700, letterSpacing: '.04em' }}>MiaoKa · Verified Store</div>
+        {store.cover && (
+          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.28) 100%)' }} />
       </div>
 
-      {/* merchant card */}
+      {/* 商家卡片 */}
       <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
         <div style={{
-          marginTop: -24, position: 'relative', background: '#fff', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', padding: '0 18px 18px',
+          marginTop: -34, position: 'relative', background: '#fff', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', padding: '0 16px 16px',
         }}>
-          {/* avatar */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          {/* 头像(圆形)叠在左下 + 联系客服按钮(右上) */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
             <div style={{
-              width: 84, height: 84, borderRadius: 22, marginTop: -34, flex: 'none',
-              background: 'var(--brand)', boxShadow: 'var(--shadow-brand)', border: '4px solid #fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: 34, fontWeight: 800,
+              width: 76, height: 76, borderRadius: '50%', marginTop: -30, flex: 'none', overflow: 'hidden',
+              background: 'var(--brand)', boxShadow: 'var(--shadow-brand, 0 6px 18px rgba(47,107,255,.35))', border: '4px solid #fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 30, fontWeight: 800,
             }}>
-              {(store.name || '店').slice(0, 1)}
+              {store.logo
+                ? <img src={store.logo} alt={store.name || '店铺'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (store.name || '店').slice(0, 1)}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowContact(true)}
+              style={{
+                marginLeft: 'auto', marginBottom: 6, flex: 'none', display: 'flex', alignItems: 'center', gap: 6,
+                height: 34, padding: '0 14px', border: '1.5px solid var(--brand-soft-border)', background: 'var(--brand-soft)',
+                color: 'var(--brand-active)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            ><Icons.Headset size={16} />联系客服</button>
           </div>
 
-          {/* name + contact */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
-            <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>{store.name || '店铺'}</h1>
-            <VerifiedBadge />
-            <button style={{
-              marginLeft: 'auto', flex: 'none', display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
-              border: '1.5px solid var(--brand-soft-border)', background: 'var(--brand-soft)', color: 'var(--brand-active)',
-              borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-            }}><Icons.Headset size={16} />联系商家</button>
+          {/* 店名 + 认证 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>
+              {store.name || '店铺'}
+            </h1>
+            {verified && <VerifiedBadge />}
           </div>
-          {store.intro && <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 6 }}>{store.intro}</p>}
 
-          {/* trust band */}
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <TrustChip icon={<Icons.ShieldCheck size={17} />}>平台担保交易</TrustChip>
-            <TrustChip icon={<Icons.Zap size={17} />}>自动发货 · 秒到账</TrustChip>
-            <TrustChip icon={<Icons.RefreshCw size={17} />}>非人为问题包补</TrustChip>
-            <TrustChip icon={<Icons.Headset size={17} />}>7×24 在线客服</TrustChip>
+          {/* intro 行 */}
+          {intro && <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{intro}</p>}
+
+          {/* 三联统计:商品数 / 成交 / 保证金 */}
+          <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <Stat value={allCount} label="在售商品" />
+            <div style={{ width: 1, background: 'var(--border)', margin: '2px 0' }} />
+            <Stat value={salesCount} label="累计成交" />
+            <div style={{ width: 1, background: 'var(--border)', margin: '2px 0' }} />
+            <Stat value={deposit} label="保证金(元)" icon={<Icons.ShieldCheck size={15} color="var(--secure-solid)" />} />
           </div>
         </div>
+
+        {/* 公告条 */}
+        {announcement && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 12, padding: '10px 13px',
+            background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+            borderRadius: 'var(--radius-md)', color: 'var(--pending-fg, #92600a)',
+          }}>
+            <Icons.Megaphone size={17} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+            <span style={{ fontSize: 13, lineHeight: 1.55, fontWeight: 600 }}>{announcement}</span>
+          </div>
+        )}
       </div>
 
-      {/* category tabs (underline style) — only when more than just 全部 */}
+      {/* 分类 tab(下划线样式) */}
       {tabs.length > 1 && !loading && !error && (
-        <div style={{ position: 'sticky', top: 60, zIndex: 10, background: 'var(--bg-page)', marginTop: 18 }}>
+        <div style={{ position: 'sticky', top: 60, zIndex: 10, background: 'var(--bg-page)', marginTop: 16 }}>
           <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', gap: 24, overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {tabs.map(c => {
+            <div style={{ display: 'flex', gap: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {tabs.map((c) => {
                 const on = c.id === cat;
                 return (
                   <button key={String(c.id)} onClick={() => setCat(c.id)} style={{
@@ -129,7 +331,7 @@ export default function StorefrontHome({ shop, products, loading, error, onReloa
                     fontFamily: 'var(--font-sans)', fontWeight: on ? 800 : 600, fontSize: 15,
                     color: on ? 'var(--brand-active)' : 'var(--text-muted)', whiteSpace: 'nowrap', transition: 'color .15s',
                   }}>
-                    {c.name}
+                    {c.name}{c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}
                     {on && <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0, width: 22, height: 3, borderRadius: 3, background: 'var(--brand)' }} />}
                   </button>
                 );
@@ -139,13 +341,13 @@ export default function StorefrontHome({ shop, products, loading, error, onReloa
         </div>
       )}
 
-      {/* product area */}
+      {/* 商品区 */}
       <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '16px 16px 96px' }}>
         {loading ? (
           <div style={GRID}>
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} style={{
-                height: 132, borderRadius: 'var(--radius-xl)', border: '1px solid var(--border)',
+                height: 196, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)',
                 background: 'linear-gradient(90deg, var(--bg-subtle, #f2f4f7) 25%, #e9edf2 50%, var(--bg-subtle, #f2f4f7) 75%)',
                 backgroundSize: '200% 100%', animation: 'mk-shimmer 1.2s ease-in-out infinite',
               }} />
@@ -156,7 +358,7 @@ export default function StorefrontHome({ shop, products, loading, error, onReloa
           <StateWrap>
             <Icons.AlertTriangle size={40} color="var(--danger-solid, #e5484d)" />
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
-              {(error && error.message) || '加载失败,请重试'}
+              {(error && error.message) || (typeof error === 'string' ? error : '') || '加载失败,请重试'}
             </div>
             <button onClick={onReload} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 20px',
@@ -167,29 +369,23 @@ export default function StorefrontHome({ shop, products, loading, error, onReloa
         ) : shown.length === 0 ? (
           <StateWrap>
             <Icons.Inbox size={44} color="var(--text-subtle)" />
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>该店铺暂无在售商品</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
+              {cat === 'all' ? '该店铺暂无在售商品' : '该分类下暂无商品'}
+            </div>
           </StateWrap>
         ) : (
           <>
             <div style={GRID}>
-              {shown.map(p => (
-                <ProductCard
-                  key={p.id}
-                  name={p.name}
-                  desc={p.desc}
-                  price={p.price}
-                  original={p.original}
-                  stock={p.stock}
-                  sold={p.sold}
-                  thumb={p.thumb}
-                  onClick={() => onSelect && onSelect(p)}
-                />
+              {shown.map((p) => (
+                <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
               ))}
             </div>
             <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 28 }}>— 没有更多了 —</div>
           </>
         )}
       </div>
+
+      {showContact && <ContactModal contact={store.contact} onClose={() => setShowContact(false)} />}
     </div>
   );
 }

@@ -18,3 +18,10 @@
 - **P0 迁移(已完成,257测试绿)**:products(image/market_price)、merchants(logo/cover/intro/announcement/contact_qq·wechat·mobile/deposit/verified/sales_count)、categories(image)。
 - **进行中**:后端返回新字段 + 丰富演示数据 + 买家店铺页改版(店招/保证金/认证/客服/分类筛选/2列带图网格)。
 - **并入的审计缺陷待修(wdhj9jhrl)**:支付方式造假、订单#id无名、补发无确认、渠道密钥明文、type=2卖不了、异常单无退款、对账时间口径、查单邮箱文案。
+
+## 第2轮(2026-06-21):商城化 v2(对标鲸发卡 P0)— 已完成✅
+- **后端**:StorefrontService 返回店铺装修/分类(带图+商品数)/商品(image/market_price/sales_count);MerchantService getShop/updateShop + merchant/Shop 控制器+路由;商品增改接受 image/market_price/category_id。257测试绿。
+- **演示数据**:4 分类 + 8 带图商品(picsum + 划线价 + 归类)+ 64 卡密 + 店铺装修(保证金1万/认证/客服/公告)。
+- **买家店铺改版**:店招(封面+头像+认证+联系客服)+ 🛡保证金统计 + 公告条 + 分类真筛选 + 2列带图网格(图/价/划线价/库存标签/已售)+ 客服弹窗;商品详情大图+划线价+公告;支付页改单聚合入口(修支付方式造假)。
+- **商户控制台**:新增「店铺装修」页 + 商品表单加 图片/划线价/分类。
+- **验证**:composer test 257绿 + vite build + 5 e2e 套件(login/14屏/money/flow/lookup)全绿。

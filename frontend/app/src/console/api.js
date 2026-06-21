@@ -83,6 +83,9 @@ export const merchantApi = {
   logout: () => call('/merchant/logout', { method: 'POST' }),
   changePassword: (old_password, new_password) => call('/merchant/change-password', { method: 'POST', body: { old_password, new_password } }),
 
+  shop: () => call('/merchant/shop'),
+  updateShop: (d) => call('/merchant/shop', { method: 'POST', body: d }),
+
   categories: () => call('/merchant/categories'),
   createCategory: (d) => call('/merchant/categories', { method: 'POST', body: d }),
   updateCategory: (id, d) => call(`/merchant/categories/${id}`, { method: 'POST', body: d }),

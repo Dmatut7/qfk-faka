@@ -13,8 +13,9 @@ export default function App() {
   const [order, setOrder] = React.useState(null);      // 已创建订单(进入支付)
   const [result, setResult] = React.useState(null);    // 已发货订单(进入取卡结果)
 
-  // 店铺 + 在售商品(首页用,顺便给 TopBar 店名)
+  // 店铺 + 分类 + 在售商品(首页用,顺便给 TopBar 店名)
   const [shop, setShop] = React.useState(null);
+  const [categories, setCategories] = React.useState([]);
   const [products, setProducts] = React.useState([]);
   const [homeLoading, setHomeLoading] = React.useState(true);
   const [homeError, setHomeError] = React.useState('');
@@ -26,6 +27,7 @@ export default function App() {
       .shop()
       .then((data) => {
         setShop(data.store || null);
+        setCategories(Array.isArray(data.categories) ? data.categories : []);
         setProducts((data.products || []).map(normalizeProduct));
       })
       .catch((e) => setHomeError(e.message || '店铺加载失败'))
@@ -36,7 +38,8 @@ export default function App() {
 
   const go = (s) => { setScreen(s); window.scrollTo(0, 0); };
 
-  const selectProduct = (p) => { setProductId(p.id); go('detail'); };
+  const [selected, setSelected] = React.useState(null); // 已点击的列表商品对象(给详情页预填)
+  const selectProduct = (p) => { setSelected(p); setProductId(p.id); go('detail'); };
 
   // 下单成功(ProductDetail 已调用后端):组装支付页所需 order
   const onOrderCreated = (apiOrder, email, product) => {
@@ -78,6 +81,7 @@ export default function App() {
       {screen === 'home' && (
         <StorefrontHome
           shop={shop}
+          categories={categories}
           products={products}
           loading={homeLoading}
           error={homeError}
@@ -87,7 +91,13 @@ export default function App() {
       )}
 
       {screen === 'detail' && productId != null && (
-        <ProductDetail productId={productId} onBack={() => go('home')} onOrderCreated={onOrderCreated} />
+        <ProductDetail
+          productId={productId}
+          initialProduct={selected}
+          shop={shop}
+          onBack={() => go('home')}
+          onOrderCreated={onOrderCreated}
+        />
       )}
 
       {screen === 'pay' && order && (

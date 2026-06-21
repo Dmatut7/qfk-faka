@@ -5,6 +5,7 @@ namespace app\service;
 
 use app\common\BizException;
 use app\common\Code;
+use app\model\Category;
 use app\model\Merchant;
 use app\model\Product;
 
@@ -26,13 +27,70 @@ class StorefrontService
         $products = Product::where('merchant_id', $m->id)
             ->where('status', Product::STATUS_ON)
             ->order('sort', 'asc')->order('id', 'desc')
-            ->field(['id', 'title', 'price', 'stock', 'category_id', 'min_buy', 'max_buy'])
+            ->field(['id', 'title', 'price', 'market_price', 'stock', 'image', 'category_id', 'sales_count', 'min_buy', 'max_buy'])
             ->select()
             ->toArray();
 
+        $products = array_map(static function ($p) {
+            return [
+                'id'           => (int) $p['id'],
+                'title'        => $p['title'],
+                'price'        => $p['price'],
+                'market_price' => $p['market_price'],
+                'stock'        => (int) $p['stock'],
+                'image'        => $p['image'],
+                'category_id'  => isset($p['category_id']) ? (int) $p['category_id'] : null,
+                'sales_count'  => (int) $p['sales_count'],
+                'min_buy'      => (int) $p['min_buy'],
+                'max_buy'      => (int) $p['max_buy'],
+            ];
+        }, $products);
+
+        // 在售商品按分类计数(含无分类的归 0,不影响分类列表)
+        $countByCat = [];
+        foreach ($products as $p) {
+            $cid = $p['category_id'];
+            if ($cid !== null) {
+                $countByCat[$cid] = ($countByCat[$cid] ?? 0) + 1;
+            }
+        }
+
+        // 全部显示中的分类(即便在售数为 0 也返回)
+        $categories = Category::where('merchant_id', $m->id)
+            ->where('status', Category::STATUS_SHOWN)
+            ->order('sort', 'asc')->order('id', 'asc')
+            ->field(['id', 'name', 'image'])
+            ->select()
+            ->toArray();
+
+        $categories = array_map(static function ($c) use ($countByCat) {
+            return [
+                'id'          => (int) $c['id'],
+                'name'        => $c['name'],
+                'image'       => $c['image'],
+                'goods_count' => (int) ($countByCat[(int) $c['id']] ?? 0),
+            ];
+        }, $categories);
+
         return [
-            'store'    => ['name' => $m->store_name, 'slug' => $m->store_slug],
-            'products' => $products,
+            'store'      => [
+                'name'         => $m->store_name,
+                'slug'         => $m->store_slug,
+                'logo'         => $m->logo,
+                'cover'        => $m->cover,
+                'intro'        => $m->intro,
+                'announcement' => $m->announcement,
+                'verified'     => (int) $m->verified,
+                'deposit'      => $m->deposit,
+                'sales_count'  => (int) $m->sales_count,
+                'contact'      => [
+                    'qq'     => $m->contact_qq,
+                    'wechat' => $m->contact_wechat,
+                    'mobile' => $m->contact_mobile,
+                ],
+            ],
+            'categories' => $categories,
+            'products'   => $products,
         ];
     }
 
@@ -51,8 +109,11 @@ class StorefrontService
             'merchant_id'      => (int) $p->merchant_id,
             'title'            => $p->title,
             'price'            => $p->price,
+            'market_price'     => $p->market_price,
+            'image'            => $p->image,
             'description'      => $p->description,
             'stock'            => (int) $p->stock,
+            'sales_count'      => (int) $p->sales_count,
             'min_buy'          => (int) $p->min_buy,
             'max_buy'          => (int) $p->max_buy,
             'delivery_message' => $p->delivery_message,

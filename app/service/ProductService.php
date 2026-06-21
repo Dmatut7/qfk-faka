@@ -14,7 +14,7 @@ use app\model\Product;
  */
 class ProductService
 {
-    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort'];
+    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort'];
 
     public function list(int $merchantId, array $filter = []): array
     {
@@ -38,7 +38,9 @@ class ProductService
             'title'            => $d['title'],
             'sku'              => $d['sku'] ?? null,
             'description'      => $d['description'] ?? null,
+            'image'            => !empty($d['image']) ? $d['image'] : null,
             'price'            => $d['price'],
+            'market_price'     => (isset($d['market_price']) && $d['market_price'] !== '') ? $d['market_price'] : null,
             'type'             => isset($d['type']) ? (int) $d['type'] : Product::TYPE_AUTO,
             'min_buy'          => isset($d['min_buy']) ? max(1, (int) $d['min_buy']) : 1,
             'max_buy'          => isset($d['max_buy']) ? (int) $d['max_buy'] : 0,
@@ -54,6 +56,12 @@ class ProductService
         if (array_key_exists('category_id', $d)) {
             $this->assertCategory($merchantId, $d['category_id']);
             $d['category_id'] = !empty($d['category_id']) ? (int) $d['category_id'] : null;
+        }
+        if (array_key_exists('market_price', $d) && $d['market_price'] === '') {
+            $d['market_price'] = null;
+        }
+        if (array_key_exists('image', $d) && $d['image'] === '') {
+            $d['image'] = null;
         }
         $patch = array_intersect_key($d, array_flip(self::EDITABLE));
         if ($patch) {

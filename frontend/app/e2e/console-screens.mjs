@@ -5,7 +5,7 @@ const URL = 'http://127.0.0.1:5173/console.html';
 const log = (...a) => console.log('[screens]', ...a);
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 
-const MERCHANT = ['数据概览', '商品管理', '分类管理', '卡密管理', '订单管理', '钱包 / 提现'];
+const MERCHANT = ['数据概览', '商品管理', '店铺装修', '分类管理', '卡密管理', '订单管理', '钱包 / 提现'];
 const ADMIN = ['商户审核', '支付渠道', '提现审核', '对账报表', '订单(跨商户)', '商品(跨商户)', '平台配置'];
 
 async function walk(roleLabel, user, pass, navs) {

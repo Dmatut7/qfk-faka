@@ -61,7 +61,10 @@ async function call(path, { method = 'GET', body } = {}) {
 }
 
 export const api = {
-  /** 店铺 + 在售商品:{ store:{name,slug}, products:[{id,title,price,stock,category_id,min_buy,max_buy}] } */
+  /** 店铺 + 分类 + 在售商品。返回:
+   *  { store:{name,slug,logo,cover,intro,announcement,verified,deposit,sales_count,contact:{qq,wechat,mobile}},
+   *    categories:[{id,name,image,goods_count}],
+   *    products:[{id,title,price,market_price,stock,image,category_id,sales_count,min_buy,max_buy}] } */
   shop: (slug = SHOP_SLUG) => call(`/s/${encodeURIComponent(slug)}`),
   /** 商品详情:{ id,title,price,description,stock,min_buy,max_buy,delivery_message } */
   product: (id) => call(`/buyer/product/${encodeURIComponent(id)}`),
@@ -84,20 +87,35 @@ export const api = {
 const THUMBS = ['📦', '🎬', '🤖', '🪟', '🎵', '🎨', '🎮', '⚔️', '🎟️', '💎'];
 export function normalizeProduct(p) {
   const idNum = parseInt(String(p.id).replace(/\D/g, ''), 10) || 0;
+  const price = Number(p.price);
+  // market_price 是「划线原价」,仅当 > 实售价才作为 original 展示。
+  const mkt = p.market_price != null && p.market_price !== '' ? Number(p.market_price) : undefined;
+  // 兼容旧字段 original;新契约用 market_price。
+  const origRaw = mkt != null ? mkt : (p.original != null ? Number(p.original) : undefined);
+  const original = origRaw != null && Number.isFinite(origRaw) && origRaw > price ? origRaw : undefined;
+  // 商品主图 URL(后端 image),空串视为无图,回落 emoji 占位。
+  const image = p.image != null && String(p.image).trim() !== '' ? String(p.image) : '';
+  const sales = p.sales_count != null ? Number(p.sales_count) : (p.sold != null ? Number(p.sold) : undefined);
+  // category_id 统一转数字(便于按 id 精确筛选),非法/缺失为 null。
+  const catRaw = p.category_id;
+  const category_id = catRaw == null || catRaw === '' ? null : (Number.isNaN(Number(catRaw)) ? catRaw : Number(catRaw));
   return {
     id: p.id,
     name: p.title ?? p.name ?? '商品',
     desc: p.description || p.desc || '',
     detail: p.description || p.detail || '',
-    price: Number(p.price),
-    original: p.original != null ? Number(p.original) : undefined,
+    price,
+    market_price: mkt,
+    original,
+    image,
     stock: Number(p.stock ?? 0),
-    sold: p.sales_count != null ? Number(p.sales_count) : (p.sold != null ? Number(p.sold) : undefined),
+    sales_count: sales,
+    sold: sales,
     thumb: p.thumb || THUMBS[idNum % THUMBS.length],
     min_buy: Number(p.min_buy ?? 1),
     max_buy: Number(p.max_buy ?? 0), // 0 = 不限
     delivery_message: p.delivery_message || '',
-    category_id: p.category_id ?? null,
+    category_id,
   };
 }
 

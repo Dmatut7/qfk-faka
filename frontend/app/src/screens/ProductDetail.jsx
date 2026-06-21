@@ -27,9 +27,10 @@ function CenterState({ children }) {
   );
 }
 
-export default function ProductDetail({ productId, onBack, onOrderCreated }) {
-  const [product, setProduct] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
+export default function ProductDetail({ productId, initialProduct, shop, onBack, onOrderCreated }) {
+  // 优先用列表传入的商品对象做首屏(秒开),再后台拉详情补全 detail/limits。
+  const [product, setProduct] = React.useState(initialProduct || null);
+  const [loading, setLoading] = React.useState(!initialProduct);
   const [loadErr, setLoadErr] = React.useState('');
 
   const [qty, setQty] = React.useState(1);
@@ -40,16 +41,24 @@ export default function ProductDetail({ productId, onBack, onOrderCreated }) {
 
   const load = React.useCallback(() => {
     let alive = true;
-    setLoading(true);
+    // 有首屏数据时不显示整屏 loading,后台静默刷新;无则正常 loading。
+    setLoading((prev) => (product ? false : true));
     setLoadErr('');
     api.product(productId)
-      .then((raw) => { if (alive) { setProduct(normalizeProduct(raw)); setLoading(false); } })
+      .then((raw) => {
+        if (!alive) return;
+        // 合并:列表对象保留 image/原价等,详情补 detail/min_buy/max_buy/stock。
+        setProduct((prev) => ({ ...(prev || {}), ...normalizeProduct(raw) }));
+        setLoading(false);
+      })
       .catch((e) => {
         if (!alive) return;
-        setLoadErr(e instanceof ApiError ? e.message : '加载失败,请重试');
+        // 已有首屏数据时拉详情失败不致命,继续展示首屏。
+        if (!product) { setLoadErr(e instanceof ApiError ? e.message : '加载失败,请重试'); }
         setLoading(false);
       });
     return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
   React.useEffect(() => load(), [load]);
@@ -126,21 +135,28 @@ export default function ProductDetail({ productId, onBack, onOrderCreated }) {
 
       <CheckoutSteps current={1} />
 
+      {/* 顶部大图 */}
+      <div style={{
+        marginTop: 18, width: '100%', aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+        background: 'var(--brand-soft)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {p.image
+          ? <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          : <div style={{ fontSize: 64 }}>{p.thumb}</div>}
+      </div>
+
       {/* head */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 22, alignItems: 'flex-start' }}>
-        <div style={{ width: 72, height: 72, borderRadius: 16, background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, flex: 'none' }}>{p.thumb}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{p.name}</h1>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-            {out ? <Badge variant="danger" dot>缺货</Badge> : <Badge variant="success" dot>有货 {p.stock}</Badge>}
-            <Badge variant="secure" icon={<Icons.Zap size={13} />}>自动发货</Badge>
-            {hasSold && <Badge variant="neutral">已售 {p.sold}</Badge>}
-          </div>
+      <div style={{ marginTop: 16 }}>
+        <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{p.name}</h1>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          {out ? <Badge variant="danger" dot>缺货</Badge> : <Badge variant="success" dot>有货 {p.stock}</Badge>}
+          <Badge variant="secure" icon={<Icons.Zap size={13} />}>自动发货</Badge>
+          {hasSold && <Badge variant="neutral">已售 {p.sold}</Badge>}
         </div>
       </div>
 
       {/* price */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
         <PriceTag amount={p.price} original={hasOriginal ? p.original : undefined} size="lg" />
         {hasOriginal && (
           <span style={{ fontSize: 13, color: 'var(--success-fg)', fontWeight: 700, background: 'var(--success-bg)', padding: '3px 9px', borderRadius: 99 }}>
@@ -148,6 +164,18 @@ export default function ProductDetail({ productId, onBack, onOrderCreated }) {
           </span>
         )}
       </div>
+
+      {/* 店铺公告 */}
+      {shop && (shop.announcement || '').trim() && (
+        <div style={{
+          marginTop: 16, display: 'flex', gap: 9, alignItems: 'flex-start', padding: '10px 13px',
+          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg, #92600a)',
+        }}>
+          <Icons.Megaphone size={17} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+          <span style={{ fontSize: 13, lineHeight: 1.55, fontWeight: 600 }}>{shop.announcement.trim()}</span>
+        </div>
+      )}
 
       {/* detail */}
       {p.detail && (

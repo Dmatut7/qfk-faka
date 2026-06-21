@@ -15,7 +15,9 @@ const EMPTY_FORM = {
   title: '',
   sku: '',
   description: '',
+  image: '',
   price: '',
+  market_price: '',
   type: TYPE_AUTO,
   min_buy: 1,
   max_buy: 0,
@@ -55,7 +57,9 @@ export default function Products({ api, session }) {
       title: row.title || '',
       sku: row.sku || '',
       description: row.description || '',
+      image: row.image || '',
       price: row.price == null ? '' : String(row.price),
+      market_price: row.market_price == null ? '' : String(row.market_price),
       type: Number(row.type) || TYPE_AUTO,
       min_buy: row.min_buy ?? 1,
       max_buy: row.max_buy ?? 0,
@@ -77,7 +81,9 @@ export default function Products({ api, session }) {
       title: form.title.trim(),
       sku: form.sku.trim(),
       description: form.description,
+      image: form.image.trim(),
       price: form.price,
+      market_price: form.market_price === '' ? '' : form.market_price,
       type: Number(form.type),
       min_buy: Math.max(1, Number(form.min_buy) || 1),
       max_buy: Number(form.max_buy) || 0,
@@ -132,10 +138,19 @@ export default function Products({ api, session }) {
   const columns = [
     {
       key: 'title', title: '商品', render: (r) => (
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{r.title}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-            {r.sku ? `SKU ${r.sku} · ` : ''}{catName(r.category_id)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 'var(--radius-sm)', flex: 'none', border: '1px solid var(--border)',
+            background: r.image ? `center/cover no-repeat url(${r.image})` : 'var(--surface-sunken)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {!r.image && <Icons.Package size={16} color="var(--text-subtle)" />}
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{r.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+              {r.sku ? `SKU ${r.sku} · ` : ''}{catName(r.category_id)}
+            </div>
           </div>
         </div>
       ),
@@ -241,8 +256,20 @@ export default function Products({ api, session }) {
 
           <Input label="商品标题" required value={form.title} onChange={set('title')} placeholder="例如:Netflix 高级会员月卡" />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '76px 1fr', gap: 12, alignItems: 'start' }}>
+            <div style={{
+              width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
+              background: form.image ? `center/cover no-repeat url(${form.image})` : 'var(--surface-sunken)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', marginTop: 24,
+            }}>
+              {!form.image && <Icons.Package size={22} color="var(--text-subtle)" />}
+            </div>
+            <Input label="商品图片地址(可选)" value={form.image} onChange={set('image')} placeholder="https://…/product.jpg" />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Input label="价格 (元)" required type="number" min="0" step="0.01" value={form.price} onChange={set('price')} placeholder="0.00" />
+            <Input label="划线原价(可选)" hint="市场价" type="number" min="0" step="0.01" value={form.market_price} onChange={set('market_price')} placeholder="0.00" />
             <Input label="SKU(可选)" value={form.sku} onChange={set('sku')} placeholder="自定义货号" />
           </div>
 

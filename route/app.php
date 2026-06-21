@@ -71,6 +71,10 @@ Route::group('merchant', function () {
         Route::get('me', 'merchant.Profile/me');
         Route::post('change-password', 'merchant.Profile/changePassword');
 
+        // 店铺装修(deposit/verified 平台控,商户不可改)
+        Route::get('shop', 'merchant.Shop/show');
+        Route::post('shop', 'merchant.Shop/update');
+
         // 分类管理(全用 POST + 路径 id,便于测试与跨端兼容)
         Route::get('categories', 'merchant.Category/index');
         Route::post('categories', 'merchant.Category/create');

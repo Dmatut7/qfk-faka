@@ -1,6 +1,7 @@
 /* 控制台页面注册表:nav key → 组件。每个屏幕独立成文件,此处统一 import + 映射。 */
 import MerchantStats from './merchant/Stats.jsx';
 import MerchantProducts from './merchant/Products.jsx';
+import MerchantShop from './merchant/Shop.jsx';
 import MerchantCategories from './merchant/Categories.jsx';
 import MerchantCards from './merchant/Cards.jsx';
 import MerchantOrders from './merchant/Orders.jsx';
@@ -18,6 +19,7 @@ export const SCREENS = {
   // 商户后台
   'm-stats': MerchantStats,
   'm-products': MerchantProducts,
+  'm-shop': MerchantShop,
   'm-categories': MerchantCategories,
   'm-cards': MerchantCards,
   'm-orders': MerchantOrders,
