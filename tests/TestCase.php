@@ -47,7 +47,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * 发起一次模拟 HTTP 请求,返回框架 Response 对象。
      */
-    protected function call(string $method, string $uri, array $params = [], array $server = []): Response
+    protected function call(string $method, string $uri, array $params = [], array $headers = [], array $server = []): Response
     {
         $method = strtoupper($method);
         $path   = parse_url($uri, PHP_URL_PATH) ?: $uri;
@@ -59,21 +59,37 @@ abstract class TestCase extends BaseTestCase
         $request->setPathinfo($path);
         $request->withServer(array_merge($_SERVER, ['REQUEST_METHOD' => $method], $server));
 
+        if ($headers) {
+            // withServer 不会重建 header,需显式注入(键小写,如 authorization)
+            $request->withHeader($headers);
+        }
+
         if ($method === 'GET') {
             $request->withGet($params);
         } else {
             $request->withPost($params);
         }
 
+        // 单进程内多次 Http::run 会让路由/中间件队列累积(生产环境每请求独立进程)。
+        // 每次请求前重置 route 与 middleware,模拟请求隔离;不触碰 Db(事务保持)。
+        $this->app->instance('route', new \think\Route($this->app));
+        $this->app->instance('middleware', new \think\Middleware($this->app));
+
         return $this->app->http->run($request);
+    }
+
+    /** 带 Bearer 令牌的请求头便捷构造 */
+    protected function bearer(string $token): array
+    {
+        return ['authorization' => 'Bearer ' . $token];
     }
 
     /**
      * 发起请求并将 JSON 响应体解码为数组。
      */
-    protected function callJson(string $method, string $uri, array $params = [], array $server = []): array
+    protected function callJson(string $method, string $uri, array $params = [], array $headers = [], array $server = []): array
     {
-        $response = $this->call($method, $uri, $params, $server);
+        $response = $this->call($method, $uri, $params, $headers, $server);
         return json_decode($response->getContent(), true) ?: [];
     }
 }

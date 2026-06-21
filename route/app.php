@@ -12,3 +12,13 @@ use think\facade\Route;
 
 // 健康检查 / 探活接口
 Route::get('health', 'Health/index');
+
+// ============ 平台后台 admin ============
+Route::group('admin', function () {
+    Route::post('login', 'admin.Auth/login');
+
+    Route::group(function () {
+        Route::post('logout', 'admin.Auth/logout');
+        Route::get('me', 'admin.Profile/me');
+    })->middleware(\app\middleware\AdminAuth::class);
+});
