@@ -23,7 +23,11 @@ function maskSecret(s) {
 export default function Cards({ api, session }) {
   const [selectedId, setSelectedId] = React.useState(null);
   const [statusFilter, setStatusFilter] = React.useState('');
+  const [page, setPage] = React.useState(1);
   const [importOpen, setImportOpen] = React.useState(false);
+
+  // 切换商品或状态筛选时回到第 1 页
+  React.useEffect(() => { setPage(1); }, [selectedId, statusFilter]);
 
   // 商品列表(用于选择)
   const products = useAsync(() => api.products(), []);
@@ -46,8 +50,8 @@ export default function Cards({ api, session }) {
   const cards = useAsync(
     () => (selectedId == null
       ? Promise.resolve({ items: [], total: 0 })
-      : api.cards(selectedId, statusFilter === '' ? {} : { status: statusFilter })),
-    [selectedId, statusFilter]
+      : api.cards(selectedId, { page, ...(statusFilter === '' ? {} : { status: statusFilter }) })),
+    [selectedId, statusFilter, page]
   );
 
   const reloadAll = React.useCallback(() => {
@@ -88,11 +92,36 @@ export default function Cards({ api, session }) {
     },
     {
       key: '_ops', title: '操作', align: 'right', width: 140,
-      render: (row) => <RowOps row={row} api={api} onDone={reloadAll} />,
+      render: (row) => <RowOps row={row} onAsk={(kind) => setConfirm({ kind, row })} />,
     },
   ];
 
   const rows = (cards.data && cards.data.items) || [];
+  const total = Number((cards.data && cards.data.total) || 0);
+  const pageSize = 20;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const goPage = (p) => setPage(Math.min(Math.max(1, p), totalPages));
+
+  // 二次确认:{ kind: 'disable'|'delete', row } | null
+  const [confirm, setConfirm] = React.useState(null);
+  const [confirmBusy, setConfirmBusy] = React.useState(false);
+  const [confirmErr, setConfirmErr] = React.useState('');
+  React.useEffect(() => { setConfirmErr(''); setConfirmBusy(false); }, [confirm]);
+
+  async function doConfirm() {
+    if (!confirm) return;
+    setConfirmBusy(true); setConfirmErr('');
+    try {
+      if (confirm.kind === 'disable') await api.disableCard(confirm.row.id);
+      else await api.deleteCard(confirm.row.id);
+      setConfirm(null);
+      reloadAll();
+    } catch (e) {
+      setConfirmErr(e instanceof ApiError ? e.message : '操作失败,请重试');
+    } finally {
+      setConfirmBusy(false);
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -147,6 +176,13 @@ export default function Cards({ api, session }) {
             empty="该商品暂无卡密,点击右上角导入"
             emptyIcon="Inbox"
           />
+          {total > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+              <span>共 {total} 条 · 第 {page}/{totalPages} 页</span>
+              <Button size="sm" variant="ghost" disabled={page <= 1 || cards.loading} onClick={() => goPage(page - 1)}>上一页</Button>
+              <Button size="sm" variant="ghost" disabled={page >= totalPages || cards.loading} onClick={() => goPage(page + 1)}>下一页</Button>
+            </div>
+          )}
         </Panel>
       )}
 
@@ -163,7 +199,57 @@ export default function Cards({ api, session }) {
         onClose={() => setImportOpen(false)}
         onImported={reloadAll}
       />
+
+      <ConfirmActionModal
+        confirm={confirm}
+        busy={confirmBusy}
+        err={confirmErr}
+        onCancel={() => (confirmBusy ? null : setConfirm(null))}
+        onConfirm={doConfirm}
+      />
     </div>
+  );
+}
+
+/* 作废 / 删除 二次确认弹窗 */
+function ConfirmActionModal({ confirm, busy, err, onCancel, onConfirm }) {
+  const open = confirm != null;
+  const kind = confirm && confirm.kind;
+  const row = (confirm && confirm.row) || {};
+  const isDelete = kind === 'delete';
+  const title = isDelete ? '确认删除卡密' : '确认作废卡密';
+  const message = isDelete
+    ? '将永久删除这张未售卡密,操作不可撤销。'
+    : '将作废这张未售卡密,作废后不再参与发货,操作不可撤销。';
+
+  return (
+    <Modal
+      open={open}
+      title={title}
+      width={420}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="neutral" onClick={onCancel} disabled={busy}>取消</Button>
+          <Button
+            variant={isDelete ? 'danger' : 'primary'}
+            loading={busy}
+            iconLeft={<Icons.AlertTriangle size={14} />}
+            onClick={onConfirm}
+          >
+            {isDelete ? '确认删除' : '确认作废'}
+          </Button>
+        </>
+      }
+    >
+      <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.7 }}>
+        <div style={{ marginBottom: 8 }}>
+          卡密:<span className="tnum" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-strong)' }}>{maskSecret(row.secret)}</span>
+        </div>
+        <div>{message}</div>
+        {err ? <div style={{ marginTop: 10 }}><ErrorBar message={err} /></div> : null}
+      </div>
+    </Modal>
   );
 }
 
@@ -220,36 +306,16 @@ function StatusTabs({ value, onChange }) {
   );
 }
 
-/* 行操作:作废 / 删除(仅未售卡 status===0 可用) */
-function RowOps({ row, api, onDone }) {
-  const [busy, setBusy] = React.useState('');
-  const [err, setErr] = React.useState('');
+/* 行操作:作废 / 删除(仅未售卡 status===0 可用;点击后弹二次确认) */
+function RowOps({ row, onAsk }) {
   const unsold = row.status === 0;
-
-  const run = async (kind) => {
-    setBusy(kind); setErr('');
-    try {
-      if (kind === 'disable') await api.disableCard(row.id);
-      else await api.deleteCard(row.id);
-      onDone();
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : '操作失败,请重试');
-    } finally {
-      setBusy('');
-    }
-  };
-
   if (!unsold) return <span style={{ color: 'var(--text-subtle)', fontSize: 12 }}>—</span>;
 
   return (
-    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-      <div style={{ display: 'inline-flex', gap: 6 }}>
-        <Button variant="neutral" size="sm" loading={busy === 'disable'} disabled={!!busy}
-          onClick={() => run('disable')}>作废</Button>
-        <Button variant="danger" size="sm" loading={busy === 'delete'} disabled={!!busy}
-          iconLeft={<Icons.AlertTriangle size={13} />} onClick={() => run('delete')}>删除</Button>
-      </div>
-      {err && <span style={{ color: 'var(--danger-fg)', fontSize: 12 }}>{err}</span>}
+    <div style={{ display: 'inline-flex', gap: 6 }}>
+      <Button variant="neutral" size="sm" onClick={() => onAsk('disable')}>作废</Button>
+      <Button variant="danger" size="sm"
+        iconLeft={<Icons.AlertTriangle size={13} />} onClick={() => onAsk('delete')}>删除</Button>
     </div>
   );
 }

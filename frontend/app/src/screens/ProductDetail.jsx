@@ -53,7 +53,18 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       .then((raw) => {
         if (!alive) return;
         // 合并:列表对象保留 image/原价等,详情补 detail/min_buy/max_buy/stock。
-        setProduct((prev) => ({ ...(prev || {}), ...normalizeProduct(raw) }));
+        // 详情接口可能缺 image/original/market_price(normalizeProduct 会归一成空串/
+        // undefined),直接覆盖会把列表带来的真实图/原价抹掉,造成图片闪回。
+        // 故对这几个键:详情值为空时不覆盖,保留列表已有值。
+        const det = normalizeProduct(raw);
+        setProduct((prev) => {
+          const base = prev || {};
+          const merged = { ...base, ...det };
+          if (det.image == null || det.image === '') merged.image = base.image;
+          if (det.original == null) merged.original = base.original;
+          if (det.market_price == null) merged.market_price = base.market_price;
+          return merged;
+        });
         setPartialErr(false);
         setLoading(false);
       })

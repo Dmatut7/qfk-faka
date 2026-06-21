@@ -135,7 +135,7 @@ export default function Channels({ api, session }) {
     setSignResult(null);
     setSignBusy(true);
     try {
-      const res = await api.testSign(row.id);
+      const res = await api.testSign(row.id, row.code);
       setSignResult(res || {});
     } catch (e) {
       setSignErr(e instanceof ApiError ? e.message : '验签自测失败,请重试');

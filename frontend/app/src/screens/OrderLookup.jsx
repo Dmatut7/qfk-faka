@@ -85,7 +85,13 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       }
       setResult(enriched);
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : '查询失败,请稍后重试';
+      // 2003 邮箱与订单不匹配:订单号本身存在,问题在邮箱,给出针对性文案。
+      let msg;
+      if (e instanceof ApiError && e.code === 2003) {
+        msg = '订单号或邮箱有误,请核对邮箱';
+      } else {
+        msg = e instanceof ApiError ? e.message : '查询失败,请稍后重试';
+      }
       // 查无 / 业务错误 → 空错态(不造假样例订单)
       setError(msg);
     } finally {

@@ -18,6 +18,9 @@ export const STATUS = { PENDING: 0, PAID: 1, DELIVERED: 2, CLOSED: 3, REFUNDED: 
 
 /* 业务错误码 → 中文文案 */
 const ERR_MSG = {
+  2001: '参数有误,请检查后重试',
+  2002: '未找到该订单,请核对订单号',
+  2003: '订单号或邮箱有误,请核对邮箱',
   3001: '商品已下架',
   3002: '库存不足,请减少购买数量',
   3003: '超过该商品限购数量',
@@ -25,7 +28,7 @@ const ERR_MSG = {
   4002: '订单已支付,请勿重复支付',
   4003: '订单已关闭或已过期,请重新下单',
   4004: '订单金额异常',
-  4005: '订单状态异常',
+  4005: '订单状态异常,请稍后重试',
   5001: '支付校验失败,请重试',
   5002: '支付渠道不可用',
   1029: '操作过于频繁,请稍后再试',
@@ -146,23 +149,31 @@ export function normalizeProduct(p) {
    付款后轮询查单,直到发货(status=2)/关闭(3)/异常(5)/超时。
    返回最终订单对象;onTick(order) 每次轮询回调(用于展示「发货中」)。
    ------------------------------------------------------------ */
-export async function pollDelivery({ orderNo, email, interval = 2500, timeout = 90000, onTick } = {}) {
+export async function pollDelivery({ orderNo, email, interval = 2500, timeout = 90000, onTick, maxFails = 6 } = {}) {
   const deadline = Date.now() + timeout;
   // 终态:已发货 / 已关闭 / 已退款 / 异常待人工
   const TERMINAL = new Set([STATUS.DELIVERED, STATUS.CLOSED, STATUS.REFUNDED, STATUS.EXCEPTION]);
+  let fails = 0; // 连续失败计数(成功一次即清零)
   for (;;) {
     let order;
     try {
       order = await api.queryOrder({ orderNo, email });
+      fails = 0;
     } catch (e) {
-      // 查询瞬时失败不立即终止,继续轮询直到超时
+      // 查询瞬时失败不立即终止,但要做退避,避免高频重试自我触发限流(1029)。
       order = null;
+      fails += 1;
+      // 连续失败过多(尤其是被限流)提前结束,交由上层「稍后查单」兜底,
+      // 不再继续高频打接口火上浇油。
+      if (fails >= maxFails) return null;
     }
     if (order) {
       onTick && onTick(order);
       if (TERMINAL.has(Number(order.status))) return order;
     }
     if (Date.now() >= deadline) return order || null; // 超时:返回最后一次结果(可能仍 pending/paid)
-    await new Promise((r) => setTimeout(r, interval));
+    // 退避:连续失败时按失败次数线性放大间隔(封顶 4 倍),缓解限流压力。
+    const wait = fails > 0 ? interval * Math.min(fails + 1, 4) : interval;
+    await new Promise((r) => setTimeout(r, wait));
   }
 }

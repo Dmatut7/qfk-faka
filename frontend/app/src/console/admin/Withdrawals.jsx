@@ -13,10 +13,11 @@ const WD_STATUS = {
   3: { label: '已打款', tone: 'success' },
 };
 
-// 状态筛选项('' = 全部)
+// 状态筛选项('' = 全部);与 Withdrawal 模型状态机一致(0待审/1通过/2拒绝/3已打款)
 const STATUS_FILTERS = [
   { value: '', label: '全部' },
   { value: '0', label: '待审核' },
+  { value: '1', label: '已通过' },
   { value: '3', label: '已打款' },
   { value: '2', label: '已拒绝' },
 ];
@@ -95,7 +96,8 @@ export default function Withdrawals({ api, session }) {
   // 概览:待审核笔数与待审核金额合计(仅当前页可见行,以后端列表为准)
   const pendingRows = rows.filter((r) => Number(r.status) === 0);
   const pendingCount = pendingRows.length;
-  const pendingSum = pendingRows.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+  // 金额按整数分累加再除回,避免浮点累计误差
+  const pendingSum = pendingRows.reduce((acc, r) => acc + Math.round(Number(r.amount || 0) * 100), 0) / 100;
 
   const columns = [
     { key: 'id', title: '单号', width: 80, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>#{r.id}</span> },

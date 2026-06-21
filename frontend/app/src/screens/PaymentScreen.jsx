@@ -63,7 +63,9 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   const total = Number(order.total || 0);
 
   const handlePay = async () => {
-    if (paying || expired) return;
+    // 倒计时仅作展示提示,不再因本地 expired 阻止支付:设备时钟/时区偏差会让
+    // remain 误判为 0 把未过期订单卡死。真正的过期由后端 4003(CLOSED 分支)兜底。
+    if (paying) return;
     setErr('');
     setPaying(true);
     setPhase(PHASE.WAITING);
@@ -309,10 +311,10 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>应付</span>
                 <PriceTag amount={total} size="md" />
               </div>
-              <Button variant="primary" size="lg" block loading={paying} disabled={expired || paying}
+              <Button variant="primary" size="lg" block loading={paying} disabled={paying}
                 onClick={handlePay} style={{ flex: 1 }}
                 iconLeft={!paying && <Icons.Lock size={18} />}>
-                {expired ? '订单已过期' : paying ? (inWaiting ? '等待支付确认…' : '正在跳转支付…') : `确认支付 ¥${money(total)}`}
+                {paying ? (inWaiting ? '等待支付确认…' : '正在跳转支付…') : `确认支付 ¥${money(total)}`}
               </Button>
             </>
           )}

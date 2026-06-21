@@ -79,7 +79,7 @@ export default function Settlement({ api, session }) {
         </div>
       </Toolbar>
 
-      {report.error ? <ErrorBar error={report.error} onRetry={report.reload} /> : null}
+      {report.error ? <ErrorBar message={report.error} onRetry={report.reload} /> : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
         <StatCard

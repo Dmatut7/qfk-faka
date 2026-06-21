@@ -28,10 +28,15 @@ function isNegative(amount) {
 
 const emptyForm = { amount: '', account_info: '' };
 
+const PAGE_SIZE = 20;
+
 export default function Wallet({ api, session }) {
+  const [logPage, setLogPage] = React.useState(1);
+  const [wdPage, setWdPage] = React.useState(1);
+
   const wallet = useAsync(() => api.wallet(), []);
-  const logs = useAsync(() => api.fundLogs({ page: 1 }), []);
-  const withdrawals = useAsync(() => api.withdrawals({ page: 1 }), []);
+  const logs = useAsync(() => api.fundLogs({ page: logPage }), [logPage]);
+  const withdrawals = useAsync(() => api.withdrawals({ page: wdPage }), [wdPage]);
 
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState(emptyForm);
@@ -71,10 +76,10 @@ export default function Wallet({ api, session }) {
     try {
       await api.applyWithdrawal({ amount: raw, account_info: form.account_info.trim() });
       setOpen(false);
-      // 提现冻结余额、生成流水与提现单,三处一并刷新
+      // 提现冻结余额、生成流水与提现单,三处一并刷新;回到第 1 页以便看到最新记录
       wallet.reload();
-      logs.reload();
-      withdrawals.reload();
+      if (logPage === 1) logs.reload(); else setLogPage(1);
+      if (wdPage === 1) withdrawals.reload(); else setWdPage(1);
     } catch (e) {
       setFormErr(e instanceof ApiError ? e.message : '申请失败,请重试');
     } finally {
@@ -84,6 +89,12 @@ export default function Wallet({ api, session }) {
 
   const logRows = (logs.data && logs.data.items) || [];
   const wdRows = (withdrawals.data && withdrawals.data.items) || [];
+  const logTotal = Number((logs.data && logs.data.total) || 0);
+  const wdTotal = Number((withdrawals.data && withdrawals.data.total) || 0);
+  const logTotalPages = Math.max(1, Math.ceil(logTotal / PAGE_SIZE));
+  const wdTotalPages = Math.max(1, Math.ceil(wdTotal / PAGE_SIZE));
+  const goLogPage = (p) => setLogPage(Math.min(Math.max(1, p), logTotalPages));
+  const goWdPage = (p) => setWdPage(Math.min(Math.max(1, p), wdTotalPages));
 
   const logColumns = [
     {
@@ -225,6 +236,7 @@ export default function Wallet({ api, session }) {
           empty="暂无资金流水"
           emptyIcon="Inbox"
         />
+        <Pager total={logTotal} page={logPage} totalPages={logTotalPages} loading={logs.loading} onGo={goLogPage} />
       </Panel>
 
       {/* 提现记录 */}
@@ -248,6 +260,7 @@ export default function Wallet({ api, session }) {
           empty="暂无提现记录"
           emptyIcon="Inbox"
         />
+        <Pager total={wdTotal} page={wdPage} totalPages={wdTotalPages} loading={withdrawals.loading} onGo={goWdPage} />
       </Panel>
 
       {/* 申请提现弹窗 */}
@@ -293,6 +306,18 @@ export default function Wallet({ api, session }) {
           />
         </Field>
       </Modal>
+    </div>
+  );
+}
+
+/* 分页器:复用 Orders 的上一页/下一页写法 */
+function Pager({ total, page, totalPages, loading, onGo }) {
+  if (!total) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+      <span>共 {total} 条 · 第 {page}/{totalPages} 页</span>
+      <Button size="sm" variant="ghost" disabled={page <= 1 || loading} onClick={() => onGo(page - 1)}>上一页</Button>
+      <Button size="sm" variant="ghost" disabled={page >= totalPages || loading} onClick={() => onGo(page + 1)}>下一页</Button>
     </div>
   );
 }
