@@ -15,6 +15,7 @@ use app\service\pay\PayDriverInterface;
 use app\service\pay\PayManager;
 use app\util\Money;
 use think\facade\Db;
+use think\facade\Log;
 
 /**
  * 支付回调处理 —— M6 三大安全保证的落点(spec §10.4):
@@ -73,27 +74,47 @@ class NotifyService
             return $this->ack($driver->successResponse(), false, Code::SUCCESS);
         }
 
-        // (2) 防金额篡改:实付 == 订单金额,且不小于支付单金额(仅 CNY)
+        // 成功回调必须带渠道交易号(空 trade_no 无法作为 uniq 二级幂等去重,spec §10.2)
+        if ($parsed['channel_trade_no'] === '') {
+            return $this->ack($driver->failResponse(), false, Code::PARAM_ERROR);
+        }
+
+        // 仅支持 CNY(spec §10.4.2)
+        if (($parsed['currency'] ?? 'CNY') !== 'CNY') {
+            return $this->ack($driver->failResponse(), false, Code::AMOUNT_MISMATCH);
+        }
+
+        // 金额必须良构(防空/非数值被 bcmath 静默当 0)
+        if (!preg_match('/^\d+(\.\d{1,2})?$/', $parsed['amount'])) {
+            return $this->ack($driver->failResponse(), false, Code::AMOUNT_MISMATCH);
+        }
+
+        // (2) 防金额篡改:实付 == 订单金额,且不小于支付单金额
         if (Money::cmp($parsed['amount'], (string) $order->total_amount) !== 0
             || Money::cmp($parsed['amount'], (string) $payment->amount) < 0) {
             return $this->ack($driver->failResponse(), false, Code::AMOUNT_MISMATCH);
         }
 
-        // (3) 幂等 + 发货 + 结算(订单行锁内,死锁有限重试)
+        // (3) 幂等 + 发货 + 结算(订单行锁内,死锁有限重试;其余异常一律受控失败应答)
         $payload = json_encode($params, JSON_UNESCAPED_UNICODE);
         $attempt = 0;
         while (true) {
             try {
                 return $this->settle((int) $payment->id, $parsed['channel_trade_no'], $parsed['amount'], (string) $payload, $driver);
             } catch (BizException $e) {
-                // 发货并发冲突 → 返回失败应答促渠道重试
+                // 发货并发冲突 → 失败应答促渠道重试(重试将命中幂等)
                 return $this->ack($driver->failResponse(), false, $e->getBizCode());
             } catch (\think\db\exception\PDOException $e) {
                 if ($this->isDeadlock($e) && ++$attempt < self::MAX_RETRY) {
                     usleep(10000 * $attempt);
                     continue;
                 }
-                throw $e;
+                // 非死锁 DB 异常(如唯一约束冲突)→ 受控失败应答,绝不裸抛 500(spec §10.4.7)
+                Log::error('[notify] settle db error: ' . $e->getMessage());
+                return $this->ack($driver->failResponse(), false, Code::SERVER_ERROR);
+            } catch (\Throwable $e) {
+                Log::error('[notify] settle error: ' . $e->getMessage());
+                return $this->ack($driver->failResponse(), false, Code::SERVER_ERROR);
             }
         }
     }
@@ -106,7 +127,13 @@ class NotifyService
         return Db::transaction(function () use ($paymentId, $channelTradeNo, $paidAmount, $payload, $driver) {
             $now     = date('Y-m-d H:i:s');
             $payment = Payment::find($paymentId);
-            $order   = Order::find($payment->order_id);
+            if (!$payment) {
+                throw new BizException(Code::ORDER_NOT_FOUND, '支付单不存在');
+            }
+            $order = Order::find($payment->order_id);
+            if (!$order) {
+                throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
+            }
 
             // 锁顺序与下单/回收一致:先锁商品行(串行化闸门),再锁订单行
             Product::where('id', $order->product_id)->lock(true)->find();
@@ -150,8 +177,9 @@ class NotifyService
                 throw new BizException(Code::STATE_INVALID, '发货并发冲突');
             }
 
-            // 快照(发货真相源)
-            $secrets = Db::name('cards')->where('order_id', $order->id)->where('status', Card::STATUS_SOLD)->column('secret');
+            // 快照(发货真相源,显式有序避免依赖隐式排序)
+            $secrets = Db::name('cards')->where('order_id', $order->id)->where('status', Card::STATUS_SOLD)
+                ->order('id', 'asc')->column('secret');
             Db::name('orders')->where('id', $order->id)->update([
                 'status'            => Order::STATUS_DELIVERED,
                 'delivered_content' => implode("\n", $secrets),

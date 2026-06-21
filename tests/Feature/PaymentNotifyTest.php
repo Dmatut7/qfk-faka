@@ -91,7 +91,7 @@ class PaymentNotifyTest extends TestCase
         // 订单已发货,2 张卡售出,快照写入
         $this->assertSame(Order::STATUS_DELIVERED, Order::find($this->order->id)->status);
         $this->assertSame(2, Card::where('order_id', $this->order->id)->where('status', Card::STATUS_SOLD)->count());
-        $secrets = Card::where('order_id', $this->order->id)->column('secret');
+        $secrets = Card::where('order_id', $this->order->id)->order('id', 'asc')->column('secret');
         $this->assertSame(implode("\n", $secrets), Order::find($this->order->id)->delivered_content);
 
         // 支付单成功
@@ -159,6 +159,28 @@ class PaymentNotifyTest extends TestCase
         // 多付同样视为不一致(严格相等)
         $this->assertNotSame('success', $this->notify($this->makeCallback('99.99')));
         $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+    }
+
+    public function testEmptyChannelTradeNoRejected(): void
+    {
+        // 成功回调但无渠道交易号 → 拒绝(空 trade_no 无法二级幂等去重,spec §10.2)
+        $this->assertNotSame('success', $this->notify($this->makeCallback('20.00', ['trade_no' => ''])));
+        $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+    }
+
+    public function testNonCnyCurrencyRejected(): void
+    {
+        // 携带非 CNY 币种(合法签名)→ 拒绝(spec §10.4.2)
+        $this->assertNotSame('success', $this->notify($this->makeCallback('20.00', ['currency' => 'USD'])));
+        $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+    }
+
+    public function testMalformedMoneyRejected(): void
+    {
+        // 非良构金额(合法签名)→ 拒绝,绝不被 bcmath 当 0 放过
+        $this->assertNotSame('success', $this->notify($this->makeCallback('abc')));
+        $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+        $this->assertSame('0.00', Merchant::find($this->m->id)->balance);
     }
 
     // ===== 保证 3:防重复(幂等) =====

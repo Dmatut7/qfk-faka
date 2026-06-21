@@ -36,11 +36,16 @@ class EpayDriver implements PayDriverInterface
 
     public function verify(array $params, array $config): bool
     {
-        if (empty($params['sign'])) {
+        // 缺/空/非标量 sign 一律拒绝;空密钥也视为不可信(fail-closed,防误配)
+        if (empty($params['sign']) || !is_scalar($params['sign'])) {
+            return false;
+        }
+        $key = (string) ($config['key'] ?? '');
+        if ($key === '') {
             return false;
         }
         $given = (string) $params['sign'];
-        $calc  = $this->sign($params, (string) ($config['key'] ?? ''));
+        $calc  = $this->sign($params, $key);
 
         return hash_equals($calc, $given);
     }
@@ -51,6 +56,7 @@ class EpayDriver implements PayDriverInterface
             'out_trade_no'     => (string) ($params['out_trade_no'] ?? ''),
             'channel_trade_no' => (string) ($params['trade_no'] ?? ''),
             'amount'           => (string) ($params['money'] ?? ''),
+            'currency'         => (string) ($params['currency'] ?? 'CNY'), // 易支付无币种字段,默认 CNY
             'success'          => ($params['trade_status'] ?? '') === 'TRADE_SUCCESS',
         ];
     }
@@ -71,7 +77,8 @@ class EpayDriver implements PayDriverInterface
     private function sign(array $params, string $key): string
     {
         unset($params['sign'], $params['sign_type']);
-        $params = array_filter($params, static fn($v) => $v !== '' && $v !== null);
+        // 仅保留非空标量参与签名(数组/对象等非法入参一律剔除,避免 'Array' 隐式转换)
+        $params = array_filter($params, static fn($v) => is_scalar($v) && $v !== '');
         ksort($params);
 
         $parts = [];
