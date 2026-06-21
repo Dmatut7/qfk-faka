@@ -13,6 +13,10 @@ use think\facade\Route;
 // 健康检查 / 探活接口
 Route::get('health', 'Health/index');
 
+// ============ 买家前台 buyer(公开) ============
+Route::get('s/:slug', 'buyer.Shop/store');
+Route::get('buyer/product/:id', 'buyer.Shop/product');
+
 // ============ 平台后台 admin ============
 Route::group('admin', function () {
     Route::post('login', 'admin.Auth/login');

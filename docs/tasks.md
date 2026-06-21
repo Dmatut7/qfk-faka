@@ -66,8 +66,8 @@
   - 验收:导入 N 行得 N 张未售卡;重复卡密按 `uniq_secret` 跳过并报告;`products.stock` 同步;作废/删除仅作用于未售卡。✅ TDD红→绿(行内+库内去重计数、stock 相对增减、仅未售可作废/删)—— **M4 完成**
 
 ## M5 — 买家前台浏览与下单(发卡核心) ★停顿点 1
-- [ ] **T5.1** 商店与商品浏览:`GET /s/{slug}` 商品列表、`GET /buyer/product/{id}` 详情(仅在售)。
-  - 验收:仅展示在售商品与正确库存;下架商品详情 404/下架提示。
+- [x] **T5.1** 商店与商品浏览:`GET /s/{slug}` 商品列表、`GET /buyer/product/{id}` 详情(仅在售)。
+  - 验收:仅展示在售商品与正确库存;下架商品详情 404/下架提示。✅(冻结店铺隐藏、下架商品 3001)
 - [ ] **T5.2 (TDD)** 下单 + **并发安全预占卡密**:`OrderService::create()`。严格按 **spec §10.3**:锁顺序 `products→cards→orders`(先 `SELECT products FOR UPDATE`)、`FOR UPDATE SKIP LOCKED` 取卡、`UPDATE ... WHERE status=0` 断言 affected_rows==qty、`stock` 相对扣减 `WHERE stock>=qty`、死锁(1213)有限次重试、取卡不足短重试后报 3002。写订单(expire_at=now+15min),卡 `0→1`,bcmath 算总额。
   - 验收:正常下单返回 `order_no`,卡 `status=1` 且 `order_id` 正确;库存不足 3002;超单笔限购(max_buy)3003;金额 bcmath;stock 相对扣减正确;模拟死锁可重试。
 - [ ] **T5.3 (TDD) 并发测试(核心)**:必须 **`$useTransaction=false`**(关闭事务隔离、真实提交)+ **多独立 PDO 连接** + **真实并行**(`pcntl_fork` 或并行 barrier 起跑)+ **多轮重复**(≥30 轮)。
