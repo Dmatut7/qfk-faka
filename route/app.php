@@ -46,5 +46,12 @@ Route::group('merchant', function () {
         Route::post('products/:id', 'merchant.Product/update');
         Route::post('products/:id/status', 'merchant.Product/setStatus');
         Route::post('products/:id/delete', 'merchant.Product/delete');
+
+        // 卡密管理
+        Route::post('cards/import', 'merchant.Card/import');
+        Route::get('products/:productId/cards', 'merchant.Card/index');
+        Route::get('products/:productId/cards/stats', 'merchant.Card/stats');
+        Route::post('cards/:id/disable', 'merchant.Card/disable');
+        Route::post('cards/:id/delete', 'merchant.Card/delete');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
