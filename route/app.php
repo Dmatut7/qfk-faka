@@ -75,5 +75,9 @@ Route::group('merchant', function () {
         Route::get('wallet/fund-logs', 'merchant.Wallet/fundLogs');
         Route::get('wallet/withdrawals', 'merchant.Wallet/withdrawals');
         Route::post('wallet/withdrawals', 'merchant.Wallet/applyWithdrawal');
+
+        // 统计
+        Route::get('stats/summary', 'merchant.Stats/summary');
+        Route::get('stats/top-products', 'merchant.Stats/topProducts');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
