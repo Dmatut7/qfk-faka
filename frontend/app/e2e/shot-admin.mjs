@@ -1,0 +1,14 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const page = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+await page.goto('http://127.0.0.1:5173/console.html', { waitUntil: 'domcontentloaded' });
+await page.getByRole('radio', { name: '平台登录' }).first().click();
+await page.locator('form input').nth(0).fill('admin');
+await page.locator('form input').nth(1).fill('admin123');
+await page.getByRole('button', { name: /^登录$/ }).first().click();
+await page.locator('aside nav button', { hasText: '仪表盘' }).first().waitFor({ timeout: 12000 });
+await page.locator('aside nav button', { hasText: '仪表盘' }).first().click();
+await page.waitForTimeout(1800);
+await page.screenshot({ path: 'e2e/shot-admin-dashboard.png' });
+console.log('dashboard shot ok');
+await b.close();

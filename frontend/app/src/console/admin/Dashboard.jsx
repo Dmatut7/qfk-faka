@@ -8,13 +8,15 @@ export default function Dashboard({ api }) {
   const d = useAsync(api.dashboard);
   const data = d.data || {};
 
-  // 容错:后端字段名差异时回退到常见命名
-  const num = (...keys) => {
-    for (const k of keys) {
-      if (data[k] != null) return data[k];
-    }
-    return 0;
-  };
+  // 后端返回嵌套结构:{merchants:{total,pending,active,frozen}, orders:{total,today,paid,delivered},
+  //   sales:{total,today}, withdrawals:{pending_count,pending_amount}, products:{total,on_sale}, cards:{unsold}}
+  const merchants = data.merchants || {};
+  const orders = data.orders || {};
+  const sales = data.sales || {};
+  const withdrawals = data.withdrawals || {};
+  const products = data.products || {};
+  const cards = data.cards || {};
+  const n = (v) => (v == null ? 0 : v);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -36,32 +38,32 @@ export default function Dashboard({ api }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               {/* 商户 */}
               <Block title="商户">
-                <StatCard label="商户总数" value={num('merchant_total', 'merchants_total', 'merchant_count')} icon="Package" tone="brand" />
-                <StatCard label="待审核商户" value={num('merchant_pending', 'pending_merchants', 'merchant_pending_count')} icon="Clock" tone="pending" />
+                <StatCard label="商户总数" value={n(merchants.total)} icon="Package" tone="brand" sub={`正常 ${n(merchants.active)} · 冻结 ${n(merchants.frozen)}`} />
+                <StatCard label="待审核商户" value={n(merchants.pending)} icon="Clock" tone="pending" />
               </Block>
 
               {/* 订单与成交额 */}
               <Block title="订单 / 成交额">
-                <StatCard label="订单总数" value={num('order_total', 'orders_total', 'order_count')} icon="Search" tone="brand" />
-                <StatCard label="今日订单" value={num('order_today', 'today_orders', 'order_today_count')} icon="Zap" tone="secure" />
-                <StatCard label="成交总额" value={<Money amount={num('amount_total', 'gmv_total', 'paid_amount_total')} strong />} icon="RefreshCw" tone="success" />
-                <StatCard label="今日成交额" value={<Money amount={num('amount_today', 'gmv_today', 'paid_amount_today')} strong />} icon="RefreshCw" tone="success" />
+                <StatCard label="订单总数" value={n(orders.total)} icon="Search" tone="brand" sub={`已发货 ${n(orders.delivered)}`} />
+                <StatCard label="今日订单" value={n(orders.today)} icon="Zap" tone="secure" />
+                <StatCard label="成交总额" value={<Money amount={n(sales.total)} strong />} icon="RefreshCw" tone="success" />
+                <StatCard label="今日成交额" value={<Money amount={n(sales.today)} strong />} icon="RefreshCw" tone="success" />
               </Block>
 
               {/* 待办 */}
               <Block title="待办">
                 <StatCard
                   label="待审核提现"
-                  value={num('withdrawal_pending', 'pending_withdrawals', 'withdrawal_pending_count')}
+                  value={n(withdrawals.pending_count)}
                   icon="RefreshCw" tone="pending"
-                  sub={<Money amount={num('withdrawal_pending_amount', 'pending_withdrawal_amount')} />}
+                  sub={<Money amount={n(withdrawals.pending_amount)} />}
                 />
               </Block>
 
               {/* 商品 / 卡密 */}
               <Block title="商品 / 卡密">
-                <StatCard label="在售商品" value={num('product_on_sale', 'on_sale_products', 'product_on_sale_count')} icon="Inbox" tone="brand" />
-                <StatCard label="未售卡密" value={num('card_unsold', 'unsold_cards', 'card_unsold_count')} icon="Lock" tone="secure" />
+                <StatCard label="在售商品" value={n(products.on_sale)} icon="Inbox" tone="brand" sub={`总计 ${n(products.total)}`} />
+                <StatCard label="未售卡密" value={n(cards.unsold)} icon="Lock" tone="secure" />
               </Block>
             </div>
           )}

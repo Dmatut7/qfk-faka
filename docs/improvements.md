@@ -40,3 +40,7 @@
 - 后端:announcements 表迁移 + Announcement 模型 + AnnouncementService + admin/Announcements CRUD;StorefrontService 增加 notices(status=1,sort,限5)。新增 9 测试,composer test 276 全绿。
 - 前端:admin「内容管理」页(CRUD+二次确认)+ 买家店铺顶部平台公告条(可关闭/轮播/查看全部 Modal)。
 - 验证:276测试 + vite build + e2e(login/含内容管理的16屏/buyer flow)+ /s/demo notices 实测全绿。
+
+## 第6轮(2026-06-21):收尾验证 + 修仪表盘数据 bug
+- **抓到并修复**:平台仪表盘所有数字显示 0——前端读扁平字段名(merchant_total...)而后端返回嵌套对象(merchants.total...),改为读嵌套结构。修后真实显示(商户2/订单17/成交额¥99/在售9/卡密72)。
+- 全量 e2e 终验 5/5 全绿(console-login/screens/money/buyer flow/lookup)。
