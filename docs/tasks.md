@@ -33,8 +33,8 @@
   - 验收:`Money` 单元测试覆盖加减乘与比较的精度;`OrderNo` 唯一性(批量生成无重复);`Token` 哈希可校验。✅ TDD 红→绿(3000 批量无重复、mul 半进位)
 
 ## M2 — 数据迁移与模型(基础表)
-- [ ] **T2.1** 迁移+模型:`system_settings`(字段 `setting_key`/`setting_value`,避保留字)、`admins`。
-  - 验收:`migrate:run` 建表成功;模型 CRUD 测试通过;唯一索引生效(重复 setting_key/username 抛错)。
+- [x] **T2.1** 迁移+模型:`system_settings`(字段 `setting_key`/`setting_value`,避保留字)、`admins`。
+  - 验收:`migrate:run` 建表成功;模型 CRUD 测试通过;唯一索引生效(重复 setting_key/username 抛错)。✅(BIGINT UNSIGNED PK + utf8mb4)
 - [ ] **T2.2** 迁移+模型:`merchants`(含 balance/commission 等字段、唯一索引)。
   - 验收:建表与索引正确;模型测试:唯一 username/slug 冲突被拒。
 - [ ] **T2.3** 迁移+模型:`categories`、`products`(外键、索引)。
