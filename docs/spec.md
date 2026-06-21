@@ -63,8 +63,8 @@ qfk/
 | 1xxx | 通用/参数错误(1001 参数校验失败,1002 资源不存在,1003 状态非法)|
 | 2xxx | 鉴权(2001 未登录,2002 token 失效,2003 无权限)|
 | 3xxx | 商品/卡密(3001 商品下架,3002 库存不足,3003 超出限购)|
-| 4xxx | 订单(4001 订单不存在,4002 订单已支付,4003 订单已关闭,4004 金额不符)|
-| 5xxx | 支付(5001 验签失败,5002 渠道不可用,5003 重复回调-已处理)|
+| 4xxx | 订单(4001 订单不存在,4002 订单已支付,4003 订单已关闭/过期,4004 金额不符,4005 订单异常待人工)|
+| 5xxx | 支付(5001 验签失败,5002 渠道不可用,5003 重复回调-已处理,5004 支付单归属校验失败)|
 
 ### 1.5 金额与时间
 - **金额**:数据库 `DECIMAL(10,2)`,单位元;所有加减乘除一律用 **bcmath**(`bcadd/bcsub/bcmul/bccomp`,scale=2),严禁浮点运算;比较金额用 `bccomp`。
@@ -225,7 +225,7 @@ qfk/
 | id | BIGINT UNSIGNED | PK, AI | |
 | payment_no | VARCHAR(32) | NOT NULL, **uniq_payment_no** | 平台支付单号(= 提交给渠道的 out_trade_no)|
 | order_id | BIGINT UNSIGNED | NOT NULL, **FK→orders.id** ON DELETE RESTRICT | |
-| merchant_id | BIGINT UNSIGNED | NOT NULL | 冗余,便于对账 |
+| merchant_id | BIGINT UNSIGNED | NOT NULL, **FK→merchants.id** ON DELETE RESTRICT | 冗余,便于对账;回调时校验 == order.merchant_id |
 | channel | VARCHAR(32) | NOT NULL | 渠道 code(alipay/wxpay/epay)|
 | amount | DECIMAL(10,2) | NOT NULL | 请求支付金额 |
 | status | TINYINT | NOT NULL DEFAULT 0 | 0 待支付 / 1 成功 / 2 失败 |
@@ -255,15 +255,15 @@ qfk/
 | 字段 | 类型 | 约束 | 说明 |
 |------|------|------|------|
 | id | BIGINT UNSIGNED | PK, AI | |
-| merchant_id | BIGINT UNSIGNED | NOT NULL, **FK→merchants.id** | |
+| merchant_id | BIGINT UNSIGNED | NOT NULL, **FK→merchants.id** ON DELETE RESTRICT | 有流水不可硬删商户 |
 | type | TINYINT | NOT NULL | 1 订单收入 / 2 平台佣金 / 3 提现 / 4 退款 |
 | amount | DECIMAL(10,2) | NOT NULL | 正收入/负支出 |
 | balance_after | DECIMAL(10,2) | NOT NULL | 变动后余额(对账)|
-| order_id | BIGINT UNSIGNED | NULL | 关联订单 |
+| order_id | BIGINT UNSIGNED | NULL, **FK→orders.id** ON DELETE SET NULL | 关联订单 |
 | remark | VARCHAR(255) | NULL | |
 | create_time | DATETIME | | |
 
-索引:`idx_merchant (merchant_id, id)`、`idx_order (order_id)`。
+索引:`idx_merchant (merchant_id, id)`、`idx_order (order_id)`、**`uniq_order_type (order_id, type)`**(结算幂等的数据库级兜底:同一订单同类型流水只许一条)。
 
 ### 2.11 withdrawals —— 商户提现单
 | 字段 | 类型 | 约束 | 说明 |
@@ -295,8 +295,8 @@ qfk/
 | 字段 | 类型 | 约束 | 说明 |
 |------|------|------|------|
 | id | BIGINT UNSIGNED | PK, AI | |
-| `key` | VARCHAR(64) | NOT NULL, **uniq_key** | |
-| value | TEXT | NULL | |
+| setting_key | VARCHAR(64) | NOT NULL, **uniq_key** | 避开 MySQL 保留字 `key` |
+| setting_value | TEXT | NULL | |
 | create_time / update_time | DATETIME | | |
 
 ### 2.14 关系总览(ER)
@@ -441,3 +441,47 @@ COMMIT;
 - **功能/集成测试**(`tests/Feature`):走 HTTP 内核(路由+控制器+DB),用例事务回滚隔离。
 - **并发测试**:发卡用例关闭事务包裹,开多 PDO 连接真实并发,验证一卡一售。
 - **测试库**:`qfk_test`,bootstrap 自动迁移;CLAUDE.md 规定金额/卡密/回调相关代码**先写测试再写实现**。
+
+---
+
+## 10. 设计加固说明(评审采纳,具约束力)
+
+> 本节是对 §2/§5/§6/§7 的**强制补充**,实现以本节为准。来自第一阶段对抗式设计评审。
+
+### 10.1 删除策略(防数据孤儿)
+- **有交易记录的商户/商品禁止硬删**,只能冻结/下架。`products→merchants`、`cards→products` 的物理删除在应用层先校验"无已锁定/已售卡(status∈{1,2})、无关联订单",否则拒绝。
+- `cards.order_id→orders` 用 `ON DELETE SET NULL`;`merchant_fund_logs.order_id→orders` 用 `SET NULL`(账本必须保留);其余资金/订单外键用 `RESTRICT`。
+- `categories` 等纯配置表可随商户 `CASCADE`。
+
+### 10.2 唯一索引与可空列语义
+- MySQL 唯一索引**不约束 NULL**。`uniq(channel, channel_trade_no)`、`uniq_email`、`uniq_secret`、`api_key` 等含可空列的唯一索引**仅在该列非空时去重**。
+- 因此**回调幂等的唯一可信根是"订单行锁 + 锁内重查 order.status"**(§10.4),`uniq(channel, channel_trade_no)` 只作二级兜底;`channel_trade_no` 为空的回调一律拒绝进入成功分支。
+- 纯 hex/ASCII 列(`secret_hash`、`token_hash`)迁移时显式 `CHARACTER SET ascii COLLATE ascii_bin`,保证精确二进制比对、省空间。
+
+### 10.3 卡密发放并发(对 §5/§6 的强制约束)
+1. **统一锁顺序**:同一业务事务内按 `products → cards → orders` 顺序加锁,避免跨事务死锁。下单时先 `SELECT * FROM products WHERE id=:pid FOR UPDATE` 锁商品行,再取卡。
+2. **取卡 + 二次校验**:`SELECT ... FOR UPDATE SKIP LOCKED` 取卡后,`UPDATE cards SET status=1,order_id=:oid,locked_at=NOW() WHERE id IN(:ids) AND status=0`,**断言 affected_rows == qty**,否则回滚。
+3. **stock 一律相对增减**,禁止"读后写绝对赋值":扣减 `UPDATE products SET stock=stock-:qty WHERE id=:pid AND stock>=:qty`;回补 `stock=stock+:qty`;均在同一事务内。`stock` 仍仅作展示;**判库存以 cards 加锁结果为准**;T9.2 对账以 `COUNT(cards.status=0)` 重算修复。
+4. **死锁重试**:发卡相关事务捕获 MySQL 死锁(1213/40001)后有限次(如 3 次)重试。
+5. **SKIP LOCKED 瞬态不足**:高并发瞬间可能对"实际仍有库存"的请求返回库存不足(被其他未提交事务持锁的卡被跳过)。下单接口对"取卡不足"做**有限次短重试**后再报 3002;此为可接受权衡,需在 T5.3 区分"确定性不足"与"瞬态不足"。
+6. **超时释放幂等**:关单 `UPDATE orders SET status=3 WHERE id=:oid AND status=0`;释放卡 `UPDATE cards SET status=0,order_id=NULL WHERE order_id=:oid AND status=1`;均校验 affected_rows;`order:clean` 加单实例锁防重入。
+
+### 10.4 支付回调(对 §7 的强制约束)
+1. **归属校验**(验签后、发货前,任一不符 → 5004 拒绝):`payment.order_id` 指向的订单即本单;`payment.merchant_id == order.merchant_id`;`payment.channel == 回调入口 {channel}`;`out_trade_no == payment.payment_no`。
+2. **金额校验**:`bccomp(解析出的实付金额, order.total_amount) === 0` 且实付 ≥ `payment.amount`。本期**仅支持 CNY**,渠道回调若含币种字段必须等于 CNY,否则拒绝。
+3. **主幂等**:进入事务后 `SELECT * FROM orders WHERE id=:oid FOR UPDATE`,**锁内重查 status**:
+   - 已支付/已发货 → 直接提交并返回**成功应答**(不重复发货,5003)。
+   - 已关闭(status=3,超时)却收到成功支付 → **不丢弃**:订单转 `4005 异常(已支付待人工/退款)`、payment 记成功、告警,返回成功应答停止重试;走人工/退款。(把订单超时 15min 设得远大于渠道最长回调延迟以降低概率。)
+4. **发货数量守恒**:发货前校验本单 `status=1` 锁定卡数 == `order.quantity`;发货 `UPDATE cards SET status=2,sold_at=NOW() WHERE order_id=:oid AND status=1` 断言 affected_rows == quantity。若卡不足(被超时释放/作废)→ **不可无限返回失败**(否则网关重试风暴 + 永久漏发):订单转 `4005 异常`、payment 记成功、结算照常、返回成功应答、转人工补发。`delivered_content` 取本次置为已售的同批卡 secret 快照,与 cards 同事务原子写入。
+5. **结算防丢失更新 + 幂等**:`SELECT balance FROM merchants WHERE id FOR UPDATE` 后用 bcmath 计算 `balance_after`;写 `merchant_fund_logs`(收入 + 佣金两条),依赖 `uniq(order_id, type)` 防重复入账。
+6. **渠道停用语义**:停用渠道只阻止**发起新支付**(T6.3);对**已存在 payment 的在途回调**仍正常验签处理,不得因渠道停用而拒绝(否则买家已付款却永久漏发)。
+7. **应答与通知**:仅核心事务成功后返回渠道要求的成功应答;失败返回非成功促重试(但见 §10.4.4 卡不足例外)。**通知(邮件/站内)必须在事务 COMMIT 之后异步投递**,失败仅记录重试,**绝不阻塞应答**。
+
+### 10.5 本期范围(已采用的默认取舍,可调整 → 见 blockers.md)
+- **支付渠道**:本期仅实现**易支付/MD5**;支付宝 RSA2、微信 v3 仅保留驱动接口。
+- **退款流程**:本期**不实现**资金/卡密退款编排;保留 `orders.status=4`/`fund_logs.type=4` 枚举占位,异常订单先入 `4005` 转人工。虚拟卡密一般不可回收,退款定位为"资金退回"后续专项。
+- **发货通知**:本期**预留**(接口与异步约定已定义),邮件模板与投递实现延后。
+- **买家账号**:本期默认**游客下单**;`buyers.password`/buyer token 为预留。
+- **限购语义**:`max_buy` 为**单笔上限**;"每买家累计限购"本期不做(如需,在下单事务内按 `buyer_email` 计数)。
+- **手动发货商品**(`products.type=2`):本期主线为 `type=1` 自动发卡;type=2 分支(支付后转待商户手动发货)延后。
+- **卡密加密存储**:本期默认**明文 + secret_hash 去重**;对称加密开关延后。
