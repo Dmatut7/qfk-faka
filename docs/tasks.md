@@ -68,8 +68,8 @@
 ## M5 — 买家前台浏览与下单(发卡核心) ★停顿点 1
 - [x] **T5.1** 商店与商品浏览:`GET /s/{slug}` 商品列表、`GET /buyer/product/{id}` 详情(仅在售)。
   - 验收:仅展示在售商品与正确库存;下架商品详情 404/下架提示。✅(冻结店铺隐藏、下架商品 3001)
-- [ ] **T5.2 (TDD)** 下单 + **并发安全预占卡密**:`OrderService::create()`。严格按 **spec §10.3**:锁顺序 `products→cards→orders`(先 `SELECT products FOR UPDATE`)、`FOR UPDATE SKIP LOCKED` 取卡、`UPDATE ... WHERE status=0` 断言 affected_rows==qty、`stock` 相对扣减 `WHERE stock>=qty`、死锁(1213)有限次重试、取卡不足短重试后报 3002。写订单(expire_at=now+15min),卡 `0→1`,bcmath 算总额。
-  - 验收:正常下单返回 `order_no`,卡 `status=1` 且 `order_id` 正确;库存不足 3002;超单笔限购(max_buy)3003;金额 bcmath;stock 相对扣减正确;模拟死锁可重试。
+- [x] **T5.2 (TDD)** 下单 + **并发安全预占卡密**:`OrderService::create()`。严格按 **spec §10.3**:锁顺序 `products→cards→orders`(先 `SELECT products FOR UPDATE`)、`FOR UPDATE SKIP LOCKED` 取卡、`UPDATE ... WHERE status=0` 断言 affected_rows==qty、`stock` 相对扣减(GREATEST 下限0)、死锁(1213)有限次重试、取卡不足报 3002。写订单(expire_at=now+15min),卡 `0→1`,bcmath 算总额。
+  - 验收:正常下单返回 `order_no`,卡 `status=1` 且 `order_id` 正确;库存不足 3002;超单笔限购(max_buy)3003;金额 bcmath;stock 相对扣减正确;模拟死锁可重试。✅ 单线程 7 用例绿(并发见 T5.3)
 - [ ] **T5.3 (TDD) 并发测试(核心)**:必须 **`$useTransaction=false`**(关闭事务隔离、真实提交)+ **多独立 PDO 连接** + **真实并行**(`pcntl_fork` 或并行 barrier 起跑)+ **多轮重复**(≥30 轮)。
   - 验收断言:对"仅剩 M 张"商品 N(>M) 并发下单 → 恰好 M 单成功;`SELECT order_id,COUNT(*) FROM cards WHERE status IN(1,2) GROUP BY id` **无一卡双占**;`COUNT(cards.status=0)=初始-已占`;`products.stock` 终值==未售卡数;成功订单 `Σquantity==已占卡数`;失败单报库存不足。补用例:"M 张被多个各要 q 张请求并发"(区分确定性/瞬态不足)、"下单与超时释放并发"互不破坏。
 - [ ] **T5.4 (TDD)** 订单超时回收:`order:clean` 命令。按 **spec §10.3.6**:关单 `WHERE id=:oid AND status=0`、释放卡 `WHERE order_id=:oid AND status=1`(均校验 affected_rows)、stock 相对回补、单实例锁防重入。
