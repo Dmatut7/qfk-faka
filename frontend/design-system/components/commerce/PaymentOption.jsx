@@ -24,6 +24,9 @@ if (typeof document !== 'undefined' && !document.getElementById('mk-pay-css')) {
   const s = document.createElement('style'); s.id = 'mk-pay-css'; s.textContent = CSS; document.head.appendChild(s);
 }
 
+// 无障碍说明:本组件使用 role="radio" + aria-checked 表达单选语义。
+// 由于组件自身无法控制外层容器,使用方需将包裹这些选项的容器设置
+// role="radiogroup"(并提供 aria-label),否则单选语义不完整。
 export function PaymentOption({
   name, desc, icon, tag, selected = false, onSelect, className = '', ...rest
 }) {
@@ -32,7 +35,8 @@ export function PaymentOption({
       type="button"
       className={['mk-pay', selected ? 'mk-pay--selected' : '', className].filter(Boolean).join(' ')}
       onClick={onSelect}
-      aria-pressed={selected}
+      role="radio"
+      aria-checked={selected}
       {...rest}
     >
       <span className="mk-pay__icon">{icon}</span>

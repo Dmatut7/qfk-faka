@@ -19,6 +19,8 @@ if (typeof document !== 'undefined' && !document.getElementById('mk-price-css'))
 
 function fmt(n) {
   if (typeof n !== 'number') return n;
+  // NaN/Infinity 等非有限数返回占位,避免显示 ¥NaN
+  if (!Number.isFinite(n)) return '0.00';
   return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 

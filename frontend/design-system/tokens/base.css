@@ -21,6 +21,8 @@ body {
 h1, h2, h3, h4, p { margin: 0; }
 
 a { color: var(--text-link); text-decoration: none; }
+/* inline body links get an underline cue on hover/focus (standalone button-style links opt out) */
+a:hover, a:focus-visible { text-decoration: underline; }
 
 /* numbers that should align in columns (prices, amounts, ids) */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
@@ -39,3 +41,13 @@ a { color: var(--text-link); text-decoration: none; }
 .ds-mono { font-family: var(--font-mono); font-variant-ligatures: none; }
 
 :focus-visible { outline: none; box-shadow: var(--shadow-focus); border-radius: var(--radius-sm); }
+
+/* respect users who request reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

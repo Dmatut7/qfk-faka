@@ -10,8 +10,8 @@
   --slate-150: #E4EAF2;
   --slate-200: #DCE3ED;
   --slate-300: #C3CEDC;
-  --slate-400: #94A3B8;
-  --slate-500: #64748B;
+  --slate-400: #6B7A90;  /* darkened from #94A3B8 for WCAG AA on white (~4.5:1) */
+  --slate-500: #586375;  /* darkened from #64748B for WCAG AA on bg-page (~4.5:1) */
   --slate-600: #4B5A70;
   --slate-700: #354155;
   --slate-800: #1F2A3C;
@@ -85,7 +85,7 @@
   --success-solid: var(--green-500);
   --success-border: var(--green-100);
   /* state: pending */
-  --pending-fg:   var(--amber-600);
+  --pending-fg:   #9A5E08;  /* deeper amber for >=4.5:1 chip text on amber-50 */
   --pending-bg:   var(--amber-50);
   --pending-solid: var(--amber-500);
   --pending-border: var(--amber-100);
@@ -95,11 +95,11 @@
   --danger-solid: var(--red-500);
   --danger-border: var(--red-100);
   /* accent: secure */
-  --secure-fg:    var(--teal-600);
+  --secure-fg:    #0A6F69;  /* deeper teal for >=4.5:1 chip text on teal-50 */
   --secure-bg:    var(--teal-50);
   --secure-solid: var(--teal-500);
 
   /* price / money emphasis */
   --price-color:  var(--slate-900);
-  --price-accent: #E5484D;
+  --price-accent: var(--red-500);  /* reuse single semantic red; was #E5484D, near-identical to danger red — collapsed to avoid two competing reds */
 }

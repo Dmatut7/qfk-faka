@@ -33,6 +33,7 @@ export function Input({
   className = '', ...rest
 }) {
   const inputId = id || (label ? `mk-${String(label).replace(/\s+/g, '-')}` : undefined);
+  const describedById = inputId ? `${inputId}-desc` : undefined;
   return (
     <div className="mk-field">
       {label && (
@@ -49,11 +50,16 @@ export function Input({
             error ? 'mk-input--error' : '', className,
           ].filter(Boolean).join(' ')}
           aria-invalid={!!error}
+          aria-describedby={(error || hint) ? describedById : undefined}
           {...rest}
         />
       </div>
       {(error || hint) && (
-        <span className={`mk-field__hint${error ? ' mk-field__hint--error' : ''}`}>
+        <span
+          id={describedById}
+          className={`mk-field__hint${error ? ' mk-field__hint--error' : ''}`}
+          {...(error ? { role: 'alert' } : {})}
+        >
           {error || hint}
         </span>
       )}

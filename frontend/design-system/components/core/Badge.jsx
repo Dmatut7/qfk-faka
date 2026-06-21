@@ -39,7 +39,7 @@ export function Badge({
       ].filter(Boolean).join(' ')}
       {...rest}
     >
-      {dot && <span className="mk-badge__dot" />}
+      {dot && <span className="mk-badge__dot" aria-hidden="true" />}
       {icon}
       {children}
     </span>

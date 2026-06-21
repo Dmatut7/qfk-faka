@@ -35,26 +35,63 @@ if (typeof document !== 'undefined' && !document.getElementById('mk-cardkey-css'
 }
 
 const LockIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 );
 const CopyIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
 );
 const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
 );
+
+// 视觉隐藏但对屏幕阅读器可见的样式
+const SR_ONLY = {
+  position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px',
+  overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+};
+
+// document.execCommand('copy') 兜底:创建临时 textarea → select → execCommand
+function legacyCopy(text) {
+  if (typeof document === 'undefined') return false;
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
 
 export function CardKey({
   code, label = '卡密', index, locked = false, lockedHint = '支付完成后自动显示',
   onCopy, className = '', ...rest
 }) {
   const [done, setDone] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  const succeed = (text) => {
+    setFailed(false); setDone(true); onCopy && onCopy(text);
+    setTimeout(() => setDone(false), 1800);
+  };
+  const fallback = (text) => {
+    if (legacyCopy(text)) { succeed(text); }
+    else { setDone(false); setFailed(true); setTimeout(() => setFailed(false), 2500); }
+  };
   const copy = () => {
     const text = String(code || '');
-    const finish = () => { setDone(true); onCopy && onCopy(text); setTimeout(() => setDone(false), 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(finish).catch(finish);
-    } else { finish(); }
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      // 成功才显示「已复制」;失败走 execCommand 兜底
+      navigator.clipboard.writeText(text).then(() => succeed(text)).catch(() => fallback(text));
+    } else {
+      // 无 clipboard API 时也走 execCommand 兜底
+      fallback(text);
+    }
   };
   return (
     <div className={['mk-cardkey', locked ? 'mk-cardkey--locked' : '', className].filter(Boolean).join(' ')} {...rest}>
@@ -70,12 +107,18 @@ export function CardKey({
         ) : (
           <>
             <code className="mk-cardkey__code">{code}</code>
-            <button type="button" className={`mk-cardkey__copy${done ? ' mk-cardkey__copy--done' : ''}`} onClick={copy}>
-              {done ? <CheckIcon /> : <CopyIcon />}{done ? '已复制' : '复制'}
+            <button
+              type="button"
+              className={`mk-cardkey__copy${done ? ' mk-cardkey__copy--done' : ''}`}
+              onClick={copy}
+              aria-label={`复制${label}`}
+            >
+              {done ? <CheckIcon /> : <CopyIcon />}{done ? '已复制' : (failed ? '请手动复制' : '复制')}
             </button>
           </>
         )}
       </div>
+      <span role="status" aria-live="polite" style={SR_ONLY}>{done ? '卡密已复制' : ''}</span>
     </div>
   );
 }

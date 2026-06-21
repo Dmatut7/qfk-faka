@@ -17,11 +17,11 @@
 ## 任务
 - [x] **F0** 建 `frontend/`,移入设计系统(`design-system/`),原件 zip 备份。
 - [x] **F1** Vite 骨架:ESM 导入设计系统组件 + tokens CSS,`vite build` 通过。
-- [ ] **F2** `src/api.js` 适配层:fetch 封装、baseURL 可配、所有买家端点、`{code,msg,data}` 错误码→文案、status 数字↔语义映射、字段映射(order_no/total_amount/cards)。
-- [ ] **F3** 四屏接真后端:StorefrontHome(`/s/{slug}`)、ProductDetail(`/buyer/product/{id}` + 下单)、PaymentScreen(发起支付→跳转/轮询)、OrderLookup(`/buyer/order/query`)+ App 路由。删除 mkKeys/假数据。
-- [ ] **F4** 异步发货流:付款后进入「发货中」轮询查单 → status=2 展示卡密;覆盖 status=1/3/5 与 15min `expire_at` 倒计时、过期阻断。
-- [ ] **F5** 组件级修复:CardKey 复制成功/失败分流 + execCommand 兜底 + aria-live;QuantityStepper 受控可编辑 + max<min 守卫 + 焦点环;PaymentOption radio 语义;Input aria-describedby;PriceTag NaN 守卫;Badge dot aria-hidden。
-- [ ] **F6** token 修复:对比度(text-subtle/pending-fg/secure-fg/实心徽标加深至 WCAG AA)、`prefers-reduced-motion`、链接 hover 下划线、价格红 vs 危险红区分。
+- [x] **F2** `src/api.js` 适配层:fetch 封装、baseURL 可配、所有买家端点、`{code,msg,data}` 错误码→文案、status 数字↔语义映射、字段映射(order_no/total_amount/cards)。
+- [x] **F3** 四屏接真后端:StorefrontHome(`/s/{slug}`)、ProductDetail(`/buyer/product/{id}` + 下单)、PaymentScreen(发起支付→跳转/轮询)、OrderLookup(`/buyer/order/query`)+ App 路由。删除 mkKeys/假数据。
+- [x] **F4** 异步发货流:付款后进入「发货中」轮询查单 → status=2 展示卡密;覆盖 status=1/3/5 与 15min `expire_at` 倒计时、过期阻断。
+- [x] **F5** 组件级修复:CardKey 复制成功/失败分流 + execCommand 兜底 + aria-live;QuantityStepper 受控可编辑 + max<min 守卫 + 焦点环;PaymentOption radio 语义;Input aria-describedby;PriceTag NaN 守卫;Badge dot aria-hidden。
+- [x] **F6** token 修复:对比度(text-subtle/pending-fg/secure-fg/实心徽标加深至 WCAG AA)、`prefers-reduced-motion`、链接 hover 下划线、价格红 vs 危险红区分。
 - [ ] **F7** 对活后端端到端验证:浏览→下单→(脚本触发签名回调模拟支付)→轮询→取卡;伪造回调被拒。
 - [ ] **F8** 响应式 + 健壮性:@media 断点、网格 minmax 防溢出、空/错/载态、长内容截断、safe-area。
 
