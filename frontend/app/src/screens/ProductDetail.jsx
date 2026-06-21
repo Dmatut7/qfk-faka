@@ -114,7 +114,10 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   // 把当前 qty 钳进合法区间(渲染期纠偏,QuantityStepper 内部亦 clamp)
   const safeQty = Math.min(Math.max(qty, minBuy), effMax);
   const emailOk = EMAIL_RE.test(email.trim());
-  const total = p.price * safeQty;
+  // 金额纪律:一律走整数分,禁止浮点乘减。展示时再 /100。
+  const priceCents = Math.round(Number(p.price) * 100);
+  const totalCents = priceCents * safeQty;
+  const total = totalCents / 100;
 
   const submit = async () => {
     setTouched(true);
@@ -191,7 +194,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         <PriceTag amount={p.price} original={hasOriginal ? p.original : undefined} size="lg" />
         {hasOriginal && (
           <span style={{ fontSize: 13, color: 'var(--success-fg)', fontWeight: 700, background: 'var(--success-bg)', padding: '3px 9px', borderRadius: 99 }}>
-            省 ¥{(p.original - p.price).toFixed(0)}
+            省 ¥{((Math.round(Number(p.original) * 100) - priceCents) / 100).toFixed(0)}
           </span>
         )}
       </div>

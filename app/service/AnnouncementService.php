@@ -67,10 +67,15 @@ class AnnouncementService
         $a      = $this->find($id);
         $update = [];
 
-        if (array_key_exists('title', $d) && trim((string) $d['title']) !== '') {
-            $update['title'] = trim((string) $d['title']);
+        if (array_key_exists('title', $d)) {
+            $title = trim((string) $d['title']);
+            if ($title === '') {
+                throw new BizException(Code::PARAM_ERROR, '标题不能为空');
+            }
+            $update['title'] = $title;
         }
-        if (array_key_exists('content', $d) && (string) $d['content'] !== '') {
+        if (array_key_exists('content', $d)) {
+            // content 允许空串落库(清空公告正文)
             $update['content'] = (string) $d['content'];
         }
         if (array_key_exists('status', $d) && $d['status'] !== '' && $d['status'] !== null) {

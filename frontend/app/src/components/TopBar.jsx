@@ -5,6 +5,9 @@ import logoMark from '../../../design-system/assets/logo-mark.svg';
 /* 顶栏 — logo / 店名 / 取卡入口。从设计系统 storefront 端口为 ESM。 */
 export default function TopBar({ shopName, shopIntro, onHome, onLookup, back, onBack, title }) {
   return (
+    <>
+    {/* 顶栏高度抽成全局 CSS 变量,供 sticky 分类 tab 等用 top:var(--topbar-h) 对齐,避免硬编码 60。 */}
+    <style>{':root{--topbar-h:60px;}'}</style>
     <header
       style={{
         position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,0.86)',
@@ -70,5 +73,6 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, back, on
         </button>
       </div>
     </header>
+    </>
   );
 }

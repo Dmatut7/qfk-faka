@@ -170,6 +170,27 @@ class AdminChannelTest extends TestCase
         $this->assertFalse($r['data']['valid']);
     }
 
+    public function testTestSignUsesPathIdNotBodyCode(): void
+    {
+        // 路径 id 指向「正确密钥」渠道;body code 故意指向另一条「错误密钥」渠道。
+        // 验签结果应由 URL 路径 id 决定 → 用正确密钥签名应判定 valid。
+        $rightKey = 'rightsecret';
+        $right = $this->makeChannel(['code' => 'sign_right', 'config' => ['pid' => '1', 'key' => $rightKey]]);
+        $this->makeChannel(['code' => 'sign_wrong', 'config' => ['pid' => '1', 'key' => 'wrongsecret']]);
+
+        $params = ['pid' => '1', 'out_trade_no' => 'PATHWINS', 'money' => '1.00', 'trade_status' => 'TRADE_SUCCESS'];
+        $signed = $this->signEpay($params, $rightKey); // 用「正确密钥」签名
+
+        $r = $this->callJson('POST', '/admin/channels/' . $right->id . '/test-sign', [
+            'code'          => 'sign_wrong', // body 兜底字段故意错位,应被忽略
+            'sample_params' => $signed,
+        ], $this->hdr());
+
+        $this->assertSame(0, $r['code']);
+        // 若错误地用 body 的 sign_wrong(wrongsecret)验签会失败;路径 id 生效则为 true
+        $this->assertTrue($r['data']['valid']);
+    }
+
     public function testRequiresAdminAuth(): void
     {
         $this->assertSame(401, $this->call('GET', '/admin/channels')->getCode());

@@ -3,7 +3,10 @@ declare(strict_types=1);
 
 namespace app\controller\admin;
 
+use app\common\BizException;
+use app\common\Code;
 use app\controller\BaseApiController;
+use app\model\PaymentChannel;
 use app\service\AdminChannelService;
 
 /**
@@ -63,7 +66,19 @@ class Channels extends BaseApiController
 
     public function testSign(AdminChannelService $svc, $id)
     {
-        $code   = (string) $this->input('code', '');
+        // 「对哪条渠道验签」由 URL 路径 id 决定:以 id 查渠道取其 code;
+        // body code 仅在路径渠道不存在时兜底(兼容旧调用)。
+        $code = '';
+        $ch   = PaymentChannel::find((int) $id);
+        if ($ch) {
+            $code = (string) $ch->code;
+        } else {
+            $code = (string) $this->input('code', '');
+            if ($code === '') {
+                throw new BizException(Code::NOT_FOUND, '渠道不存在');
+            }
+        }
+
         $sample = $this->input('sample_params', []);
         if (!is_array($sample)) {
             $sample = [];

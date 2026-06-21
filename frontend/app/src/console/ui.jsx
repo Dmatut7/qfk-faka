@@ -96,12 +96,13 @@ export function Spinner({ size = 22 }) {
   );
 }
 
-export function ErrorBar({ message, onRetry }) {
+export function ErrorBar({ message, onRetry, onClose }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--danger-bg, #fdeced)', border: '1px solid var(--danger-solid)', borderRadius: 'var(--radius-md)', color: 'var(--danger-fg)', fontSize: 13 }}>
       <Icons.AlertTriangle size={18} color="var(--danger-solid)" />
       <span style={{ flex: 1 }}>{message}</span>
       {onRetry && <button onClick={onRetry} style={{ border: 'none', background: 'transparent', color: 'var(--danger-fg)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>重试</button>}
+      {onClose && <button onClick={onClose} aria-label="关闭" style={{ border: 'none', background: 'transparent', color: 'var(--danger-fg)', fontWeight: 700, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>}
     </div>
   );
 }

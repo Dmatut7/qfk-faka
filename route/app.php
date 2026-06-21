@@ -76,7 +76,7 @@ Route::group('admin', function () {
 // ============ 商户后台 merchant ============
 Route::group('merchant', function () {
     Route::post('login', 'merchant.Auth/login');
-    Route::post('register', 'merchant.Auth/register'); // 商户自助注册(公开,落库待审核)
+    Route::post('register', 'merchant.Auth/register')->middleware(\app\middleware\RateLimit::class, 5, 3600); // 商户自助注册(公开,落库待审核;按 IP 限流 5 次/小时)
 
     Route::group(function () {
         Route::post('logout', 'merchant.Auth/logout');

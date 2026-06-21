@@ -358,15 +358,38 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
   const cards = (o && o.cards) || [];
 
   const [copied, setCopied] = React.useState(false);
-  function copyCards() {
+  function flashCopied() {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  async function copyCards() {
     const text = cards.join('\n');
     if (!text) return;
+    // 1) navigator.clipboard,成功才提示
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        flashCopied();
+        return;
+      } catch {
+        /* 落到 execCommand 兜底 */
+      }
+    }
+    // 2) document.execCommand('copy') 兜底
     try {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) { flashCopied(); return; }
     } catch {
-      /* 复制失败时静默,用户可手动选择 */
+      /* 复制失败,用户可手动选择 */
     }
   }
 

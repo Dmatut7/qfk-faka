@@ -89,9 +89,24 @@ export const api = {
    后端只给 id/title/price/stock(列表更精简),设计 demo 里的
    desc/original/sold/thumb 后端没有 → 优雅缺省,不报错。
    ------------------------------------------------------------ */
+/* 分类 id 归一化:纯数字串→Number,否则→去空白的 String,空→null。
+   避免后端 number 与前端 string 形态不一致导致 === 漏匹配。 */
+export function normId(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === '') return null;
+  return /^\d+$/.test(s) ? Number(s) : s;
+}
+
+/* String(id) 的稳定字符哈希(djb2),纯字母 id 也能均匀散到不同 emoji。 */
+function hashStr(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 const THUMBS = ['📦', '🎬', '🤖', '🪟', '🎵', '🎨', '🎮', '⚔️', '🎟️', '💎'];
 export function normalizeProduct(p) {
-  const idNum = parseInt(String(p.id).replace(/\D/g, ''), 10) || 0;
   const price = Number(p.price);
   // market_price 是「划线原价」,仅当 > 实售价才作为 original 展示。
   const mkt = p.market_price != null && p.market_price !== '' ? Number(p.market_price) : undefined;
@@ -101,9 +116,8 @@ export function normalizeProduct(p) {
   // 商品主图 URL(后端 image),空串视为无图,回落 emoji 占位。
   const image = p.image != null && String(p.image).trim() !== '' ? String(p.image) : '';
   const sales = p.sales_count != null ? Number(p.sales_count) : (p.sold != null ? Number(p.sold) : undefined);
-  // category_id 统一转数字(便于按 id 精确筛选),非法/缺失为 null。
-  const catRaw = p.category_id;
-  const category_id = catRaw == null || catRaw === '' ? null : (Number.isNaN(Number(catRaw)) ? catRaw : Number(catRaw));
+  // category_id 归一化(纯数字串→Number,否则→String去空白,空→null),便于按 id 精确筛选。
+  const category_id = normId(p.category_id);
   return {
     id: p.id,
     name: p.title ?? p.name ?? '商品',
@@ -116,7 +130,7 @@ export function normalizeProduct(p) {
     stock: Number(p.stock ?? 0),
     sales_count: sales,
     sold: sales,
-    thumb: p.thumb || THUMBS[idNum % THUMBS.length],
+    thumb: p.thumb || THUMBS[hashStr(String(p.id)) % THUMBS.length],
     min_buy: Number(p.min_buy ?? 1),
     max_buy: Number(p.max_buy ?? 0), // 0 = 不限
     delivery_message: p.delivery_message || '',

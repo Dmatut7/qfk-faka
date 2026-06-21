@@ -162,14 +162,14 @@ export default function Withdrawals({ api, session }) {
         <StatCard
           label="当前待审核笔数"
           value={pendingCount}
-          icon={<Icons.Clock />}
+          icon="Clock"
           tone="pending"
           sub="仅统计本页可见的待审核单"
         />
         <StatCard
           label="待审核金额合计"
           value={<Money amount={pendingSum} strong />}
-          icon={<Icons.ShieldCheck />}
+          icon="ShieldCheck"
           tone="brand"
           sub="通过后将从冻结余额中打款"
         />
@@ -200,7 +200,7 @@ export default function Withdrawals({ api, session }) {
               placeholder="按商户ID筛选"
               value={merchantId}
               onChange={(e) => setMerchantId(e.target.value)}
-              iconLeft={<Icons.Search />}
+              icon={<Icons.Search />}
             />
           </div>
           <span style={{ color: 'var(--color-text-muted)' }}>共 {total} 笔</span>

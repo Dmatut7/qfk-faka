@@ -100,6 +100,35 @@ class AnnouncementTest extends TestCase
         $this->assertSame(8, (int) $fresh->sort);
     }
 
+    public function testUpdateContentToEmptyPersists(): void
+    {
+        $a = Announcement::create(['title' => '标题', 'content' => '原内容', 'status' => 1, 'sort' => 0]);
+
+        $r = $this->callJson('POST', '/admin/announcements/' . $a->id, [
+            'content' => '',
+        ], $this->hdr());
+
+        $this->assertSame(0, $r['code']);
+        $fresh = Announcement::find($a->id);
+        // content 空串应真正落库(允许清空正文)
+        $this->assertSame('', (string) $fresh->content);
+        // 标题未传,保持不变
+        $this->assertSame('标题', $fresh->title);
+    }
+
+    public function testUpdateEmptyTitleRejected(): void
+    {
+        $a = Announcement::create(['title' => '原标题', 'content' => '内容', 'status' => 1, 'sort' => 0]);
+
+        $r = $this->callJson('POST', '/admin/announcements/' . $a->id, [
+            'title' => '',
+        ], $this->hdr());
+
+        $this->assertSame(\app\common\Code::PARAM_ERROR, $r['code']);
+        // 标题未被破坏
+        $this->assertSame('原标题', Announcement::find($a->id)->title);
+    }
+
     public function testDeleteAnnouncement(): void
     {
         $a = Announcement::create(['title' => '待删', 'content' => 'x', 'status' => 1, 'sort' => 0]);

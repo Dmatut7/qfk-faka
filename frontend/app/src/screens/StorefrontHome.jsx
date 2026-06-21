@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icons } from '../Icons.jsx';
+import { normId } from '../api.js';
 
 /* 鲸发卡风格发卡商城首页 —
    店招(cover 横幅 + 圆形 logo 叠左下 + 店名 + 认证 + 三联统计 + 联系客服)
@@ -353,14 +354,14 @@ export default function StorefrontHome({ shop, categories, products, loading, er
     const cs = Array.isArray(categories) ? categories : [];
     if (cs.length) {
       return cs.map((c) => ({
-        id: Number.isNaN(Number(c.id)) ? c.id : Number(c.id),
+        id: normId(c.id),
         name: c.name || ('分类 ' + c.id),
         goods_count: c.goods_count,
       }));
     }
     const seen = new Map();
     for (const p of list) {
-      const id = p.category_id;
+      const id = normId(p.category_id);
       if (id != null && !seen.has(id)) seen.set(id, '分类 ' + id);
     }
     return Array.from(seen, ([id, name]) => ({ id, name }));
@@ -369,7 +370,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const allCount = list.length;
   const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
   // 真正按 category_id 精确筛选。
-  const byCat = cat === 'all' ? list : list.filter((p) => p.category_id === cat);
+  const byCat = cat === 'all' ? list : list.filter((p) => normId(p.category_id) === normId(cat));
   // 客户端实时搜索:在分类筛选结果上,按 name 包含关键词(不区分大小写)叠加过滤。
   const q = query.trim().toLowerCase();
   const shown = q ? byCat.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byCat;
@@ -498,7 +499,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
       {/* 分类 tab(下划线样式) */}
       {tabs.length > 1 && !loading && !error && (
-        <div style={{ position: 'sticky', top: 60, zIndex: 10, background: 'var(--bg-page)', marginTop: 16 }}>
+        <div style={{ position: 'sticky', top: 'var(--topbar-h, 60px)', zIndex: 10, background: 'var(--bg-page)', marginTop: 16 }}>
           <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', gap: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
               {tabs.map((c) => {

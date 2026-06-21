@@ -55,3 +55,7 @@
 - 买家:平台客服悬浮按钮(全局,QQ/微信/手机/二维码)+ OrderLookup 查单风险提示条(对标鲸发卡 order_query_tips)。
 - 控制台:admin 平台配置改为友好表单(站点/客服/订单提示分组 + 兜底KV)。
 - 验证:286测试 + vite build + e2e 4/4 + /config 实测全绿。
+
+## 第10-11轮(2026-06-22):对标diff+审计 → 修缺陷 — 已完成✅
+- R10 对标鲸发卡+深度查bug,R11 全修:注册限流(防灌库)、公告可清空内容、渠道验签按路径id、前端金额改整数分(守金额纪律)、分类id归一(防类型失配)、thumb稳定哈希、sticky顶栏变量、Withdrawals图标/可关错误条/Input图标、订单复制execCommand兜底。
+- 验证:composer test 289绿(+3)、vite build、e2e 4/4。
