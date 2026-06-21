@@ -16,8 +16,8 @@ return [
     'url_route_must'        => false,
     // 合并路由规则
     'route_rule_merge'      => false,
-    // 路由是否完全匹配
-    'route_complete_match'  => false,
+    // 路由是否完全匹配(REST API 必须开启,否则 categories 会吞掉 categories/:id)
+    'route_complete_match'  => true,
     // 访问控制器层名称
     'controller_layer'      => 'controller',
     // 空控制器名

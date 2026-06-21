@@ -11,7 +11,7 @@ use tests\TestCase;
  */
 class MerchantModelTest extends TestCase
 {
-    private function makeMerchant(array $override = []): Merchant
+    private function newMerchant(array $override = []): Merchant
     {
         $u = uniqid();
         return Merchant::create(array_merge([
@@ -24,7 +24,7 @@ class MerchantModelTest extends TestCase
 
     public function testDefaultsAndCrud(): void
     {
-        $m = $this->makeMerchant();
+        $m = $this->newMerchant();
         $found = Merchant::find($m->id);
 
         $this->assertSame(Merchant::STATUS_PENDING, $found->status, '默认待审核');
@@ -38,21 +38,21 @@ class MerchantModelTest extends TestCase
 
     public function testUsernameUnique(): void
     {
-        $m = $this->makeMerchant();
+        $m = $this->newMerchant();
         $this->expectException(\Exception::class);
-        $this->makeMerchant(['username' => $m->username]);
+        $this->newMerchant(['username' => $m->username]);
     }
 
     public function testSlugUnique(): void
     {
-        $m = $this->makeMerchant();
+        $m = $this->newMerchant();
         $this->expectException(\Exception::class);
-        $this->makeMerchant(['store_slug' => $m->store_slug]);
+        $this->newMerchant(['store_slug' => $m->store_slug]);
     }
 
     public function testActiveStatus(): void
     {
-        $m = $this->makeMerchant(['status' => Merchant::STATUS_ACTIVE]);
+        $m = $this->newMerchant(['status' => Merchant::STATUS_ACTIVE]);
         $this->assertTrue(Merchant::find($m->id)->isActive());
     }
 }

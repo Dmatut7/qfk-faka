@@ -33,5 +33,11 @@ Route::group('merchant', function () {
         Route::post('logout', 'merchant.Auth/logout');
         Route::get('me', 'merchant.Profile/me');
         Route::post('change-password', 'merchant.Profile/changePassword');
+
+        // 分类管理(全用 POST + 路径 id,便于测试与跨端兼容)
+        Route::get('categories', 'merchant.Category/index');
+        Route::post('categories', 'merchant.Category/create');
+        Route::post('categories/:id', 'merchant.Category/update');
+        Route::post('categories/:id/delete', 'merchant.Category/delete');
     })->middleware(\app\middleware\MerchantAuth::class);
 });

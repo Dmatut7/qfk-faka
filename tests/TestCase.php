@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace tests;
 
+use app\model\AccessToken;
+use app\model\Admin;
+use app\model\Merchant;
+use app\service\TokenService;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use think\App;
 use think\facade\Db;
@@ -82,6 +86,32 @@ abstract class TestCase extends BaseTestCase
     protected function bearer(string $token): array
     {
         return ['authorization' => 'Bearer ' . $token];
+    }
+
+    /** 创建一个正常状态商户 */
+    protected function makeMerchant(array $override = []): Merchant
+    {
+        $u = uniqid();
+        return Merchant::create(array_merge([
+            'username'   => 'm_' . $u,
+            'password'   => password_hash('pw', PASSWORD_BCRYPT),
+            'store_name' => '测试店',
+            'store_slug' => 'sl_' . $u,
+            'status'     => Merchant::STATUS_ACTIVE,
+        ], $override));
+    }
+
+    /** 直接为商户签发令牌(跳过登录端点,便于鉴权后接口测试) */
+    protected function merchantToken(int $merchantId): string
+    {
+        return (new TokenService())->issue(AccessToken::OWNER_MERCHANT, $merchantId);
+    }
+
+    /** 创建管理员并签发令牌 */
+    protected function makeAdminToken(): string
+    {
+        $a = Admin::create(['username' => 'adm_' . uniqid(), 'password' => password_hash('pw', PASSWORD_BCRYPT)]);
+        return (new TokenService())->issue(AccessToken::OWNER_ADMIN, (int) $a->id);
     }
 
     /**
