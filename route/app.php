@@ -20,6 +20,8 @@ Route::group('admin', function () {
     Route::group(function () {
         Route::post('logout', 'admin.Auth/logout');
         Route::get('me', 'admin.Profile/me');
+        // 商户管理
+        Route::post('merchants', 'admin.Merchants/create');
     })->middleware(\app\middleware\AdminAuth::class);
 });
 
