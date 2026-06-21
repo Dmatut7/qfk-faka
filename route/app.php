@@ -16,12 +16,12 @@ Route::get('health', 'Health/index');
 // ============ 买家前台 buyer(公开) ============
 Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
-Route::post('buyer/order', 'buyer.Order/create');
+Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\RateLimit::class, 30, 60); // 30 次/分
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
 
 // ============ 支付异步回调(公开,靠验签)============
-Route::rule('pay/notify/:channel', 'pay.Notify/index');
+Route::rule('pay/notify/:channel', 'pay.Notify/index')->middleware(\app\middleware\RateLimit::class, 120, 60);
 
 // ============ 平台后台 admin ============
 Route::group('admin', function () {
@@ -38,6 +38,27 @@ Route::group('admin', function () {
         Route::post('merchants/:id/unfreeze', 'admin.Merchants/unfreeze');
         Route::post('merchants/:id/commission', 'admin.Merchants/setCommission');
         Route::post('merchants/:id/reset-password', 'admin.Merchants/resetPassword');
+
+        // 支付渠道管理 (T8.2)
+        Route::get('channels', 'admin.Channels/index');
+        Route::post('channels', 'admin.Channels/create');
+        Route::post('channels/:id', 'admin.Channels/update');
+        Route::post('channels/:id/status', 'admin.Channels/setStatus');
+        Route::post('channels/:id/test-sign', 'admin.Channels/testSign');
+
+        // 提现审核 (T8.3)
+        Route::get('withdrawals', 'admin.Withdrawals/index');
+        Route::post('withdrawals/:id/approve', 'admin.Withdrawals/approve');
+        Route::post('withdrawals/:id/reject', 'admin.Withdrawals/reject');
+
+        // 平台配置 + 对账报表 (T8.4)
+        Route::get('settings', 'admin.System/settings');
+        Route::post('settings', 'admin.System/setSetting');
+        Route::get('reports/settlement', 'admin.System/settlementReport');
+
+        // 跨商户只读视图 (T8.5)
+        Route::get('orders', 'admin.Orders/index');
+        Route::get('products', 'admin.Products/index');
     })->middleware(\app\middleware\AdminAuth::class);
 });
 

@@ -9,6 +9,7 @@ use app\model\Merchant;
 use app\service\TokenService;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use think\App;
+use think\facade\Cache;
 use think\facade\Db;
 use think\Response;
 
@@ -34,6 +35,13 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         $this->app = $GLOBALS['__think_test_app'];
+
+        // 清缓存,避免限流计数等跨用例累积
+        try {
+            Cache::clear();
+        } catch (\Throwable $e) {
+            // 缓存未配置时忽略
+        }
 
         if ($this->useTransaction) {
             Db::startTrans();

@@ -20,6 +20,7 @@ class Code
     public const PARAM_ERROR   = 1001; // 参数校验失败
     public const NOT_FOUND     = 1002; // 资源不存在
     public const STATE_INVALID = 1003; // 状态非法
+    public const RATE_LIMITED  = 1029; // 请求过于频繁
 
     // 2xxx 鉴权
     public const UNAUTHORIZED  = 2001; // 未登录
@@ -66,6 +67,8 @@ class Code
             case self::FORBIDDEN:
             case self::PAYMENT_OWNERSHIP:
                 return 403;
+            case self::RATE_LIMITED:
+                return 429;
             default:
                 return 200;
         }
