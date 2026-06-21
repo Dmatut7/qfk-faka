@@ -31,7 +31,13 @@ Route::group('admin', function () {
         Route::post('logout', 'admin.Auth/logout');
         Route::get('me', 'admin.Profile/me');
         // 商户管理
+        Route::get('merchants', 'admin.Merchants/index');
         Route::post('merchants', 'admin.Merchants/create');
+        Route::post('merchants/:id/approve', 'admin.Merchants/approve');
+        Route::post('merchants/:id/freeze', 'admin.Merchants/freeze');
+        Route::post('merchants/:id/unfreeze', 'admin.Merchants/unfreeze');
+        Route::post('merchants/:id/commission', 'admin.Merchants/setCommission');
+        Route::post('merchants/:id/reset-password', 'admin.Merchants/resetPassword');
     })->middleware(\app\middleware\AdminAuth::class);
 });
 

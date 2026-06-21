@@ -11,6 +11,12 @@ use app\service\AdminMerchantService;
  */
 class Merchants extends BaseApiController
 {
+    public function index(AdminMerchantService $svc)
+    {
+        $filter = $this->params(['keyword', 'status']);
+        return $this->success($svc->list($filter, (int) $this->input('page', 1)));
+    }
+
     public function create(AdminMerchantService $svc)
     {
         $data = $this->params(['username', 'password', 'email', 'phone', 'store_name', 'store_slug', 'commission_rate']);
@@ -31,5 +37,34 @@ class Merchants extends BaseApiController
             'store_slug' => $m->store_slug,
             'status'     => (int) $m->status,
         ]);
+    }
+
+    public function approve(AdminMerchantService $svc, $id)
+    {
+        return $this->success(['status' => (int) $svc->approve((int) $id)->status]);
+    }
+
+    public function freeze(AdminMerchantService $svc, $id)
+    {
+        return $this->success(['status' => (int) $svc->freeze((int) $id)->status]);
+    }
+
+    public function unfreeze(AdminMerchantService $svc, $id)
+    {
+        return $this->success(['status' => (int) $svc->unfreeze((int) $id)->status]);
+    }
+
+    public function setCommission(AdminMerchantService $svc, $id)
+    {
+        $rate = (string) $this->input('commission_rate', '');
+        return $this->success(['commission_rate' => $svc->setCommission((int) $id, $rate)->commission_rate]);
+    }
+
+    public function resetPassword(AdminMerchantService $svc, $id)
+    {
+        $data = $this->params(['new_password']);
+        $this->validate($data, ['new_password' => 'require|min:6']);
+        $svc->resetPassword((int) $id, $data['new_password']);
+        return $this->success();
     }
 }
