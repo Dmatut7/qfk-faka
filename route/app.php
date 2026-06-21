@@ -16,6 +16,8 @@ Route::get('health', 'Health/index');
 // ============ 买家前台 buyer(公开) ============
 Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
+Route::post('buyer/order', 'buyer.Order/create');
+Route::post('buyer/order/query', 'buyer.Order/query');
 
 // ============ 平台后台 admin ============
 Route::group('admin', function () {
