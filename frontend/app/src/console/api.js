@@ -131,8 +131,10 @@ export const adminApi = {
   channels: () => call('/admin/channels'),
   createChannel: (d) => call('/admin/channels', { method: 'POST', body: d }),
   updateChannel: (id, d) => call(`/admin/channels/${id}`, { method: 'POST', body: d }),
-  setChannelStatus: (id, status) => call(`/admin/channels/${id}/status`, { method: 'POST', body: { status } }),
-  testSign: (id) => call(`/admin/channels/${id}/test-sign`, { method: 'POST' }),
+  // 后端 setStatus 读 input('enable')(bool),非 status
+  setChannelStatus: (id, enable) => call(`/admin/channels/${id}/status`, { method: 'POST', body: { enable: enable ? 1 : 0 } }),
+  // 后端 testSign 读 code(+ 可选 sample_params),用渠道 code 自测
+  testSign: (id, code = '') => call(`/admin/channels/${id}/test-sign`, { method: 'POST', body: { code } }),
 
   withdrawals: (params) => call('/admin/withdrawals' + qs(params)),
   approveWithdrawal: (id, d) => call(`/admin/withdrawals/${id}/approve`, { method: 'POST', body: d || {} }),

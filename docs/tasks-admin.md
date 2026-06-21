@@ -14,25 +14,25 @@
 ## 任务
 
 ### A0 · 控制台基座
-- [ ] **A0** 多页骨架:`console.html` + `src/console/{main,api,ConsoleApp}.jsx`;登录(商户/平台切换)、Bearer token 存储、侧栏布局、错误码文案、vite proxy 加 `^/merchant/ ^/admin/`、多页 build。`vite build` 通过。
+- [x] **A0** 多页骨架:`console.html` + `src/console/{main,api,ConsoleApp}.jsx`;登录(商户/平台切换)、Bearer token 存储、侧栏布局、错误码文案、vite proxy 加 `^/merchant/ ^/admin/`、多页 build。`vite build` 通过。
 
 ### 商户后台(MerchantAuth)
 - [x] **M1 登录** `POST /merchant/login` → token;错误提示;登录态持久(localStorage)。
-- [ ] **M2 商品管理** `GET/POST /merchant/products`、`POST products/:id`、`/:id/status`、`/:id/delete`;列表 + 新建/编辑 + 上下架 + 删除(有卡密禁删按后端)。
-- [ ] **M3 分类管理** `GET/POST /merchant/categories`、`/:id`、`/:id/delete`。
-- [ ] **M4 卡密** `POST /merchant/cards/import`、`GET products/:id/cards`、`/cards/stats`、`cards/:id/disable`、`/delete`;导入(多行)+ 列表 + 作废/删除 + 库存统计。
-- [ ] **M5 订单** `GET /merchant/orders`、`orders/:id`、`/:id/close`、`/:id/redeliver`;列表 + 详情 + 关单 + 补发。
-- [ ] **M6 钱包/提现** `GET /merchant/wallet`、`wallet/fund-logs`、`wallet/withdrawals`、`POST wallet/withdrawals`;余额/冻结 + 流水 + 申请提现 + 提现记录(金额准确)。
-- [ ] **M7 统计** `GET /merchant/stats/summary`、`stats/top-products`;概览数字 + 热销榜。
+- [x] **M2 商品管理** `GET/POST /merchant/products`、`POST products/:id`、`/:id/status`、`/:id/delete`;列表 + 新建/编辑 + 上下架 + 删除(有卡密禁删按后端)。
+- [x] **M3 分类管理** `GET/POST /merchant/categories`、`/:id`、`/:id/delete`。
+- [x] **M4 卡密** `POST /merchant/cards/import`、`GET products/:id/cards`、`/cards/stats`、`cards/:id/disable`、`/delete`;导入(多行)+ 列表 + 作废/删除 + 库存统计。
+- [x] **M5 订单** `GET /merchant/orders`、`orders/:id`、`/:id/close`、`/:id/redeliver`;列表 + 详情 + 关单 + 补发。
+- [x] **M6 钱包/提现** `GET /merchant/wallet`、`wallet/fund-logs`、`wallet/withdrawals`、`POST wallet/withdrawals`;余额/冻结 + 流水 + 申请提现 + 提现记录(金额准确)。
+- [x] **M7 统计** `GET /merchant/stats/summary`、`stats/top-products`;概览数字 + 热销榜。
 
 ### 平台后台(AdminAuth)
 - [x] **A1 登录** `POST /admin/login` → token。
-- [ ] **A2 商户审核** `GET /admin/merchants`(列表/搜索)、`approve/freeze/unfreeze/commission/reset-password`。
-- [ ] **A3 支付渠道** `GET/POST /admin/channels`、`/:id`、`/:id/status`、`/:id/test-sign`(空密钥拒)。
-- [ ] **A4 提现审核** `GET /admin/withdrawals`、`/:id/approve`、`/:id/reject`(资金回滚准确)。★停顿点
-- [ ] **A5 对账报表** `GET /admin/reports/settlement`(销售额/佣金跨商户,账目准确)。★停顿点
-- [ ] **A6 跨商户视图** `GET /admin/orders`、`/admin/products`(只读)。
-- [ ] **A7 平台配置** `GET/POST /admin/settings`。
+- [x] **A2 商户审核** `GET /admin/merchants`(列表/搜索)、`approve/freeze/unfreeze/commission/reset-password`。
+- [x] **A3 支付渠道** `GET/POST /admin/channels`、`/:id`、`/:id/status`、`/:id/test-sign`(空密钥拒)。
+- [x] **A4 提现审核** `GET /admin/withdrawals`、`/:id/approve`、`/:id/reject`(资金回滚准确)。★停顿点
+- [x] **A5 对账报表** `GET /admin/reports/settlement`(销售额/佣金跨商户,账目准确)。★停顿点
+- [x] **A6 跨商户视图** `GET /admin/orders`、`/admin/products`(只读)。
+- [x] **A7 平台配置** `GET/POST /admin/settings`。
 
 ### 收尾
 - [ ] **Z1** 全量端到端验证(商户全流程 + 平台全流程,真渲染+真后端)+ 完成报告。
