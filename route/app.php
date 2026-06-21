@@ -18,6 +18,7 @@ Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
 Route::post('buyer/order', 'buyer.Order/create');
 Route::post('buyer/order/query', 'buyer.Order/query');
+Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
 
 // ============ 平台后台 admin ============
 Route::group('admin', function () {

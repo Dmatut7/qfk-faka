@@ -84,10 +84,10 @@
   - 验收:接口与管理器单元测试;未知/停用渠道报 5002。✅(回调侧停用渠道仍可取)
 - [x] **T6.2 (TDD)** 首个驱动:易支付/MD5 `EpayDriver`,实现 `buildPay`(签名)+ `verify`(验签)+ `parse`。
   - 验收:**验签测试**:构造正确签名验签通过;错误/缺失签名拒绝;签名算法与字段排序正确。✅ TDD红→绿(篡改/缺签/错误密钥全拒、buildPay 自洽验签)
-- [ ] **T6.3** 发起支付:`POST /buyer/order/{no}/pay` → 校验订单待支付+未过期 + **渠道 status=1** → 写 `payments`(待支付,唯一 payment_no)→ 返回跳转/二维码参数。
-  - 验收:待支付订单可发起;已支付/已关闭/过期被拒(4002/4003);停用渠道不可发起(5002);生成唯一 `payment_no`。
-- [ ] **T6.4a (TDD)** 结算计算纯函数:`SettlementService::calc(total, commission_rate)` → {佣金=bcmul, 入账=bcsub},scale=2。
-  - 验收:`commission_rate=0.0588` 等带小数比例下佣金/入账精度正确、佣金+入账==total(bccomp)。
+- [x] **T6.3** 发起支付:`POST /buyer/order/{no}/pay` → 校验订单待支付+未过期 + **渠道 status=1** → 写 `payments`(待支付,唯一 payment_no)→ 返回跳转/二维码参数。
+  - 验收:待支付订单可发起;已支付/已关闭/过期被拒(4002/4003);停用渠道不可发起(5002);生成唯一 `payment_no`。✅
+- [x] **T6.4a (TDD)** 结算计算纯函数:`SettlementService::calc(total, commission_rate)` → {佣金=bcmul, 入账=bcsub},scale=2。
+  - 验收:`commission_rate=0.0588` 等带小数比例下佣金/入账精度正确、佣金+入账==total(bccomp)。✅ TDD
 - [ ] **T6.4b (TDD)** 回调入口 `POST /pay/notify/{channel}`,严格按 **spec §10.4**:验签 → **归属校验**(order_id/merchant/channel/out_trade_no,不符 5004)→ 金额校验(实付==total 且 ≥amount,仅 CNY)→ 订单行锁内重查 → **发货数量守恒**(锁定卡数==quantity,affected_rows 断言)→ 原子发货 `1→2` + delivered_content + **结算(merchants 行锁 FOR UPDATE + bcadd,流水 uniq(order_id,type) 兜底)** → 正确应答。
   - 验收:成功回调 → 订单已发货、卡 `1→2`、`delivered_content` 写入、商户余额按佣金入账、流水两条且 balance_after 连续、返回成功应答。
 - [ ] **T6.5 (TDD) 回调安全专项(必须全绿才算 M6 完成)**:

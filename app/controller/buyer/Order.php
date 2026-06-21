@@ -6,6 +6,7 @@ namespace app\controller\buyer;
 use app\controller\BaseApiController;
 use app\service\BuyerOrderService;
 use app\service\OrderService;
+use app\service\PaymentService;
 
 /**
  * 买家前台:下单与订单查询(公开,游客可用)。
@@ -33,6 +34,14 @@ class Order extends BaseApiController
             'expire_at'    => $order->expire_at,
             'status'       => (int) $order->status,
         ]);
+    }
+
+    public function pay(PaymentService $svc, $no)
+    {
+        $channel   = (string) $this->input('channel', 'epay');
+        $notifyUrl = rtrim($this->request->domain(), '/') . '/pay/notify/' . $channel;
+        $result    = $svc->initiate((string) $no, $channel, $notifyUrl, (string) $this->input('return_url', ''));
+        return $this->success($result);
     }
 
     public function query(BuyerOrderService $svc)
