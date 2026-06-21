@@ -59,7 +59,15 @@ export default function OrderLookup({ initialResult, onBack }) {
     setLoading(true);
     try {
       const order = await api.queryOrder({ orderNo: on, email: em });
-      setResult(order);
+      // 后端查单只返回 product_id;尽力补一次商品详情,让结果显示真实商品名(失败不影响)。
+      let enriched = order;
+      if (order && !order.product && order.product_id != null) {
+        try {
+          const prod = await api.product(order.product_id);
+          enriched = { ...order, product: prod };
+        } catch { /* 商品已下架/查询失败 → 用 product_id 兜底显示 */ }
+      }
+      setResult(enriched);
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : '查询失败,请稍后重试';
       // 查无 / 业务错误 → 空错态(不造假样例订单)

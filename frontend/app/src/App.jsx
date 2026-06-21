@@ -51,8 +51,12 @@ export default function App() {
     go('pay');
   };
 
-  // 发货完成(PaymentScreen 轮询拿到 status=2)
-  const onPaid = (deliveredOrder) => { setResult(deliveredOrder); go('result'); };
+  // 发货完成(PaymentScreen 轮询拿到 status=2)。后端查单只返回 product_id,
+  // 这里把已知的商品对象并入,取卡页就能显示真实商品名/缩略图而非「商品 #id」。
+  const onPaid = (deliveredOrder) => {
+    setResult(order?.product ? { ...deliveredOrder, product: order.product } : deliveredOrder);
+    go('result');
+  };
 
   const barProps =
     screen === 'detail' ? { back: true, onBack: () => go('home'), title: '商品详情' } :
