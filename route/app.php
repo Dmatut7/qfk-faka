@@ -22,3 +22,14 @@ Route::group('admin', function () {
         Route::get('me', 'admin.Profile/me');
     })->middleware(\app\middleware\AdminAuth::class);
 });
+
+// ============ 商户后台 merchant ============
+Route::group('merchant', function () {
+    Route::post('login', 'merchant.Auth/login');
+
+    Route::group(function () {
+        Route::post('logout', 'merchant.Auth/logout');
+        Route::get('me', 'merchant.Profile/me');
+        Route::post('change-password', 'merchant.Profile/changePassword');
+    })->middleware(\app\middleware\MerchantAuth::class);
+});

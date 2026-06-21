@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace app\controller;
 
 use app\BaseController;
+use app\common\BizException;
+use app\common\Code;
 use think\response\Json;
 
 /**
@@ -39,5 +41,25 @@ abstract class BaseApiController extends BaseController
     protected function params(array $keys): array
     {
         return $this->request->only($keys);
+    }
+
+    /** 当前登录主体 id(由鉴权中间件注入) */
+    protected function authId(): int
+    {
+        return (int) ($this->request->authId ?? 0);
+    }
+
+    /** 当前登录商户(由 MerchantAuth 注入) */
+    protected function currentMerchant()
+    {
+        return $this->request->merchant ?? null;
+    }
+
+    /** 归属校验:资源 merchant_id 必须等于当前商户,否则 403 */
+    protected function assertMerchantOwnership($resourceMerchantId): void
+    {
+        if ((int) $resourceMerchantId !== $this->authId()) {
+            throw new BizException(Code::FORBIDDEN, '无权操作他人资源');
+        }
     }
 }

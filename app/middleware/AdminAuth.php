@@ -20,6 +20,8 @@ use think\Response;
  */
 class AdminAuth
 {
+    use ExtractsBearerToken;
+
     public function handle(Request $request, Closure $next): Response
     {
         $token = $this->bearer($request);
@@ -39,14 +41,5 @@ class AdminAuth
         $request->bearerToken = $token;
 
         return $next($request);
-    }
-
-    private function bearer(Request $request): string
-    {
-        $header = (string) $request->header('authorization', '');
-        if (stripos($header, 'bearer ') === 0) {
-            return substr($header, 7);
-        }
-        return (string) $request->param('token', '');
     }
 }
