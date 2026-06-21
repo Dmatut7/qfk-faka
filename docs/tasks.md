@@ -27,8 +27,8 @@
   - 验收:单元测试断言响应结构 `{code,msg,data}` 与各错误码常量值。✅ 7 tests green
 - [x] **T1.2** 全局异常处理:验证异常 → 422+1001;业务异常 `BizException($code,$msg)` → 统一 JSON;404/500 统一格式。
   - 验收:Feature 测试:抛 `BizException` 返回对应 code;非法路由返回统一 404 JSON。✅
-- [ ] **T1.3** API 基类控制器 `BaseApiController` + 请求参数获取/校验封装。
-  - 验收:子类继承可直接返回成功/失败;含一个示例路由的测试。
+- [x] **T1.3** API 基类控制器 `BaseApiController` + 请求参数获取/校验封装。
+  - 验收:子类继承可直接返回成功/失败;含一个示例路由的测试。✅(success/fail/params 白名单/validate)
 - [ ] **T1.4** 工具:`OrderNo` 生成器(唯一)、`Money`(bcmath 封装 add/sub/mul/cmp,scale=2)、`Token`(生成+哈希)。(TDD)
   - 验收:`Money` 单元测试覆盖加减乘与比较的精度;`OrderNo` 唯一性(批量生成无重复);`Token` 哈希可校验。
 
