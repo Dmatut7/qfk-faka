@@ -1,0 +1,103 @@
+<?php
+declare(strict_types=1);
+
+namespace app\service;
+
+use app\common\BizException;
+use app\common\Code;
+use app\model\Card;
+use app\model\Category;
+use app\model\Product;
+
+/**
+ * 商户商品管理。所有操作限定当前商户。
+ */
+class ProductService
+{
+    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort'];
+
+    public function list(int $merchantId, array $filter = []): array
+    {
+        $q = Product::where('merchant_id', $merchantId);
+        if (isset($filter['category_id']) && $filter['category_id'] !== '') {
+            $q->where('category_id', (int) $filter['category_id']);
+        }
+        if (isset($filter['status']) && $filter['status'] !== '') {
+            $q->where('status', (int) $filter['status']);
+        }
+        return $q->order('sort', 'asc')->order('id', 'desc')->select()->toArray();
+    }
+
+    public function create(int $merchantId, array $d): Product
+    {
+        $this->assertCategory($merchantId, $d['category_id'] ?? null);
+
+        return Product::create([
+            'merchant_id'      => $merchantId,
+            'category_id'      => !empty($d['category_id']) ? (int) $d['category_id'] : null,
+            'title'            => $d['title'],
+            'sku'              => $d['sku'] ?? null,
+            'description'      => $d['description'] ?? null,
+            'price'            => $d['price'],
+            'type'             => isset($d['type']) ? (int) $d['type'] : Product::TYPE_AUTO,
+            'min_buy'          => isset($d['min_buy']) ? max(1, (int) $d['min_buy']) : 1,
+            'max_buy'          => isset($d['max_buy']) ? (int) $d['max_buy'] : 0,
+            'delivery_message' => $d['delivery_message'] ?? null,
+            'status'           => isset($d['status']) ? (int) $d['status'] : Product::STATUS_ON,
+            'sort'             => (int) ($d['sort'] ?? 0),
+        ]);
+    }
+
+    public function update(int $merchantId, int $id, array $d): Product
+    {
+        $p = $this->findOwned($merchantId, $id);
+        if (array_key_exists('category_id', $d)) {
+            $this->assertCategory($merchantId, $d['category_id']);
+            $d['category_id'] = !empty($d['category_id']) ? (int) $d['category_id'] : null;
+        }
+        $patch = array_intersect_key($d, array_flip(self::EDITABLE));
+        if ($patch) {
+            $p->save($patch);
+        }
+        return $p;
+    }
+
+    public function setStatus(int $merchantId, int $id, int $status): Product
+    {
+        $p = $this->findOwned($merchantId, $id);
+        $p->save(['status' => $status === Product::STATUS_ON ? Product::STATUS_ON : Product::STATUS_OFF]);
+        return $p;
+    }
+
+    public function delete(int $merchantId, int $id): void
+    {
+        $p = $this->findOwned($merchantId, $id);
+        // 有交易/库存数据的商品禁止硬删(spec §10.1)
+        if (Card::where('product_id', $id)->count() > 0) {
+            throw new BizException(Code::STATE_INVALID, '商品下存在卡密,请先清空卡密再删除');
+        }
+        $p->delete();
+    }
+
+    private function findOwned(int $merchantId, int $id): Product
+    {
+        $p = Product::find($id);
+        if (!$p) {
+            throw new BizException(Code::NOT_FOUND, '商品不存在');
+        }
+        if ((int) $p->merchant_id !== $merchantId) {
+            throw new BizException(Code::FORBIDDEN, '无权操作他人资源');
+        }
+        return $p;
+    }
+
+    private function assertCategory(int $merchantId, $categoryId): void
+    {
+        if (!empty($categoryId)) {
+            $c = Category::find((int) $categoryId);
+            if (!$c || (int) $c->merchant_id !== $merchantId) {
+                throw new BizException(Code::PARAM_ERROR, '分类不存在或不属于你');
+            }
+        }
+    }
+}

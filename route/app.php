@@ -39,5 +39,12 @@ Route::group('merchant', function () {
         Route::post('categories', 'merchant.Category/create');
         Route::post('categories/:id', 'merchant.Category/update');
         Route::post('categories/:id/delete', 'merchant.Category/delete');
+
+        // 商品管理
+        Route::get('products', 'merchant.Product/index');
+        Route::post('products', 'merchant.Product/create');
+        Route::post('products/:id', 'merchant.Product/update');
+        Route::post('products/:id/status', 'merchant.Product/setStatus');
+        Route::post('products/:id/delete', 'merchant.Product/delete');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
