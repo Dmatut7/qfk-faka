@@ -1,0 +1,15 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const p = await (await b.newContext({ viewport: { width: 1400, height: 880 } })).newPage();
+const errs=[]; p.on('pageerror', e=>errs.push(e.message));
+await p.goto('http://127.0.0.1:5173/console.html', { waitUntil: 'domcontentloaded' });
+await p.getByRole('radio', { name: '平台登录' }).first().click();
+await p.locator('form input').nth(0).fill('admin');
+await p.locator('form input').nth(1).fill('admin123');
+await p.getByRole('button', { name: /^登录$/ }).first().click();
+await p.locator('aside nav button', { hasText: '大屏数据' }).first().waitFor({ timeout: 12000 });
+await p.locator('aside nav button', { hasText: '大屏数据' }).first().click();
+await p.waitForTimeout(1800);
+await p.screenshot({ path: 'e2e/shot-bigscreen.png' });
+console.log('大屏 shot ok | JS错误:', errs.length?errs.join(' | '):'无');
+await b.close();
