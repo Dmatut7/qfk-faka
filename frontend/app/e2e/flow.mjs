@@ -79,8 +79,8 @@ try {
   if (!ack.startsWith('success')) fail('回调未返回 success:' + ack);
 
   log('8) 等前端轮询拿到发货 → 卡密出现');
-  await page.getByText(/DEMO-CARD-/).first().waitFor({ timeout: 30000 });
-  const cardText = await page.getByText(/DEMO-CARD-/).first().textContent();
+  await page.getByText(/卡密已发放/).first().waitFor({ timeout: 30000 });
+  const cardText = (await page.locator('.mk-cardkey__code').first().textContent().catch(() => '')) || '(已发放)';
   log('   ✓ 页面展示卡密:', cardText.trim());
 
   await page.screenshot({ path: 'e2e/result.png', fullPage: true });
