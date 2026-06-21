@@ -14,6 +14,8 @@ class Code
 {
     public const SUCCESS = 0;
 
+    public const SERVER_ERROR = 500; // 服务器内部错误
+
     // 1xxx 通用 / 参数
     public const PARAM_ERROR   = 1001; // 参数校验失败
     public const NOT_FOUND     = 1002; // 资源不存在
@@ -50,6 +52,8 @@ class Code
         switch ($code) {
             case self::SUCCESS:
                 return 200;
+            case self::SERVER_ERROR:
+                return 500;
             case self::PARAM_ERROR:
             case self::STATE_INVALID:
                 return 422;
