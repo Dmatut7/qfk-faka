@@ -1,0 +1,89 @@
+<?php
+declare(strict_types=1);
+
+namespace tests\Feature;
+
+use app\common\BizException;
+use app\common\Code;
+use app\model\Merchant;
+use app\model\MerchantFundLog;
+use app\model\Withdrawal;
+use app\service\MerchantWalletService;
+use app\util\Money;
+use tests\TestCase;
+
+/**
+ * 商户资金/提现 (T7.2, TDD):balance→frozen,总额守恒,余额不足拒绝。
+ */
+class MerchantWalletTest extends TestCase
+{
+    private MerchantWalletService $svc;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->svc = new MerchantWalletService();
+    }
+
+    private function merchant(string $balance): Merchant
+    {
+        return $this->makeMerchant(['balance' => $balance]);
+    }
+
+    public function testApplyMovesBalanceToFrozenConserved(): void
+    {
+        $m = $this->merchant('100.00');
+        $w = $this->svc->applyWithdrawal((int) $m->id, '30.00', 'alipay:foo@bar');
+
+        $reload = Merchant::find($m->id);
+        $this->assertSame('70.00', $reload->balance);
+        $this->assertSame('30.00', $reload->frozen_balance);
+        // 守恒:balance + frozen 不变
+        $this->assertSame(0, Money::cmp(Money::add($reload->balance, $reload->frozen_balance), '100.00'));
+
+        // 提现单待审
+        $this->assertSame(Withdrawal::STATUS_PENDING, Withdrawal::find($w->id)->status);
+        $this->assertSame('30.00', Withdrawal::find($w->id)->amount);
+
+        // 流水:-30
+        $log = MerchantFundLog::where('merchant_id', $m->id)->where('type', MerchantFundLog::TYPE_WITHDRAW)->find();
+        $this->assertSame('-30.00', $log->amount);
+        $this->assertSame('70.00', $log->balance_after);
+    }
+
+    public function testInsufficientBalanceRejected(): void
+    {
+        $m = $this->merchant('10.00');
+        try {
+            $this->svc->applyWithdrawal((int) $m->id, '20.00', 'acc');
+            $this->fail('应余额不足');
+        } catch (BizException $e) {
+            $this->assertSame(Code::STATE_INVALID, $e->getBizCode());
+        }
+        // 余额不变
+        $this->assertSame('10.00', Merchant::find($m->id)->balance);
+        $this->assertSame(0, Withdrawal::where('merchant_id', $m->id)->count());
+    }
+
+    public function testZeroOrNegativeRejected(): void
+    {
+        $m = $this->merchant('100.00');
+        foreach (['0.00', '-5.00'] as $amt) {
+            try {
+                $this->svc->applyWithdrawal((int) $m->id, $amt, 'acc');
+                $this->fail('应拒绝非正金额');
+            } catch (BizException $e) {
+                $this->assertSame(Code::PARAM_ERROR, $e->getBizCode());
+            }
+        }
+    }
+
+    public function testExactBalanceAllowed(): void
+    {
+        $m = $this->merchant('50.00');
+        $this->svc->applyWithdrawal((int) $m->id, '50.00', 'acc');
+        $reload = Merchant::find($m->id);
+        $this->assertSame('0.00', $reload->balance);
+        $this->assertSame('50.00', $reload->frozen_balance);
+    }
+}

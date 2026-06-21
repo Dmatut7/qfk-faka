@@ -69,5 +69,11 @@ Route::group('merchant', function () {
         Route::get('orders/:id', 'merchant.Order/detail');
         Route::post('orders/:id/close', 'merchant.Order/close');
         Route::post('orders/:id/redeliver', 'merchant.Order/redeliver');
+
+        // 钱包 / 提现
+        Route::get('wallet', 'merchant.Wallet/balance');
+        Route::get('wallet/fund-logs', 'merchant.Wallet/fundLogs');
+        Route::get('wallet/withdrawals', 'merchant.Wallet/withdrawals');
+        Route::post('wallet/withdrawals', 'merchant.Wallet/applyWithdrawal');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
