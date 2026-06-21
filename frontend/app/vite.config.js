@@ -1,11 +1,21 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 
 // 后端地址(开发期 dev server 代理转发,免 CORS;生产用 VITE_API_BASE 覆盖)
 const BACKEND = process.env.VITE_BACKEND || 'http://127.0.0.1:8765';
 
 export default defineConfig({
   plugins: [react()],
+  // 多页:买家前台 index.html + 运营控制台 console.html
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        console: resolve(__dirname, 'console.html'),
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -18,6 +28,8 @@ export default defineConfig({
       '^/buyer/': BACKEND,
       '^/pay/': BACKEND,
       '^/health': BACKEND,
+      '^/merchant/': BACKEND,
+      '^/admin/': BACKEND,
     },
   },
 });
