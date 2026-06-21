@@ -87,12 +87,21 @@ class MerchantRegisterTest extends TestCase
         $this->assertSame(422, $r->getCode());
     }
 
-    public function testInviteCodeAcceptedButNotValidated(): void
+    public function testNoInviteCodeRegistersWhenNotRequired(): void
     {
-        // 本期不校验邀请码:任意 invite_code 都应注册成功
-        $r = $this->callJson('POST', '/merchant/register', $this->payload(['invite_code' => 'WHATEVER-XYZ']));
+        // 默认 registration_require_invite 未设置(不要求):不传邀请码可注册成功
+        $r = $this->callJson('POST', '/merchant/register', $this->payload());
         $this->assertSame(0, $r['code']);
         $this->assertSame(Merchant::STATUS_PENDING, $r['data']['status']);
+    }
+
+    public function testInvalidInviteCodeRejectedEvenWhenNotRequired(): void
+    {
+        // 不要求邀请码时,若传了邀请码也会被校验:无效码应被拒,且不建户
+        $p = $this->payload(['invite_code' => 'WHATEVERX']);
+        $r = $this->callJson('POST', '/merchant/register', $p);
+        $this->assertSame(Code::STATE_INVALID, $r['code']);
+        $this->assertSame(0, Merchant::where('username', $p['username'])->count());
     }
 
     public function testRegisteredMerchantCannotLoginUntilApproved(): void

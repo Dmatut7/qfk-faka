@@ -69,3 +69,8 @@
 ## 第14-15轮(2026-06-22):全系统最终查bug → 修复 — 已完成✅
 - R14 全系统(买家/商户/平台/后端)深度查bug,R15 全修:支付倒计时时钟偏差锁死(改不禁用主按钮,真过期靠后端4003)、商户统计浮点改Money、卡密/钱包列表加分页(超20条可见)、卡密作废删除二次确认、OrderLookup 2003邮箱不匹配文案、ProductDetail图片不再闪回emoji、pollDelivery失败退避防自触发限流、Settlement错误条prop、Channels验签传code、Withdrawals状态筛选补「已通过」+金额整数分。
 - 验证:composer test 290绿、vite build、e2e 4/4。
+
+## 第16轮(2026-06-22):邀请码管理 — 已完成✅
+- 后端:invite_codes 表+模型+Service(生成/停用/删除/redeem 行锁防并发超用)+ admin CRUD;注册闸门(registration_require_invite 设置控制必填,redeem+建户同事务)。新增18测试,308全绿。
+- 前端:admin 邀请码页(生成/停用/删除二次确认)+ 自助注册表单加邀请码字段。
+- 验证:308测试 + vite build + e2e 4/4。

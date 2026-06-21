@@ -70,6 +70,12 @@ Route::group('admin', function () {
         Route::post('announcements', 'admin.Announcements/create');
         Route::post('announcements/:id', 'admin.Announcements/update');
         Route::post('announcements/:id/delete', 'admin.Announcements/delete');
+
+        // 注册邀请码管理
+        Route::get('invite-codes', 'admin.InviteCodes/index');
+        Route::post('invite-codes', 'admin.InviteCodes/create');
+        Route::post('invite-codes/:id/disable', 'admin.InviteCodes/disable');
+        Route::post('invite-codes/:id/delete', 'admin.InviteCodes/delete');
     })->middleware(\app\middleware\AdminAuth::class);
 });
 

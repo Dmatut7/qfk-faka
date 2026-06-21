@@ -22,6 +22,7 @@ const ADMIN_NAV = [
   { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },
   { key: 'a-settlement', label: '对账报表', icon: 'Package' },
   { key: 'a-content', label: '内容管理', icon: 'Inbox' },
+  { key: 'a-invite', label: '邀请码', icon: 'ShieldCheck' },
   { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
   { key: 'a-products', label: '商品(跨商户)', icon: 'Inbox' },
   { key: 'a-settings', label: '平台配置', icon: 'Lock' },
@@ -165,7 +166,7 @@ function LoginScreen({ onLogin }) {
 
 /* ============ 商户自助注册 ============ */
 function RegisterScreen({ onCancel, onRegistered }) {
-  const [form, setForm] = React.useState({ username: '', password: '', store_name: '', email: '' });
+  const [form, setForm] = React.useState({ username: '', password: '', store_name: '', email: '', invite_code: '' });
   const [err, setErr] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
@@ -186,6 +187,7 @@ function RegisterScreen({ onCancel, onRegistered }) {
         password: form.password,
         store_name: form.store_name.trim(),
         email: form.email.trim(),
+        invite_code: form.invite_code.trim(),
       });
       onRegistered();
     } catch (e2) {
@@ -217,6 +219,9 @@ function RegisterScreen({ onCancel, onRegistered }) {
             <Input label="邮箱" type="email" placeholder="联系邮箱(选填)" value={form.email}
               icon={<Icons.Inbox size={18} />} autoComplete="email"
               onChange={set('email')} />
+            <Input label="邀请码" placeholder="如平台要求请填写邀请码(选填)" value={form.invite_code}
+              icon={<Icons.ShieldCheck size={18} />}
+              onChange={set('invite_code')} />
           </div>
 
           {err && (

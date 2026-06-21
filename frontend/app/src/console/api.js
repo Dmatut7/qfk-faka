@@ -156,6 +156,11 @@ export const adminApi = {
   createAnnouncement: (d) => call('/admin/announcements', { method: 'POST', body: d }),
   updateAnnouncement: (id, d) => call('/admin/announcements/' + id, { method: 'POST', body: d }),
   deleteAnnouncement: (id) => call('/admin/announcements/' + id + '/delete', { method: 'POST' }),
+
+  inviteCodes: () => call('/admin/invite-codes'),
+  createInviteCodes: (d) => call('/admin/invite-codes', { method: 'POST', body: d }),
+  disableInviteCode: (id) => call('/admin/invite-codes/' + id + '/disable', { method: 'POST' }),
+  deleteInviteCode: (id) => call('/admin/invite-codes/' + id + '/delete', { method: 'POST' }),
 };
 
 function qs(params) {

@@ -13,6 +13,7 @@ import AdminChannels from './admin/Channels.jsx';
 import AdminWithdrawals from './admin/Withdrawals.jsx';
 import AdminSettlement from './admin/Settlement.jsx';
 import AdminAnnouncements from './admin/Announcements.jsx';
+import AdminInviteCodes from './admin/InviteCodes.jsx';
 import AdminOrders from './admin/Orders.jsx';
 import AdminProducts from './admin/Products.jsx';
 import AdminSettings from './admin/Settings.jsx';
@@ -33,6 +34,7 @@ export const SCREENS = {
   'a-withdrawals': AdminWithdrawals,
   'a-settlement': AdminSettlement,
   'a-content': AdminAnnouncements,
+  'a-invite': AdminInviteCodes,
   'a-orders': AdminOrders,
   'a-products': AdminProducts,
   'a-settings': AdminSettings,

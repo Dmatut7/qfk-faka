@@ -7,6 +7,7 @@ use app\common\BizException;
 use app\common\Code;
 use app\model\AccessToken;
 use app\model\Merchant;
+use think\facade\Db;
 
 /**
  * 商户鉴权与账号服务。
@@ -46,7 +47,12 @@ class MerchantService
      * - username 唯一;email(若提供)格式由控制器校验、唯一性此处校验。
      * - store_slug 自动生成且唯一(基于随机串,冲突时重试)。
      * - balance/frozen_balance/deposit/verified=0;commission_rate 取平台默认。
-     * - 密码 bcrypt;invite_code 本期接收即可,不校验。
+     * - 密码 bcrypt。
+     *
+     * 邀请码闸门(读平台设置 registration_require_invite,'1' 要求 / 默认 '0' 不要求):
+     * - 要求时:invite_code 必填,且核销成功(存在/启用/未用尽)后才创建商户;
+     * - 不要求时:传了 invite_code 也照样核销(无效则报错),不传则放行。
+     * 核销(used_count+1)与建户在同一事务内,保证「用了码才建户,建户失败则用量回滚」。
      *
      * @return array{merchant_id:int, status:int}
      */
@@ -61,22 +67,37 @@ class MerchantService
             throw new BizException(Code::STATE_INVALID, '邮箱已被使用');
         }
 
-        $defaultRate = (new SettingService())->get('default_commission_rate', '0.0000') ?? '0.0000';
+        $setting        = new SettingService();
+        $requireInvite  = $setting->get('registration_require_invite', '0') === '1';
+        $inviteCode     = isset($d['invite_code']) ? trim((string) $d['invite_code']) : '';
+
+        if ($requireInvite && $inviteCode === '') {
+            throw new BizException(Code::PARAM_ERROR, '请填写邀请码');
+        }
+
+        $defaultRate = $setting->get('default_commission_rate', '0.0000') ?? '0.0000';
 
         try {
-            $m = Merchant::create([
-                'username'        => $username,
-                'password'        => password_hash((string) $d['password'], PASSWORD_BCRYPT),
-                'email'           => $email,
-                'store_name'      => (string) $d['store_name'],
-                'store_slug'      => $this->uniqueSlug(),
-                'status'          => Merchant::STATUS_PENDING,
-                'balance'         => '0.00',
-                'frozen_balance'  => '0.00',
-                'deposit'         => '0.00',
-                'verified'        => 0,
-                'commission_rate' => $defaultRate,
-            ]);
+            $m = Db::transaction(function () use ($username, $email, $d, $defaultRate, $inviteCode) {
+                // 同事务内先核销邀请码(行锁防并发超用),再建户;任一失败整体回滚。
+                if ($inviteCode !== '') {
+                    (new InviteCodeService())->redeem($inviteCode);
+                }
+
+                return Merchant::create([
+                    'username'        => $username,
+                    'password'        => password_hash((string) $d['password'], PASSWORD_BCRYPT),
+                    'email'           => $email,
+                    'store_name'      => (string) $d['store_name'],
+                    'store_slug'      => $this->uniqueSlug(),
+                    'status'          => Merchant::STATUS_PENDING,
+                    'balance'         => '0.00',
+                    'frozen_balance'  => '0.00',
+                    'deposit'         => '0.00',
+                    'verified'        => 0,
+                    'commission_rate' => $defaultRate,
+                ]);
+            });
         } catch (\think\db\exception\PDOException $e) {
             throw $this->mapUniqueViolation($e);
         } catch (\PDOException $e) {
