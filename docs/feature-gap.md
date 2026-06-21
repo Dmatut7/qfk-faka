@@ -58,3 +58,29 @@
 
 ## 同步并入的缺陷(来自审计 wdhj9jhrl,见 improvements.md 待办池)
 支付方式造假、订单只显示#id、补发无确认、渠道密钥明文、type=2 卖不了、异常单无退款、对账时间口径。
+
+---
+# 🔒 本期交付(锁定范围)— 商城化 v2(对标鲸发卡 P0 + 精选 P1 + 高危缺陷)
+
+> 原则:每个 commit 都是**可用状态**(后端测试绿 + 前端 e2e 绿),逐轮变丰富,绝不留半成品。
+
+## 后端 API 契约(本期实现)
+- `GET /s/{slug}` →
+  `{ store:{name,slug,logo,cover,intro,announcement,verified,deposit,sales_count,contact:{qq,wechat,mobile}},
+     categories:[{id,name,image,goods_count}],
+     products:[{id,title,price,market_price,stock,image,category_id,sales_count,min_buy,max_buy}] }`
+- `GET /buyer/product/{id}` → 现有 + `image,market_price,sales_count`
+- `GET /merchant/shop` / `POST /merchant/shop` → 店铺装修(logo/cover/intro/announcement/contact_qq·wechat·mobile);deposit/verified 由平台控
+- 商户商品增改接受 `image,market_price,category_id`
+
+## 前端(本期实现)
+- **买家店铺页改版**:店招(封面+头像+店名+认证徽章+成交+保证金🛡+联系客服)、店铺公告条、**分类 tab 真筛选**、**2 列带图商品网格**(图/名/价/划线原价/库存标签 充足·少量·缺货/销量)、客服弹窗(QQ/微信/手机)
+- **商品详情**:大图 + 划线价 + 富文本/描述 + 公告 + 客服
+- **商户控制台**:新增「店铺装修」页(传 logo/cover/intro/公告/客服)+ 商品表单加 图片URL/划线价/分类
+- **演示数据**:多分类(带图)+ 多商品(带图 picsum + 划线价 + 归类)+ 店铺装修齐全(保证金/认证/客服/公告)
+
+## 同期修高危缺陷(审计)
+支付方式造假→单聚合入口、订单显示商品名(非#id)、补发二次确认、渠道密钥脱敏。
+
+## 本期不做(明确延后,避免半成品)
+商品类型知识/资源/权益完整实现、优惠券/折扣/满赠、分销、店铺多主题、商户自助注册、type=2手动发货完整链路、退款链路、富文本编辑器。(记 blockers,后续轮次)
