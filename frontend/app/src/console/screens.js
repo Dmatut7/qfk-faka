@@ -7,6 +7,7 @@ import MerchantCards from './merchant/Cards.jsx';
 import MerchantOrders from './merchant/Orders.jsx';
 import MerchantWallet from './merchant/Wallet.jsx';
 
+import AdminDashboard from './admin/Dashboard.jsx';
 import AdminMerchants from './admin/Merchants.jsx';
 import AdminChannels from './admin/Channels.jsx';
 import AdminWithdrawals from './admin/Withdrawals.jsx';
@@ -25,6 +26,7 @@ export const SCREENS = {
   'm-orders': MerchantOrders,
   'm-wallet': MerchantWallet,
   // 平台后台
+  'a-dashboard': AdminDashboard,
   'a-merchants': AdminMerchants,
   'a-channels': AdminChannels,
   'a-withdrawals': AdminWithdrawals,

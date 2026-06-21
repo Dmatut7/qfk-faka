@@ -30,6 +30,8 @@ Route::group('admin', function () {
     Route::group(function () {
         Route::post('logout', 'admin.Auth/logout');
         Route::get('me', 'admin.Profile/me');
+        // 平台仪表盘聚合
+        Route::get('dashboard', 'admin.Dashboard/index');
         // 商户管理
         Route::get('merchants', 'admin.Merchants/index');
         Route::post('merchants', 'admin.Merchants/create');
@@ -65,6 +67,7 @@ Route::group('admin', function () {
 // ============ 商户后台 merchant ============
 Route::group('merchant', function () {
     Route::post('login', 'merchant.Auth/login');
+    Route::post('register', 'merchant.Auth/register'); // 商户自助注册(公开,落库待审核)
 
     Route::group(function () {
         Route::post('logout', 'merchant.Auth/logout');

@@ -79,6 +79,7 @@ async function call(path, { method = 'GET', body, auth = true } = {}) {
 /* ---- 商户后台 ---- */
 export const merchantApi = {
   login: (username, password) => call('/merchant/login', { method: 'POST', body: { username, password }, auth: false }),
+  register: (d) => call('/merchant/register', { method: 'POST', body: d, auth: false }),
   me: () => call('/merchant/me'),
   logout: () => call('/merchant/logout', { method: 'POST' }),
   changePassword: (old_password, new_password) => call('/merchant/change-password', { method: 'POST', body: { old_password, new_password } }),
@@ -120,6 +121,7 @@ export const merchantApi = {
 /* ---- 平台后台 ---- */
 export const adminApi = {
   login: (username, password) => call('/admin/login', { method: 'POST', body: { username, password }, auth: false }),
+  dashboard: () => call('/admin/dashboard'),
   me: () => call('/admin/me'),
   logout: () => call('/admin/logout', { method: 'POST' }),
 

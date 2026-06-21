@@ -30,3 +30,8 @@
 - 订单显示商品名(商户+平台,id→名映射)+ 补发/关单二次确认 Modal;渠道密钥脱敏(后端 list 掩码 key_mask/has_key + 前端 password 框留空不改,257测试绿)+ 商品搜索(店铺页客户端实时过滤)。
 - 验证:257测试 + vite build + e2e(login/screens/flow/lookup)全绿。
 - 并:实抓鲸发卡 admin 后台菜单 → feature-gap.md「平台后台对标」。
+
+## 第4轮(2026-06-21):平台仪表盘 + 商户自助注册 — 已完成✅
+- 后端:GET /admin/dashboard(商户/订单/成交额/待审核提现/商品/卡密聚合,Money 准);POST /merchant/register(公开,创建待审核商户,自动生成 slug,bcrypt)。新增 10 测试(AdminDashboardTest 2 + MerchantRegisterTest 8),composer test 267 全绿。
+- 前端:admin 仪表盘页(StatCard);ConsoleApp 登录页加「我要开店」自助注册表单。
+- 验证:267测试 + vite build + e2e(login/含仪表盘的14+1屏)+ 两接口实测全绿。

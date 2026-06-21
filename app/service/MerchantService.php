@@ -40,6 +40,58 @@ class MerchantService
         (new TokenService())->revoke($token);
     }
 
+    /**
+     * 商户自助注册:落库为待审核(pending),需平台审核通过后方可登录/上架。
+     *
+     * - username 唯一;email(若提供)格式由控制器校验、唯一性此处校验。
+     * - store_slug 自动生成且唯一(基于随机串,冲突时重试)。
+     * - balance/frozen_balance/deposit/verified=0;commission_rate 取平台默认。
+     * - 密码 bcrypt;invite_code 本期接收即可,不校验。
+     *
+     * @return array{merchant_id:int, status:int}
+     */
+    public function register(array $d): array
+    {
+        $username = (string) ($d['username'] ?? '');
+        if (Merchant::where('username', $username)->find()) {
+            throw new BizException(Code::STATE_INVALID, '用户名已存在');
+        }
+        $email = isset($d['email']) && $d['email'] !== '' ? (string) $d['email'] : null;
+        if ($email !== null && Merchant::where('email', $email)->find()) {
+            throw new BizException(Code::STATE_INVALID, '邮箱已被使用');
+        }
+
+        $defaultRate = (new SettingService())->get('default_commission_rate', '0.0000') ?? '0.0000';
+
+        $m = Merchant::create([
+            'username'        => $username,
+            'password'        => password_hash((string) $d['password'], PASSWORD_BCRYPT),
+            'email'           => $email,
+            'store_name'      => (string) $d['store_name'],
+            'store_slug'      => $this->uniqueSlug(),
+            'status'          => Merchant::STATUS_PENDING,
+            'balance'         => '0.00',
+            'frozen_balance'  => '0.00',
+            'deposit'         => '0.00',
+            'verified'        => 0,
+            'commission_rate' => $defaultRate,
+        ]);
+
+        return ['merchant_id' => (int) $m->id, 'status' => (int) $m->status];
+    }
+
+    /** 生成唯一的 store_slug(随机串,冲突重试) */
+    private function uniqueSlug(): string
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $slug = 's' . bin2hex(random_bytes(8));
+            if (!Merchant::where('store_slug', $slug)->find()) {
+                return $slug;
+            }
+        }
+        throw new BizException(Code::STATE_INVALID, '店铺标识生成失败,请重试');
+    }
+
     /** 店铺装修可由商户编辑的字段(deposit/verified 平台控,不在此列) */
     private const SHOP_EDITABLE = ['logo', 'cover', 'intro', 'announcement', 'contact_qq', 'contact_wechat', 'contact_mobile'];
 
