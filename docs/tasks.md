@@ -39,8 +39,8 @@
   - 验收:建表与索引正确;模型测试:唯一 username/slug 冲突被拒。✅(DECIMAL 默认 0.00/0.0000、status 常量)
 - [x] **T2.3** 迁移+模型:`categories`、`products`(外键、索引)。
   - 验收:外键约束生效(删商户级联);`uniq_merchant_sku` 生效。✅(categories CASCADE、products→merchants RESTRICT、category SET NULL 均验证)
-- [ ] **T2.4** 迁移+模型:`cards`(取卡索引 `idx_pick`、`uniq_secret`、状态机常量;`secret_hash` 用 `ascii_bin`)。
-  - 验收:建表;`uniq(product_id,secret_hash)` 去重生效;状态常量定义。
+- [x] **T2.4** 迁移+模型:`cards`(取卡索引 `idx_pick`、`uniq_secret`、状态机常量;`secret_hash` 用 `ascii_bin`)。
+  - 验收:建表;`uniq(product_id,secret_hash)` 去重生效;状态常量定义。✅(ascii_bin 已确认、cards→products RESTRICT、idx_pick/idx_lock_expire)
 - [ ] **T2.5** 迁移+模型:`buyers`、`orders`(索引、外键、状态常量)。
   - 验收:建表;`uniq_order_no` 生效;`idx_expire` 存在。
 - [ ] **T2.6** 迁移+模型:`payments`、`payment_channels`、`merchant_fund_logs`、`withdrawals`、`access_tokens`。
