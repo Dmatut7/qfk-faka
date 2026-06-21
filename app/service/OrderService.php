@@ -148,7 +148,7 @@ class OrderService
             $attempt = 0;
             while (true) {
                 try {
-                    if ($this->reclaimOne((int) $orderId)) {
+                    if ($this->closeAndRelease((int) $orderId, true)) {
                         $count++;
                     }
                     break;
@@ -164,9 +164,13 @@ class OrderService
         return $count;
     }
 
-    private function reclaimOne(int $orderId): bool
+    /**
+     * 关闭待支付订单并释放其锁定卡、回补库存。
+     * $requireExpired=true 用于超时回收(只关过期单);false 用于商户手动关单。
+     */
+    private function closeAndRelease(int $orderId, bool $requireExpired): bool
     {
-        return Db::transaction(function () use ($orderId) {
+        return Db::transaction(function () use ($orderId, $requireExpired) {
             $now = date('Y-m-d H:i:s');
 
             $order = Order::find($orderId);
@@ -178,12 +182,12 @@ class OrderService
             Product::where('id', $order->product_id)->lock(true)->find();
             $locked = Order::where('id', $orderId)->lock(true)->find();
 
-            // 锁内重查:已支付/已发货/已关闭 → 跳过(幂等)
+            // 锁内重查:非待支付 → 跳过(幂等)
             if (!$locked || (int) $locked->status !== Order::STATUS_PENDING) {
                 return false;
             }
-            if (strtotime($locked->expire_at) >= time()) {
-                return false; // 已不再过期
+            if ($requireExpired && strtotime($locked->expire_at) >= time()) {
+                return false; // 超时回收:已不再过期
             }
 
             // 关单(affected_rows 守卫)
@@ -204,6 +208,95 @@ class OrderService
 
             return true;
         });
+    }
+
+    /**
+     * 商户手动关闭一个待支付订单(无超时要求)。返回是否成功关闭。
+     */
+    public function cancelPending(int $orderId): bool
+    {
+        return $this->withDeadlockRetry(fn () => $this->closeAndRelease($orderId, false));
+    }
+
+    /**
+     * 对已支付/异常订单手动补发:分配 quantity 张可售卡 → 售出 → 标记已发货。
+     * 用于卡不足转 4005 后,商户补货再发货。并发安全(同发卡闸门)。
+     */
+    public function deliverManually(int $orderId): void
+    {
+        $this->withDeadlockRetry(function () use ($orderId) {
+            Db::transaction(function () use ($orderId) {
+                $now   = date('Y-m-d H:i:s');
+                $order = Order::find($orderId);
+                if (!$order) {
+                    throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
+                }
+
+                Product::where('id', $order->product_id)->lock(true)->find();
+                $order  = Order::where('id', $orderId)->lock(true)->find();
+                $status = (int) $order->status;
+
+                if ($status === Order::STATUS_DELIVERED) {
+                    return; // 已发货,幂等
+                }
+                if ($status !== Order::STATUS_PAID && $status !== Order::STATUS_EXCEPTION) {
+                    throw new BizException(Code::STATE_INVALID, '仅已支付/异常订单可补发');
+                }
+
+                $qty = (int) $order->quantity;
+                // 已锁定卡 + 需新占卡
+                $lockedIds = Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)->column('id');
+                $need = $qty - count($lockedIds);
+                if ($need > 0) {
+                    $freshIds = Db::name('cards')
+                        ->where('product_id', $order->product_id)->where('status', Card::STATUS_UNSOLD)
+                        ->order('id', 'asc')->limit($need)->lock('FOR UPDATE SKIP LOCKED')->column('id');
+                    if (count($freshIds) < $need) {
+                        throw new BizException(Code::STOCK_NOT_ENOUGH, '库存不足,无法补发');
+                    }
+                    $affected = Db::name('cards')->whereIn('id', $freshIds)->where('status', Card::STATUS_UNSOLD)
+                        ->update(['status' => Card::STATUS_LOCKED, 'order_id' => $orderId, 'locked_at' => $now, 'update_time' => $now]);
+                    if ($affected !== $need) {
+                        throw new BizException(Code::STOCK_NOT_ENOUGH, '补发并发冲突');
+                    }
+                    Db::name('products')->where('id', $order->product_id)
+                        ->update(['stock' => Db::raw("GREATEST(stock - {$need}, 0)"), 'update_time' => $now]);
+                }
+
+                // 锁定卡 → 已售
+                $sold = Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)
+                    ->update(['status' => Card::STATUS_SOLD, 'sold_at' => $now, 'update_time' => $now]);
+                if ($sold !== $qty) {
+                    throw new BizException(Code::STATE_INVALID, '补发数量不符');
+                }
+
+                $secrets = Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_SOLD)
+                    ->order('id', 'asc')->column('secret');
+                Db::name('orders')->where('id', $orderId)->update([
+                    'status' => Order::STATUS_DELIVERED, 'delivered_content' => implode("\n", $secrets),
+                    'delivered_at' => $now, 'update_time' => $now,
+                ]);
+            });
+        });
+    }
+
+    /**
+     * 死锁有限重试包装。
+     */
+    private function withDeadlockRetry(callable $fn)
+    {
+        $attempt = 0;
+        while (true) {
+            try {
+                return $fn();
+            } catch (\think\db\exception\PDOException $e) {
+                if ($this->isDeadlock($e) && ++$attempt < self::MAX_DEADLOCK_RETRY) {
+                    usleep(10000 * $attempt);
+                    continue;
+                }
+                throw $e;
+            }
+        }
     }
 
     private function isDeadlock(\Throwable $e): bool

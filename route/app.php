@@ -63,5 +63,11 @@ Route::group('merchant', function () {
         Route::get('products/:productId/cards/stats', 'merchant.Card/stats');
         Route::post('cards/:id/disable', 'merchant.Card/disable');
         Route::post('cards/:id/delete', 'merchant.Card/delete');
+
+        // 订单管理
+        Route::get('orders', 'merchant.Order/index');
+        Route::get('orders/:id', 'merchant.Order/detail');
+        Route::post('orders/:id/close', 'merchant.Order/close');
+        Route::post('orders/:id/redeliver', 'merchant.Order/redeliver');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
