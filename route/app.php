@@ -20,6 +20,9 @@ Route::post('buyer/order', 'buyer.Order/create');
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
 
+// ============ 支付异步回调(公开,靠验签)============
+Route::rule('pay/notify/:channel', 'pay.Notify/index');
+
 // ============ 平台后台 admin ============
 Route::group('admin', function () {
     Route::post('login', 'admin.Auth/login');

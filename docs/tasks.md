@@ -88,9 +88,9 @@
   - 验收:待支付订单可发起;已支付/已关闭/过期被拒(4002/4003);停用渠道不可发起(5002);生成唯一 `payment_no`。✅
 - [x] **T6.4a (TDD)** 结算计算纯函数:`SettlementService::calc(total, commission_rate)` → {佣金=bcmul, 入账=bcsub},scale=2。
   - 验收:`commission_rate=0.0588` 等带小数比例下佣金/入账精度正确、佣金+入账==total(bccomp)。✅ TDD
-- [ ] **T6.4b (TDD)** 回调入口 `POST /pay/notify/{channel}`,严格按 **spec §10.4**:验签 → **归属校验**(order_id/merchant/channel/out_trade_no,不符 5004)→ 金额校验(实付==total 且 ≥amount,仅 CNY)→ 订单行锁内重查 → **发货数量守恒**(锁定卡数==quantity,affected_rows 断言)→ 原子发货 `1→2` + delivered_content + **结算(merchants 行锁 FOR UPDATE + bcadd,流水 uniq(order_id,type) 兜底)** → 正确应答。
-  - 验收:成功回调 → 订单已发货、卡 `1→2`、`delivered_content` 写入、商户余额按佣金入账、流水两条且 balance_after 连续、返回成功应答。
-- [ ] **T6.5 (TDD) 回调安全专项(必须全绿才算 M6 完成)**:
+- [x] **T6.4b (TDD)** 回调入口 `POST /pay/notify/{channel}`,严格按 **spec §10.4**:验签 → **归属校验**(order_id/merchant/channel/out_trade_no,不符 5004)→ 金额校验(实付==total 且 ≥amount,仅 CNY)→ 订单行锁内重查 → **发货数量守恒**(锁定卡数==quantity,affected_rows 断言)→ 原子发货 `1→2` + delivered_content + **结算(merchants 行锁 FOR UPDATE + bcadd,流水 uniq(order_id,type) 兜底)** → 正确应答。
+  - 验收:成功回调 → 订单已发货、卡 `1→2`、`delivered_content` 写入、商户余额按佣金入账、流水两条且 balance_after 连续、返回成功应答。✅
+- [x] **T6.5 (TDD) 回调安全专项(必须全绿才算 M6 完成)**:
   - **验签**:错误/缺失签名 → 不改任何状态、返回失败应答(5001)。
   - **幂等**:同一成功回调投递两次 → 仅发货一次、仅结算一次、卡密不重复消耗、第二次直接成功应答(5003);并发双投同样幂等。
   - **金额篡改**:回调金额≠订单金额 → 拒绝发货并告警(4004)。
@@ -98,9 +98,9 @@
   - **超时后支付**:订单已超时关闭(status=3)却收到成功回调 → 订单转 4005 异常、payment 记成功、不重复占卡、返回成功应答。
   - **卡不足**:发货时锁定卡 < quantity(被释放/作废)→ 订单转 4005、payment 成功、返回成功应答(不无限重试)。
   - **停用渠道在途回调**:渠道已停用但 payment 已存在 → 回调仍正常验签处理(不拒绝)。
-  - 验收:以上全部断言通过。
-- [ ] **T6.6** 端到端发货链路 Feature 测试:下单 → 发起支付 → 模拟回调 → 前台查询拿到卡密。
-  - 验收:全链路一次走通,状态与金额一致。
+  - 验收:以上全部断言通过。✅(13 用例 + 8轮×6并发幂等)
+- [x] **T6.6** 端到端发货链路 Feature 测试:下单 → 发起支付 → 模拟回调 → 前台查询拿到卡密。
+  - 验收:全链路一次走通,状态与金额一致。✅
 
 > **★ 停顿验收点 2 — 支付对接模块**:运行全部测试(含验签/幂等/金额篡改)全绿后停止,等待人工验收。
 
