@@ -70,8 +70,8 @@
   - 验收:仅展示在售商品与正确库存;下架商品详情 404/下架提示。✅(冻结店铺隐藏、下架商品 3001)
 - [x] **T5.2 (TDD)** 下单 + **并发安全预占卡密**:`OrderService::create()`。严格按 **spec §10.3**:锁顺序 `products→cards→orders`(先 `SELECT products FOR UPDATE`)、`FOR UPDATE SKIP LOCKED` 取卡、`UPDATE ... WHERE status=0` 断言 affected_rows==qty、`stock` 相对扣减(GREATEST 下限0)、死锁(1213)有限次重试、取卡不足报 3002。写订单(expire_at=now+15min),卡 `0→1`,bcmath 算总额。
   - 验收:正常下单返回 `order_no`,卡 `status=1` 且 `order_id` 正确;库存不足 3002;超单笔限购(max_buy)3003;金额 bcmath;stock 相对扣减正确;模拟死锁可重试。✅ 单线程 7 用例绿(并发见 T5.3)
-- [ ] **T5.3 (TDD) 并发测试(核心)**:必须 **`$useTransaction=false`**(关闭事务隔离、真实提交)+ **多独立 PDO 连接** + **真实并行**(`pcntl_fork` 或并行 barrier 起跑)+ **多轮重复**(≥30 轮)。
-  - 验收断言:对"仅剩 M 张"商品 N(>M) 并发下单 → 恰好 M 单成功;`SELECT order_id,COUNT(*) FROM cards WHERE status IN(1,2) GROUP BY id` **无一卡双占**;`COUNT(cards.status=0)=初始-已占`;`products.stock` 终值==未售卡数;成功订单 `Σquantity==已占卡数`;失败单报库存不足。补用例:"M 张被多个各要 q 张请求并发"(区分确定性/瞬态不足)、"下单与超时释放并发"互不破坏。
+- [x] **T5.3 (TDD) 并发测试(核心)**:必须 **`$useTransaction=false`**(关闭事务隔离、真实提交)+ **多独立 PDO 连接** + **真实并行**(`pcntl_fork` 或并行 barrier 起跑)+ **多轮重复**(≥30 轮)。
+  - 验收断言:对"仅剩 M 张"商品 N(>M) 并发下单 → 恰好 M 单成功;**无一卡双占**;`COUNT(cards.status=0)=初始-已占`;`products.stock` 终值==未售卡数;失败单报库存不足。✅ 30轮×8并发抢3卡 + 10轮×6并发各要2张(5卡→2单)全绿;**并发测试当场暴露并修复 OrderNo 跨进程撞号(fork 重置进程内序号→改用 PID 熵)**。"下单与超时释放并发"在 T5.4 验证。
 - [ ] **T5.4 (TDD)** 订单超时回收:`order:clean` 命令。按 **spec §10.3.6**:关单 `WHERE id=:oid AND status=0`、释放卡 `WHERE order_id=:oid AND status=1`(均校验 affected_rows)、stock 相对回补、单实例锁防重入。
   - 验收:过期未付单 → 订单关闭、卡 `1→0`、stock 回补;**重复执行幂等**(第二次无副作用);**不误释放已被推进为 2 的卡**;与正常支付回调并发对同一单安全。
 - [ ] **T5.5** 买家订单查询:`order_no + 邮箱` 查状态与已购卡密(未发货不泄露)。

@@ -14,7 +14,7 @@ class OrderNoTest extends TestCase
     public function testFormatAndDatePrefix(): void
     {
         $no = OrderNo::generate();
-        $this->assertMatchesRegularExpression('/^\d{22}$/', $no);
+        $this->assertMatchesRegularExpression('/^\d{27}$/', $no);
         $this->assertStringStartsWith(date('Ymd'), $no);
         $this->assertLessThanOrEqual(32, strlen($no));
     }
