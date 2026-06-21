@@ -43,9 +43,9 @@
   - 验收:建表;`uniq(product_id,secret_hash)` 去重生效;状态常量定义。✅(ascii_bin 已确认、cards→products RESTRICT、idx_pick/idx_lock_expire)
 - [x] **T2.5** 迁移+模型:`buyers`、`orders`(索引、外键、状态常量)。
   - 验收:建表;`uniq_order_no` 生效;`idx_expire` 存在。✅(cards.order_id→orders SET NULL 补加成功、orders→merchants RESTRICT、status 增 5 异常态)
-- [ ] **T2.6** 迁移+模型:`payments`、`payment_channels`、`merchant_fund_logs`、`withdrawals`、`access_tokens`。
+- [x] **T2.6** 迁移+模型:`payments`、`payment_channels`、`merchant_fund_logs`、`withdrawals`、`access_tokens`。
   - 含 FK:`merchant_fund_logs.order_id→orders`(SET NULL)、`.merchant_id→merchants`(RESTRICT)、`payments.merchant_id→merchants`(RESTRICT);`merchant_fund_logs` 加 `uniq(order_id,type)`;`token_hash` 用 `ascii_bin`。
-  - 验收:建表;`uniq(channel,channel_trade_no)`、`uniq_token`、`uniq(order_id,type)` 等关键唯一索引生效;外键级联策略正确。
+  - 验收:建表;`uniq(channel,channel_trade_no)`、`uniq_token`、`uniq(order_id,type)` 等关键唯一索引生效;外键级联策略正确。✅ NULL 不去重语义、JSON config、账本只增已验证 —— **M2 完成(13 表全部建好)**
 
 ## M3 — 鉴权
 - [ ] **T3.1** Token 服务:签发(存哈希+过期)、校验、撤销。(TDD)
