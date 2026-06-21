@@ -206,7 +206,7 @@ qfk/
 | quantity | INT | NOT NULL | 购买数量 |
 | unit_price | DECIMAL(10,2) | NOT NULL | 下单时单价快照 |
 | total_amount | DECIMAL(10,2) | NOT NULL | 应付总额 = unit_price × quantity |
-| status | TINYINT | NOT NULL DEFAULT 0 | **0 待支付 / 1 已支付 / 2 已发货 / 3 已关闭 / 4 已退款** |
+| status | TINYINT | NOT NULL DEFAULT 0 | **0 待支付 / 1 已支付 / 2 已发货 / 3 已关闭 / 4 已退款 / 5 异常待人工** |
 | pay_channel | VARCHAR(32) | NULL | 选择的支付渠道 code |
 | delivered_content | MEDIUMTEXT | NULL | 发货卡密快照(发货时写入)|
 | client_ip | VARCHAR(45) | NULL | |
@@ -345,7 +345,7 @@ orders 1—1 active payment(成功后) ; orders 1—N cards(发货)
 
 ## 4. 状态机汇总
 - **卡密 cards.status**:`0 未售 / 1 锁定 / 2 已售 / 3 作废`。
-- **订单 orders.status**:`0 待支付 / 1 已支付 / 2 已发货 / 3 已关闭 / 4 已退款`。
+- **订单 orders.status**:`0 待支付 / 1 已支付 / 2 已发货 / 3 已关闭 / 4 已退款 / 5 异常待人工`(回调异常态,见 §10.4)。
 - **支付 payments.status**:`0 待支付 / 1 成功 / 2 失败`。
 - **商户 merchants.status**:`0 待审 / 1 正常 / 2 冻结`。
 
