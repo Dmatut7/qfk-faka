@@ -35,8 +35,8 @@
 ## M2 — 数据迁移与模型(基础表)
 - [x] **T2.1** 迁移+模型:`system_settings`(字段 `setting_key`/`setting_value`,避保留字)、`admins`。
   - 验收:`migrate:run` 建表成功;模型 CRUD 测试通过;唯一索引生效(重复 setting_key/username 抛错)。✅(BIGINT UNSIGNED PK + utf8mb4)
-- [ ] **T2.2** 迁移+模型:`merchants`(含 balance/commission 等字段、唯一索引)。
-  - 验收:建表与索引正确;模型测试:唯一 username/slug 冲突被拒。
+- [x] **T2.2** 迁移+模型:`merchants`(含 balance/commission 等字段、唯一索引)。
+  - 验收:建表与索引正确;模型测试:唯一 username/slug 冲突被拒。✅(DECIMAL 默认 0.00/0.0000、status 常量)
 - [ ] **T2.3** 迁移+模型:`categories`、`products`(外键、索引)。
   - 验收:外键约束生效(删商户级联);`uniq_merchant_sku` 生效。
 - [ ] **T2.4** 迁移+模型:`cards`(取卡索引 `idx_pick`、`uniq_secret`、状态机常量;`secret_hash` 用 `ascii_bin`)。
