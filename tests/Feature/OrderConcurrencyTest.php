@@ -92,7 +92,12 @@ class OrderConcurrencyTest extends TestCase
             if ($pid === 0) {
                 // ===== 子进程 =====
                 Db::connect('mysql', true);              // 强制独立连接
-                try { Db::query('SELECT 1'); } catch (\Throwable $e) {}
+                try {
+                    Db::query('SELECT 1'); // 预热连接;失败必须暴露为 ERR,不可吞掉伪装成库存不足
+                } catch (\Throwable $e) {
+                    file_put_contents($file, 'ERR conn ' . $e->getMessage());
+                    exit(0);
+                }
                 if ($startAt > microtime(true)) {
                     @time_sleep_until($startAt);
                 }
@@ -177,7 +182,8 @@ class OrderConcurrencyTest extends TestCase
 
             $this->assertSame(2, $res['ok'], "第 $r 轮:5 张卡每单 2 张应恰好成 2 单");
             $this->assertSame($n - 2, $res['fail']);
-            // 共占用 4 张,互不相同;剩 1 张未售
+            // 共占用 4 张,互不相同(总数与去重数都为 4,杜绝"成功却占 0/重复卡")
+            $this->assertSame(4, count($res['cardIds']), "第 $r 轮:成功单占用卡总数应为 4");
             $this->assertCount(4, array_unique($res['cardIds']));
             $this->assertSame(1, Card::where('product_id', $p->id)->where('status', Card::STATUS_UNSOLD)->count());
             $this->assertSame(4, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count());
@@ -211,7 +217,12 @@ class OrderConcurrencyTest extends TestCase
                 }
                 if ($pid === 0) {
                     Db::connect('mysql', true);
-                    try { Db::query('SELECT 1'); } catch (\Throwable $e) {}
+                    try {
+                    Db::query('SELECT 1'); // 预热连接;失败必须暴露为 ERR,不可吞掉伪装成库存不足
+                } catch (\Throwable $e) {
+                    file_put_contents($file, 'ERR conn ' . $e->getMessage());
+                    exit(0);
+                }
                     if ($startAt > microtime(true)) {
                         @time_sleep_until($startAt);
                     }

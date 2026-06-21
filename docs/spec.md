@@ -459,7 +459,7 @@ COMMIT;
 - 纯 hex/ASCII 列(`secret_hash`、`token_hash`)迁移时显式 `CHARACTER SET ascii COLLATE ascii_bin`,保证精确二进制比对、省空间。
 
 ### 10.3 卡密发放并发(对 §5/§6 的强制约束)
-1. **统一锁顺序**:同一业务事务内按 `products → cards → orders` 顺序加锁,避免跨事务死锁。下单时先 `SELECT * FROM products WHERE id=:pid FOR UPDATE` 锁商品行,再取卡。
+1. **统一锁顺序 / 串行化闸门**:**所有触碰某商品 cards/orders 的写路径,事务起手都必须先 `SELECT * FROM products WHERE id=:pid FOR UPDATE` 锁该商品行**。该商品行锁是同一商品所有并发写的唯一串行化闸门 —— 正因如此,下单(product→cards→orders)与超时回收(product→orders→cards)虽对 cards/orders 的加锁后缀顺序不同,也不会构成死锁环。新增任何写卡/写单路径(如支付回调发货)必须复用此闸门:先锁 product 行。
 2. **取卡 + 二次校验**:`SELECT ... FOR UPDATE SKIP LOCKED` 取卡后,`UPDATE cards SET status=1,order_id=:oid,locked_at=NOW() WHERE id IN(:ids) AND status=0`,**断言 affected_rows == qty**,否则回滚。
 3. **stock 一律相对增减**,禁止"读后写绝对赋值":扣减 `UPDATE products SET stock=stock-:qty WHERE id=:pid AND stock>=:qty`;回补 `stock=stock+:qty`;均在同一事务内。`stock` 仍仅作展示;**判库存以 cards 加锁结果为准**;T9.2 对账以 `COUNT(cards.status=0)` 重算修复。
 4. **死锁重试**:发卡相关事务捕获 MySQL 死锁(1213/40001)后有限次(如 3 次)重试。

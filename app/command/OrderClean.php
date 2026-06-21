@@ -7,6 +7,7 @@ use app\service\OrderService;
 use think\console\Command;
 use think\console\Input;
 use think\console\Output;
+use think\facade\Db;
 
 /**
  * 订单超时回收命令:`php think order:clean`(建议 cron 每分钟)。
@@ -22,8 +23,20 @@ class OrderClean extends Command
 
     protected function execute(Input $input, Output $output): int
     {
-        $n = (new OrderService())->reclaimExpired();
-        $output->writeln("[order:clean] reclaimed {$n} expired order(s)");
+        // 单实例锁防重入(spec §10.3.6):拿不到锁说明上一轮仍在跑,本次跳过。
+        // (回收本身幂等,此锁只为避免无谓的重复扫描与锁竞争)
+        $got = Db::query("SELECT GET_LOCK('qfk:order:clean', 0) AS l");
+        if (empty($got[0]['l'])) {
+            $output->writeln('[order:clean] another instance is running, skipped');
+            return 0;
+        }
+
+        try {
+            $n = (new OrderService())->reclaimExpired();
+            $output->writeln("[order:clean] reclaimed {$n} expired order(s)");
+        } finally {
+            Db::query("SELECT RELEASE_LOCK('qfk:order:clean')");
+        }
         return 0;
     }
 }

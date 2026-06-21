@@ -208,10 +208,9 @@ class OrderService
 
     private function isDeadlock(\Throwable $e): bool
     {
+        // 仅匹配明确短语,不用裸数字 1213/1205 子串(避免把含该数字的无关异常误判为死锁,评审 medium)
         $msg = $e->getMessage();
-        return false !== strpos($msg, 'Deadlock')
-            || false !== strpos($msg, '1213')
-            || false !== strpos($msg, 'Lock wait timeout')
-            || false !== strpos($msg, '1205');
+        return false !== stripos($msg, 'Deadlock found')
+            || false !== stripos($msg, 'Lock wait timeout');
     }
 }

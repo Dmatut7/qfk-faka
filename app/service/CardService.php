@@ -77,22 +77,84 @@ class CardService
             ];
         }
 
-        $imported = count($rows);
-        if ($imported > 0) {
-            Db::transaction(function () use ($rows, $productId, $merchantId, $imported) {
-                Card::insertAll($rows);
-                // 相对增量,绝不读后写绝对赋值(spec §10.3)
-                Product::where('id', $productId)->where('merchant_id', $merchantId)->inc('stock', $imported)->update();
-            });
+        $imported = 0;
+        if ($rows) {
+            $attempt = 0;
+            while (true) {
+                try {
+                    Db::transaction(function () use ($rows, $productId, $merchantId, &$imported) {
+                        // 实际插入行数(并发窗口内被抢先插入的同卡密会被忽略)
+                        $imported = $this->insertIgnoringDuplicates($rows);
+                        if ($imported > 0) {
+                            // 相对增量,且以「实际插入行数」对账,保证 stock 与 cards 真值一致(spec §10.3)
+                            Product::where('id', $productId)->where('merchant_id', $merchantId)->inc('stock', $imported)->update();
+                        }
+                    });
+                    break;
+                } catch (\think\db\exception\PDOException $e) {
+                    // 并发导入重叠卡密会在唯一索引上产生间隙锁竞争 → 死锁(1213),有限次重试
+                    if ($this->isDeadlock($e) && ++$attempt < 3) {
+                        $imported = 0;
+                        usleep(10000 * $attempt);
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
         }
 
         return [
             'total'      => $total,
             'imported'   => $imported,
-            'duplicated' => $internalDup + $dbDup,
+            // 行内 + 库内预检 + 并发窗口内被抢先 的重复都计入 duplicated
+            'duplicated' => $internalDup + $dbDup + (count($rows) - $imported),
             'empty'      => $empty,
             'stock'      => (int) Product::where('id', $productId)->value('stock'),
         ];
+    }
+
+    /**
+     * 批量插入卡密,忽略并发窗口内被抢先插入而冲突的唯一键(uniq_secret),
+     * 返回实际插入行数。
+     *
+     * 先尝试单条多行 insertAll(快路径);若命中 1062 重复键(预检与插入之间被并发
+     * 抢先),退化为逐行插入并跳过冲突行 —— 避免整批合法新卡因一行冲突而全部丢失。
+     */
+    private function insertIgnoringDuplicates(array $rows): int
+    {
+        try {
+            Card::insertAll($rows);
+            return count($rows);
+        } catch (\think\db\exception\PDOException $e) {
+            if (!$this->isDuplicateKey($e)) {
+                throw $e;
+            }
+        }
+
+        $inserted = 0;
+        foreach ($rows as $row) {
+            try {
+                Db::name('cards')->insert($row);
+                $inserted++;
+            } catch (\think\db\exception\PDOException $e) {
+                if (!$this->isDuplicateKey($e)) {
+                    throw $e;
+                }
+                // 重复键:并发已插入同卡密,跳过
+            }
+        }
+        return $inserted;
+    }
+
+    private function isDuplicateKey(\Throwable $e): bool
+    {
+        return false !== strpos($e->getMessage(), 'Duplicate entry');
+    }
+
+    private function isDeadlock(\Throwable $e): bool
+    {
+        $msg = $e->getMessage();
+        return false !== stripos($msg, 'Deadlock found') || false !== stripos($msg, 'Lock wait timeout');
     }
 
     /**
@@ -134,8 +196,16 @@ class CardService
     {
         $card = $this->ownedUnsoldCard($merchantId, $cardId);
         Db::transaction(function () use ($card) {
-            $card->save(['status' => Card::STATUS_DISABLED]);
-            Product::where('id', $card->product_id)->where('stock', '>', 0)->dec('stock')->update();
+            $now = date('Y-m-d H:i:s');
+            // 条件更新守卫:仅当仍未售时作废,affected 必须为 1;
+            // 否则说明预检后已被并发下单锁定 → 拒绝(关闭 TOCTOU、防非法 0/1→3 跃迁)
+            $affected = Db::name('cards')->where('id', $card->id)->where('status', Card::STATUS_UNSOLD)
+                ->update(['status' => Card::STATUS_DISABLED, 'update_time' => $now]);
+            if ($affected !== 1) {
+                throw new BizException(Code::STATE_INVALID, '卡密已被占用,无法作废');
+            }
+            Db::name('products')->where('id', $card->product_id)
+                ->update(['stock' => Db::raw('GREATEST(stock - 1, 0)'), 'update_time' => $now]);
         });
     }
 
@@ -146,9 +216,14 @@ class CardService
     {
         $card = $this->ownedUnsoldCard($merchantId, $cardId);
         Db::transaction(function () use ($card) {
-            $productId = $card->product_id;
-            $card->delete();
-            Product::where('id', $productId)->where('stock', '>', 0)->dec('stock')->update();
+            $now = date('Y-m-d H:i:s');
+            // 同 disable:条件删除 + affected 守卫,杜绝删除已被并发占用的卡
+            $deleted = Db::name('cards')->where('id', $card->id)->where('status', Card::STATUS_UNSOLD)->delete();
+            if ($deleted !== 1) {
+                throw new BizException(Code::STATE_INVALID, '卡密已被占用,无法删除');
+            }
+            Db::name('products')->where('id', $card->product_id)
+                ->update(['stock' => Db::raw('GREATEST(stock - 1, 0)'), 'update_time' => $now]);
         });
     }
 

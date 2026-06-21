@@ -5,7 +5,6 @@ namespace app\service;
 
 use app\common\BizException;
 use app\common\Code;
-use app\model\Card;
 use app\model\Order;
 
 /**
@@ -35,11 +34,13 @@ class BuyerOrderService
             'cards'        => [],
         ];
 
-        // 仅已发货订单返回卡密;待支付/已关闭一律不泄露
+        // 仅已发货订单返回卡密,且以发货事务内原子写入的 delivered_content 快照为
+        // 唯一真相源(不再实时查 cards,避免两份不一致、缩小明文暴露面)。待支付/已关闭不泄露。
         if ((int) $order->status === Order::STATUS_DELIVERED) {
-            $data['cards'] = Card::where('order_id', $order->id)
-                ->where('status', Card::STATUS_SOLD)
-                ->column('secret');
+            $content = (string) $order->delivered_content;
+            $data['cards'] = $content === ''
+                ? []
+                : array_values(array_filter(array_map('trim', explode("\n", $content)), static fn($l) => $l !== ''));
             $data['delivered_content'] = $order->delivered_content;
         }
 
