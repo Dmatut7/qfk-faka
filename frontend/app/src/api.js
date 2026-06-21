@@ -61,10 +61,11 @@ async function call(path, { method = 'GET', body } = {}) {
 }
 
 export const api = {
-  /** 店铺 + 分类 + 在售商品。返回:
+  /** 店铺 + 分类 + 在售商品 + 平台公告。返回:
    *  { store:{name,slug,logo,cover,intro,announcement,verified,deposit,sales_count,contact:{qq,wechat,mobile}},
    *    categories:[{id,name,image,goods_count}],
-   *    products:[{id,title,price,market_price,stock,image,category_id,sales_count,min_buy,max_buy}] } */
+   *    products:[{id,title,price,market_price,stock,image,category_id,sales_count,min_buy,max_buy}],
+   *    notices:[{id,title,content,create_time}] }  // 平台公告(status=1,按 sort,desc),区别于 store.announcement(商户店铺公告) */
   shop: (slug = SHOP_SLUG) => call(`/s/${encodeURIComponent(slug)}`),
   /** 商品详情:{ id,title,price,description,stock,min_buy,max_buy,delivery_message } */
   product: (id) => call(`/buyer/product/${encodeURIComponent(id)}`),

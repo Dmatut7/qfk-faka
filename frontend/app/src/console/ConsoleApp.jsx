@@ -21,6 +21,7 @@ const ADMIN_NAV = [
   { key: 'a-channels', label: '支付渠道', icon: 'Zap' },
   { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },
   { key: 'a-settlement', label: '对账报表', icon: 'Package' },
+  { key: 'a-content', label: '内容管理', icon: 'Inbox' },
   { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
   { key: 'a-products', label: '商品(跨商户)', icon: 'Inbox' },
   { key: 'a-settings', label: '平台配置', icon: 'Lock' },

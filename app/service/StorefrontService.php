@@ -5,6 +5,7 @@ namespace app\service;
 
 use app\common\BizException;
 use app\common\Code;
+use app\model\Announcement;
 use app\model\Category;
 use app\model\Merchant;
 use app\model\Product;
@@ -72,6 +73,23 @@ class StorefrontService
             ];
         }, $categories);
 
+        // 平台公告(仅显示中,按 sort 倒序,最多若干条)
+        $notices = Announcement::where('status', Announcement::STATUS_SHOWN)
+            ->order('sort', 'desc')->order('id', 'desc')
+            ->limit(Announcement::STORE_LIMIT)
+            ->field(['id', 'title', 'content', 'create_time'])
+            ->select()
+            ->toArray();
+
+        $notices = array_map(static function ($n) {
+            return [
+                'id'          => (int) $n['id'],
+                'title'       => $n['title'],
+                'content'     => $n['content'],
+                'create_time' => $n['create_time'],
+            ];
+        }, $notices);
+
         return [
             'store'      => [
                 'name'         => $m->store_name,
@@ -91,6 +109,7 @@ class StorefrontService
             ],
             'categories' => $categories,
             'products'   => $products,
+            'notices'    => $notices,
         ];
     }
 

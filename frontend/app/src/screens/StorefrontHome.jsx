@@ -194,6 +194,116 @@ function ContactModal({ contact, onClose }) {
   );
 }
 
+/* —— 平台公告全文弹窗(查看全部) —— */
+function PlatformNoticeModal({ notices, onClose }) {
+  React.useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(18,27,42,.5)',
+        backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+    >
+      <div
+        role="dialog" aria-modal="true" aria-label="平台公告"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 460, maxHeight: '78vh', overflowY: 'auto', background: '#fff',
+          borderRadius: '18px 18px 0 0', padding: '18px 18px calc(18px + env(safe-area-inset-bottom, 0px))',
+          boxShadow: 'var(--shadow-lg, 0 -10px 40px rgba(18,27,42,.18))', animation: 'mk-sheet-up .22s ease-out',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 800, color: 'var(--text-strong)' }}>
+            <Icons.Megaphone size={20} color="var(--brand-active)" />平台公告
+          </div>
+          <button type="button" onClick={onClose} aria-label="关闭" style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32,
+            border: 'none', background: 'var(--surface-sunken)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-muted)',
+          }}><Icons.X size={18} /></button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {notices.map((n) => (
+            <div key={n.id} style={{ paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>{n.title}</div>
+              {n.create_time && (
+                <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 3 }}>{n.create_time}</div>
+              )}
+              <div style={{ fontSize: 13.5, color: 'var(--text-body)', marginTop: 7, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{n.content}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{'@keyframes mk-sheet-up{from{transform:translateY(100%)}to{transform:translateY(0)}}'}</style>
+    </div>
+  );
+}
+
+/* —— 平台公告条(店招之上,可关闭;多条轮播显示最新一条 + 点击看全部) —— */
+function PlatformNoticeBar({ notices }) {
+  const [closed, setClosed] = React.useState(false);
+  const [idx, setIdx] = React.useState(0);
+  const [showAll, setShowAll] = React.useState(false);
+  const many = notices.length > 1;
+
+  React.useEffect(() => {
+    if (!many || closed) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % notices.length), 4500);
+    return () => clearInterval(t);
+  }, [many, closed, notices.length]);
+
+  if (closed || notices.length === 0) return null;
+  const cur = notices[idx % notices.length];
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px',
+        background: 'var(--brand-soft, #eef3ff)', borderBottom: '1px solid var(--brand-soft-border, #d6e2ff)',
+        color: 'var(--brand-active)',
+      }}>
+        <Icons.Megaphone size={17} color="var(--brand-active)" style={{ flex: 'none' }} />
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          title="查看全部平台公告"
+          style={{
+            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none',
+            background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'inherit',
+            fontFamily: 'var(--font-sans)',
+          }}
+        >
+          <span style={{
+            flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            <span style={{ fontWeight: 800 }}>{cur.title}</span>
+            {cur.content ? <span style={{ fontWeight: 600, opacity: .85 }}>{'  ·  ' + cur.content}</span> : null}
+          </span>
+          <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, opacity: .8, whiteSpace: 'nowrap' }}>
+            {many ? `全部 ${notices.length} 条 ›` : '详情 ›'}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setClosed(true)}
+          aria-label="关闭公告"
+          style={{
+            flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
+            border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--brand-active)', opacity: .7,
+          }}
+        ><Icons.X size={15} /></button>
+      </div>
+      {showAll && <PlatformNoticeModal notices={notices} onClose={() => setShowAll(false)} />}
+    </>
+  );
+}
+
 const GRID = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 };
 
 function StateWrap({ children }) {
@@ -241,6 +351,8 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const shown = q ? byCat.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byCat;
 
   const verified = Number(store.verified) === 1;
+  // 平台公告(store.notices,由 App 注入)— 区别于下面的商户店铺公告 announcement 字段。
+  const notices = Array.isArray(store.notices) ? store.notices.filter((n) => n && (n.title || n.content)) : [];
   const announcement = (store.announcement || '').trim();
   const intro = (store.intro || '').trim();
   const salesCount = store.sales_count != null ? store.sales_count : 0;
@@ -248,6 +360,9 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
   return (
     <div>
+      {/* 平台公告条(店招之上) */}
+      {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
+
       {/* 店招封面横幅 */}
       <div style={{
         height: 150, position: 'relative', overflow: 'hidden',

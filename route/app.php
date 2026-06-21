@@ -61,6 +61,12 @@ Route::group('admin', function () {
         // 跨商户只读视图 (T8.5)
         Route::get('orders', 'admin.Orders/index');
         Route::get('products', 'admin.Products/index');
+
+        // 平台公告管理
+        Route::get('announcements', 'admin.Announcements/index');
+        Route::post('announcements', 'admin.Announcements/create');
+        Route::post('announcements/:id', 'admin.Announcements/update');
+        Route::post('announcements/:id/delete', 'admin.Announcements/delete');
     })->middleware(\app\middleware\AdminAuth::class);
 });
 

@@ -26,7 +26,9 @@ export default function App() {
     api
       .shop()
       .then((data) => {
-        setShop(data.store || null);
+        // 平台公告(data.notices)随店铺数据下发,挂到 store 上交给首页顶部展示。
+        const store = data.store ? { ...data.store, notices: Array.isArray(data.notices) ? data.notices : [] } : null;
+        setShop(store);
         setCategories(Array.isArray(data.categories) ? data.categories : []);
         setProducts((data.products || []).map(normalizeProduct));
       })

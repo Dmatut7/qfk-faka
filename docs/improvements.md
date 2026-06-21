@@ -35,3 +35,8 @@
 - 后端:GET /admin/dashboard(商户/订单/成交额/待审核提现/商品/卡密聚合,Money 准);POST /merchant/register(公开,创建待审核商户,自动生成 slug,bcrypt)。新增 10 测试(AdminDashboardTest 2 + MerchantRegisterTest 8),composer test 267 全绿。
 - 前端:admin 仪表盘页(StatCard);ConsoleApp 登录页加「我要开店」自助注册表单。
 - 验证:267测试 + vite build + e2e(login/含仪表盘的14+1屏)+ 两接口实测全绿。
+
+## 第5轮(2026-06-21):平台公告/内容管理 — 已完成✅
+- 后端:announcements 表迁移 + Announcement 模型 + AnnouncementService + admin/Announcements CRUD;StorefrontService 增加 notices(status=1,sort,限5)。新增 9 测试,composer test 276 全绿。
+- 前端:admin「内容管理」页(CRUD+二次确认)+ 买家店铺顶部平台公告条(可关闭/轮播/查看全部 Modal)。
+- 验证:276测试 + vite build + e2e(login/含内容管理的16屏/buyer flow)+ /s/demo notices 实测全绿。
