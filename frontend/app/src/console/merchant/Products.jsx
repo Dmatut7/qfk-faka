@@ -22,6 +22,8 @@ const EMPTY_FORM = {
   min_buy: 1,
   max_buy: 0,
   delivery_message: '',
+  purchase_notice: '',
+  show_stock_type: 0,
   sort: 0,
 };
 
@@ -64,6 +66,8 @@ export default function Products({ api, session }) {
       min_buy: row.min_buy ?? 1,
       max_buy: row.max_buy ?? 0,
       delivery_message: row.delivery_message || '',
+      purchase_notice: row.purchase_notice || '',
+      show_stock_type: Number(row.show_stock_type) || 0,
       sort: row.sort ?? 0,
     });
     setFormError('');
@@ -88,6 +92,8 @@ export default function Products({ api, session }) {
       min_buy: Math.max(1, Number(form.min_buy) || 1),
       max_buy: Number(form.max_buy) || 0,
       delivery_message: form.delivery_message,
+      purchase_notice: form.purchase_notice,
+      show_stock_type: Number(form.show_stock_type) || 0,
       sort: Number(form.sort) || 0,
     };
     setSaving(true);
@@ -304,6 +310,17 @@ export default function Products({ api, session }) {
 
           <Field label="发货留言" hint="下单成功后随卡密展示给买家(可选)">
             <textarea value={form.delivery_message} onChange={set('delivery_message')} rows={2} style={textareaStyle} placeholder="例如:请在 24 小时内激活" />
+          </Field>
+
+          <Field label="购买须知" hint="下单前提示给买家(可选)">
+            <textarea value={form.purchase_notice} onChange={set('purchase_notice')} rows={2} style={textareaStyle} placeholder="例如:购买前请确认账号区域,售出不退" />
+          </Field>
+
+          <Field label="库存显示方式" hint="决定买家端如何展示库存">
+            <select value={form.show_stock_type} onChange={set('show_stock_type')} style={selectStyle}>
+              <option value={0}>模糊(库存充足/少量/缺货)</option>
+              <option value={1}>精确数字</option>
+            </select>
           </Field>
         </div>
       </Modal>

@@ -105,6 +105,15 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const hasSold = p.sold != null;
   const hasOriginal = p.original != null && p.original > p.price;
 
+  // 库存展示:show_stock_type=1 精确「库存 N」;=0 模糊(充足>20/少量1-20/缺货0)。
+  // 缺货始终「缺货」。返回 {variant, text} 供 Badge 渲染。
+  const stockBadge = (() => {
+    if (out) return { variant: 'danger', text: '缺货' };
+    if (Number(p.show_stock_type) === 1) return { variant: 'success', text: `库存 ${p.stock}` };
+    if (p.stock <= 20) return { variant: 'pending', text: '库存少量' };
+    return { variant: 'success', text: '库存充足' };
+  })();
+
   const minBuy = Math.max(1, p.min_buy || 1);
   // max_buy>0 ? min(max_buy, stock) : stock
   const maxBuy = out ? minBuy : (p.max_buy > 0 ? Math.min(p.max_buy, p.stock) : p.stock);
@@ -183,7 +192,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       <div style={{ marginTop: 16 }}>
         <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{p.name}</h1>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          {out ? <Badge variant="danger" dot>缺货</Badge> : <Badge variant="success" dot>有货 {p.stock}</Badge>}
+          <Badge variant={stockBadge.variant} dot>{stockBadge.text}</Badge>
           <Badge variant="secure" icon={<Icons.Zap size={13} />}>自动发货</Badge>
           {hasSold && <Badge variant="neutral">已售 {p.sold}</Badge>}
         </div>
@@ -224,6 +233,23 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--secure-bg)', border: '1px solid var(--teal-50)', borderRadius: 'var(--radius-lg)', padding: '12px 14px' }}>
           <Icons.Package size={18} color="var(--secure-solid)" style={{ flex: 'none', marginTop: 1 }} />
           <span style={{ fontSize: 13.5, color: 'var(--secure-fg)', lineHeight: 1.6 }}>{p.delivery_message}</span>
+        </div>
+      )}
+
+      {/* 购买须知(下单前提示)— 非空才展示;纯文本保留换行,不用 innerHTML */}
+      {(p.purchase_notice || '').trim() && (
+        <div style={{
+          marginTop: 16, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px',
+          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+          borderRadius: 'var(--radius-lg)', color: 'var(--pending-fg, #92600a)',
+        }}>
+          <Icons.AlertTriangle size={18} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>购买须知</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.6, fontWeight: 600, whiteSpace: 'pre-wrap', textWrap: 'pretty' }}>
+              {p.purchase_notice.trim()}
+            </div>
+          </div>
         </div>
       )}
 

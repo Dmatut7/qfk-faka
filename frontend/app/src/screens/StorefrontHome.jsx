@@ -40,10 +40,13 @@ function Stat({ value, label, icon }) {
   );
 }
 
-/* —— 库存标签 —— */
-function StockPill({ stock }) {
+/* —— 库存标签 ——
+   showStockType=1 精确显示「库存 N」;否则模糊(充足/少量/缺货)。
+   缺货(stock<=0)始终显示「缺货」,与显示方式无关。 */
+function StockPill({ stock, showStockType }) {
   let bg = 'var(--success-bg)', fg = 'var(--success-fg)', bd = 'var(--success-border)', txt = '库存充足';
   if (stock <= 0) { bg = 'var(--surface-sunken)'; fg = 'var(--text-muted)'; bd = 'var(--border)'; txt = '缺货'; }
+  else if (Number(showStockType) === 1) { txt = `库存 ${stock}`; }
   else if (stock <= 20) { bg = 'var(--pending-bg)'; fg = 'var(--pending-fg)'; bd = 'var(--pending-border)'; txt = '库存少量'; }
   return (
     <span style={{
@@ -97,7 +100,7 @@ function GoodsCard({ p, onClick }) {
       {/* 图片 16:9 */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
         <GoodsThumb src={p.image} alt={p.name} thumb={p.thumb} fontSize={38} />
-        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} /></div>
+        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} showStockType={p.show_stock_type} /></div>
       </div>
       {/* 内容 */}
       <div style={{ padding: '10px 11px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>

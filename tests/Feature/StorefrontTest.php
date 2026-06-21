@@ -57,4 +57,44 @@ class StorefrontTest extends TestCase
         $body = $this->callJson('GET', '/buyer/product/' . $p->id);
         $this->assertSame(Code::PRODUCT_OFF, $body['code']);
     }
+
+    /**
+     * 商品带购买须知/库存显示方式创建后,/s/{slug} 与 /buyer/product/{id} 均能返回这两字段。
+     */
+    public function testPurchaseNoticeAndShowStockTypeExposed(): void
+    {
+        $m = $this->makeMerchant(['store_slug' => 'notice_' . uniqid()]);
+        $token = $this->merchantToken((int) $m->id);
+
+        $r = $this->callJson('POST', '/merchant/products', [
+            'title'           => '须知商品',
+            'price'           => '8.80',
+            'purchase_notice' => '下单前请阅读须知',
+            'show_stock_type' => 1,
+        ], $this->bearer($token));
+        $this->assertSame(0, $r['code']);
+        $this->assertSame('下单前请阅读须知', $r['data']['purchase_notice']);
+        $this->assertSame(1, (int) $r['data']['show_stock_type']);
+        $pid = (int) $r['data']['id'];
+
+        // /s/{slug} 列表返回
+        $store = $this->callJson('GET', '/s/' . $m->store_slug);
+        $this->assertSame(0, $store['code']);
+        $found = null;
+        foreach ($store['data']['products'] as $row) {
+            if ((int) $row['id'] === $pid) {
+                $found = $row;
+                break;
+            }
+        }
+        $this->assertNotNull($found, '新建商品应出现在店铺列表');
+        $this->assertSame('下单前请阅读须知', $found['purchase_notice']);
+        $this->assertSame(1, $found['show_stock_type']);
+
+        // /buyer/product/{id} 详情返回
+        $detail = $this->callJson('GET', '/buyer/product/' . $pid);
+        $this->assertSame(0, $detail['code']);
+        $this->assertSame('下单前请阅读须知', $detail['data']['purchase_notice']);
+        $this->assertSame(1, $detail['data']['show_stock_type']);
+    }
 }

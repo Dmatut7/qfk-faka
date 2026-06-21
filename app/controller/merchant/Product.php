@@ -19,7 +19,7 @@ class Product extends BaseApiController
 
     public function create(ProductService $svc)
     {
-        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'status', 'sort']);
+        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'status', 'sort']);
         $this->validate($d, [
             'title'        => 'require|max:128',
             'image'        => 'max:500',
@@ -27,6 +27,7 @@ class Product extends BaseApiController
             'market_price' => 'float|egt:0',
             'min_buy'      => 'integer|egt:1',
             'max_buy'      => 'integer|egt:0',
+            'show_stock_type' => 'in:0,1',
         ], [
             'price.gt' => '价格必须大于 0',
         ]);
@@ -35,7 +36,10 @@ class Product extends BaseApiController
 
     public function update(ProductService $svc, $id)
     {
-        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort']);
+        $d = $this->params(['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'sort']);
+        if (isset($d['show_stock_type']) && $d['show_stock_type'] !== '') {
+            $this->validate($d, ['show_stock_type' => 'in:0,1']);
+        }
         if (isset($d['price'])) {
             $this->validate($d, ['price' => 'float|gt:0'], ['price.gt' => '价格必须大于 0']);
         }

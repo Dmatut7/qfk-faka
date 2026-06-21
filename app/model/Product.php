@@ -23,6 +23,7 @@ class Product extends Model
         'max_buy'     => 'integer',
         'status'      => 'integer',
         'sort'        => 'integer',
+        'show_stock_type' => 'integer',
     ];
 
     public const STATUS_OFF = 0; // 下架

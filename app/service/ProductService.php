@@ -14,7 +14,7 @@ use app\model\Product;
  */
 class ProductService
 {
-    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'sort'];
+    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'sort'];
 
     public function list(int $merchantId, array $filter = []): array
     {
@@ -49,6 +49,8 @@ class ProductService
             'min_buy'          => $minBuy,
             'max_buy'          => $maxBuy,
             'delivery_message' => $d['delivery_message'] ?? null,
+            'purchase_notice'  => (isset($d['purchase_notice']) && $d['purchase_notice'] !== '') ? $d['purchase_notice'] : null,
+            'show_stock_type'  => (isset($d['show_stock_type']) && (int) $d['show_stock_type'] === 1) ? 1 : 0,
             'status'           => isset($d['status']) ? (int) $d['status'] : Product::STATUS_ON,
             'sort'             => (int) ($d['sort'] ?? 0),
         ]);
@@ -66,6 +68,12 @@ class ProductService
         }
         if (array_key_exists('image', $d) && $d['image'] === '') {
             $d['image'] = null;
+        }
+        if (array_key_exists('purchase_notice', $d) && $d['purchase_notice'] === '') {
+            $d['purchase_notice'] = null;
+        }
+        if (array_key_exists('show_stock_type', $d)) {
+            $d['show_stock_type'] = ((int) $d['show_stock_type'] === 1) ? 1 : 0;
         }
         if (array_key_exists('min_buy', $d)) {
             $d['min_buy'] = max(1, (int) $d['min_buy']);

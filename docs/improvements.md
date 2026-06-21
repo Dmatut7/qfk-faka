@@ -59,3 +59,9 @@
 ## 第10-11轮(2026-06-22):对标diff+审计 → 修缺陷 — 已完成✅
 - R10 对标鲸发卡+深度查bug,R11 全修:注册限流(防灌库)、公告可清空内容、渠道验签按路径id、前端金额改整数分(守金额纪律)、分类id归一(防类型失配)、thumb稳定哈希、sticky顶栏变量、Withdrawals图标/可关错误条/Input图标、订单复制execCommand兜底。
 - 验证:composer test 289绿(+3)、vite build、e2e 4/4。
+
+## 第12轮(2026-06-22):商品详情对标(购买须知+库存显示方式)— 已完成✅
+- 后端:迁移 products.purchase_notice/show_stock_type;StorefrontService/ProductService 返回+接受。290测试绿(+1)。
+- 买家:库存按 show_stock_type 精确「库存N」或模糊「充足/少量/缺货」(修了模糊模式泄露精确库存);ProductDetail 购买须知块。
+- 商户:商品表单加 购买须知 + 库存显示方式。
+- 验证:290测试 + vite build + e2e 4/4。
