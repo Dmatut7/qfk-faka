@@ -1,0 +1,18 @@
+/.idea
+/.vscode
+/vendor
+*.log
+.env
+
+# ThinkPHP 运行时缓存
+/runtime/*
+!/runtime/.gitkeep
+
+# PHPUnit
+/.phpunit.result.cache
+/.phpunit.cache
+
+# 系统文件
+.DS_Store
+
+# 说明:.env.testing 故意纳入版本库(本地测试库配置,无敏感信息),便于测试可复现
