@@ -51,6 +51,9 @@ class AdminWithdrawService
             $m   = $this->lockMerchant((int) $w->merchant_id);
 
             $amount    = (string) $w->amount;
+            if (Money::cmp((string) $m->frozen_balance, $amount) < 0) {
+                throw new BizException(Code::STATE_INVALID, '冻结余额异常');
+            }
             $newFrozen = Money::sub((string) $m->frozen_balance, $amount);
 
             Db::name('merchants')->where('id', $m->id)
@@ -72,6 +75,9 @@ class AdminWithdrawService
             $m   = $this->lockMerchant((int) $w->merchant_id);
 
             $amount     = (string) $w->amount;
+            if (Money::cmp((string) $m->frozen_balance, $amount) < 0) {
+                throw new BizException(Code::STATE_INVALID, '冻结余额异常');
+            }
             $newFrozen  = Money::sub((string) $m->frozen_balance, $amount);
             $newBalance = Money::add((string) $m->balance, $amount);
 

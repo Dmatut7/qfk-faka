@@ -27,18 +27,33 @@ function statusPill(status) {
   return <Pill tone={s.tone}>{s.label}</Pill>;
 }
 
+const PAGE_SIZE = 20;
+
 export default function Withdrawals({ api, session }) {
   const [status, setStatus] = React.useState('0'); // 默认聚焦待审核
   const [merchantId, setMerchantId] = React.useState('');
+  const [wdPage, setWdPage] = React.useState(1);
+
+  // 切换状态 / 商户筛选时回到第 1 页
+  React.useEffect(() => { setWdPage(1); }, [status, merchantId]);
 
   // 真实列表:{ total, page, items[] }
   const list = useAsync(
-    () => api.withdrawals({ status, ...(merchantId.trim() ? { merchant_id: merchantId.trim() } : {}), page: 1 }),
-    [status, merchantId]
+    () => api.withdrawals({ status, ...(merchantId.trim() ? { merchant_id: merchantId.trim() } : {}), page: wdPage }),
+    [status, merchantId, wdPage]
   );
 
   const rows = list.data?.items || [];
   const total = list.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const goPage = (p) => setWdPage(Math.min(Math.max(1, p), totalPages));
+
+  // 审批/拒绝成功后重载当前页;若该页因数量变化越界则回退到有效页
+  function reloadAfterMutate() {
+    const nextTotalPages = Math.max(1, Math.ceil(Math.max(0, total - 1) / PAGE_SIZE));
+    if (wdPage > nextTotalPages) setWdPage(nextTotalPages);
+    else list.reload();
+  }
 
   // 行内操作错误提示
   const [rowErr, setRowErr] = React.useState('');
@@ -58,7 +73,7 @@ export default function Withdrawals({ api, session }) {
     setBusyId(row.id);
     try {
       await api.approveWithdrawal(row.id);
-      list.reload();
+      reloadAfterMutate();
     } catch (e) {
       setRowErr(e instanceof ApiError ? e.message : '审核打款失败,请重试');
     } finally {
@@ -85,7 +100,7 @@ export default function Withdrawals({ api, session }) {
     try {
       await api.rejectWithdrawal(rejecting.id, { reason: r });
       setRejecting(null);
-      list.reload();
+      reloadAfterMutate();
     } catch (e) {
       setRejectErr(e instanceof ApiError ? e.message : '拒绝失败,请重试');
     } finally {
@@ -224,6 +239,8 @@ export default function Withdrawals({ api, session }) {
         empty="暂无提现申请"
       />
 
+      <Pager total={total} page={wdPage} totalPages={totalPages} loading={list.loading} onGo={goPage} />
+
       {/* 拒绝 Modal:填原因 → 解冻退回 */}
       <Modal
         open={rejecting != null}
@@ -259,5 +276,17 @@ export default function Withdrawals({ api, session }) {
         ) : null}
       </Modal>
     </Panel>
+  );
+}
+
+/* 分页器:与 Wallet 的 Pager 写法一致(上一页/下一页) */
+function Pager({ total, page, totalPages, loading, onGo }) {
+  if (!total) return null;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+      <span>共 {total} 条 · 第 {page}/{totalPages} 页</span>
+      <Button size="sm" variant="ghost" disabled={page <= 1 || loading} onClick={() => onGo(page - 1)}>上一页</Button>
+      <Button size="sm" variant="ghost" disabled={page >= totalPages || loading} onClick={() => onGo(page + 1)}>下一页</Button>
+    </div>
   );
 }

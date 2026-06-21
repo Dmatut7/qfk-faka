@@ -62,6 +62,9 @@ class MerchantWalletService
                     if (!$m) {
                         throw new BizException(Code::NOT_FOUND, '商户不存在');
                     }
+                    if ((int) $m->status !== Merchant::STATUS_ACTIVE) {
+                        throw new BizException(Code::FORBIDDEN, '账号状态异常,暂不可提现');
+                    }
                     if (Money::cmp($amount, (string) $m->balance) > 0) {
                         throw new BizException(Code::STATE_INVALID, '可提现余额不足');
                     }

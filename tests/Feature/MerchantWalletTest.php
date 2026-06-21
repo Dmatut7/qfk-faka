@@ -78,6 +78,22 @@ class MerchantWalletTest extends TestCase
         }
     }
 
+    public function testFrozenMerchantWithdrawForbidden(): void
+    {
+        $m = $this->makeMerchant(['balance' => '100.00', 'status' => Merchant::STATUS_FROZEN]);
+        try {
+            $this->svc->applyWithdrawal((int) $m->id, '30.00', 'acc');
+            $this->fail('冻结商户应被拒绝提现');
+        } catch (BizException $e) {
+            $this->assertSame(Code::FORBIDDEN, $e->getBizCode());
+        }
+        // 余额与冻结不动,不产生提现单
+        $reload = Merchant::find($m->id);
+        $this->assertSame('100.00', $reload->balance);
+        $this->assertSame('0.00', $reload->frozen_balance);
+        $this->assertSame(0, Withdrawal::where('merchant_id', $m->id)->count());
+    }
+
     public function testExactBalanceAllowed(): void
     {
         $m = $this->merchant('50.00');

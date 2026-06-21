@@ -115,7 +115,16 @@ export default function Cards({ api, session }) {
       if (confirm.kind === 'disable') await api.disableCard(confirm.row.id);
       else await api.deleteCard(confirm.row.id);
       setConfirm(null);
-      reloadAll();
+      // 删除/作废后若当前页越界(如最后一页最后一张被移除),回退到有效页;否则原地刷新
+      const nextTotal = Math.max(0, total - 1);
+      const nextTotalPages = Math.max(1, Math.ceil(nextTotal / pageSize));
+      if (page > nextTotalPages) {
+        // page 变更会触发卡密列表重载;库存统计另行刷新
+        stats.reload();
+        setPage(nextTotalPages);
+      } else {
+        reloadAll();
+      }
     } catch (e) {
       setConfirmErr(e instanceof ApiError ? e.message : '操作失败,请重试');
     } finally {

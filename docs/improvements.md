@@ -74,3 +74,8 @@
 - 后端:invite_codes 表+模型+Service(生成/停用/删除/redeem 行锁防并发超用)+ admin CRUD;注册闸门(registration_require_invite 设置控制必填,redeem+建户同事务)。新增18测试,308全绿。
 - 前端:admin 邀请码页(生成/停用/删除二次确认)+ 自助注册表单加邀请码字段。
 - 验证:308测试 + vite build + e2e 4/4。
+
+## 第17-18轮(2026-06-22):最后风险审计 → 修复 — 已完成✅
+- R17 上线前风险审计抓出:平台提现审核页写死page:1无分页(超20笔无法审核打款,HIGH资金阻塞)、卡密删末页越界、冻结余额无下限守卫、冻结商户可提现等。
+- R18 全修:提现审核页加分页+越界回退、卡密删末页回退、AdminWithdrawService 冻结余额≥提现额显式断言、applyWithdrawal 冻结商户禁提现(+测试)。CLOSED→EXCEPTION对账闭环记 blockers 待 owner。
+- 验证:composer test 309绿(+1)、vite build、e2e 5/5。
