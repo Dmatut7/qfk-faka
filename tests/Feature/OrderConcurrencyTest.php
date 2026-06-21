@@ -184,4 +184,87 @@ class OrderConcurrencyTest extends TestCase
             $this->assertSame(1, (int) Product::where('id', $p->id)->value('stock'));
         }
     }
+
+    /**
+     * 下单与超时释放并发:过期订单持有的卡被回收的同时,新买家来抢。
+     * 不变量:旧单最终关闭;至多一个新买家拿到卡;卡绝不仍归属旧单;
+     *         卡状态与库存一致(锁给新单则 stock=0,释放则 stock=1)。
+     */
+    public function testReclaimVsCreateConcurrency(): void
+    {
+        $rounds = 15;
+        for ($r = 0; $r < $rounds; $r++) {
+            $p = $this->freshProductWithCards(1);
+            $old = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'old@x.com']);
+            Db::name('orders')->where('id', $old->id)->update(['expire_at' => date('Y-m-d H:i:s', time() - 60)]);
+
+            $startAt = microtime(true) + 0.10;
+            $pids = []; $files = [];
+            $workers = 5; // worker0=回收;其余=买家
+
+            for ($i = 0; $i < $workers; $i++) {
+                $file = $this->tmpDir . '/' . uniqid('rc_', true);
+                $files[] = $file;
+                $pid = pcntl_fork();
+                if ($pid === -1) {
+                    $this->fail('fork 失败');
+                }
+                if ($pid === 0) {
+                    Db::connect('mysql', true);
+                    try { Db::query('SELECT 1'); } catch (\Throwable $e) {}
+                    if ($startAt > microtime(true)) {
+                        @time_sleep_until($startAt);
+                    }
+                    $out = 'ERR';
+                    try {
+                        if ($i === 0) {
+                            $n = (new OrderService())->reclaimExpired();
+                            $out = 'RECLAIM ' . $n;
+                        } else {
+                            $o = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'new@x.com']);
+                            $out = 'BUY ' . $o->id;
+                        }
+                    } catch (BizException $e) {
+                        $out = $i === 0 ? 'RECLAIM_BIZ' : ('BUYFAIL ' . $e->getBizCode());
+                    } catch (\Throwable $e) {
+                        $out = 'ERR ' . str_replace("\n", ' ', $e->getMessage());
+                    }
+                    file_put_contents($file, $out);
+                    exit(0);
+                }
+                $pids[] = $pid;
+            }
+            foreach ($pids as $pid) {
+                pcntl_waitpid($pid, $status);
+            }
+            Db::connect('mysql', true);
+
+            $buyOrderIds = [];
+            foreach ($files as $f) {
+                $line = trim((string) @file_get_contents($f));
+                @unlink($f);
+                if (strpos($line, 'BUY ') === 0) {
+                    $buyOrderIds[] = (int) substr($line, 4);
+                } elseif (strpos($line, 'ERR') === 0) {
+                    $this->fail("第 $r 轮子进程异常: $line");
+                }
+            }
+
+            $this->assertSame(Order::STATUS_CLOSED, (int) Order::where('id', $old->id)->value('status'), "第 $r 轮:旧单应关闭");
+            $this->assertLessThanOrEqual(1, count($buyOrderIds), "第 $r 轮:至多一个新买家成功");
+
+            $card = Card::where('product_id', $p->id)->find();
+            $this->assertNotSame((int) $old->id, (int) $card->order_id, "第 $r 轮:卡不应仍归属已关闭旧单");
+
+            if (count($buyOrderIds) === 1) {
+                $this->assertSame(Card::STATUS_LOCKED, (int) $card->status, "第 $r 轮:卡应锁给新单");
+                $this->assertSame($buyOrderIds[0], (int) $card->order_id);
+                $this->assertSame(0, (int) Product::where('id', $p->id)->value('stock'));
+            } else {
+                $this->assertSame(Card::STATUS_UNSOLD, (int) $card->status, "第 $r 轮:卡应释放回未售");
+                $this->assertNull($card->order_id);
+                $this->assertSame(1, (int) Product::where('id', $p->id)->value('stock'));
+            }
+        }
+    }
 }

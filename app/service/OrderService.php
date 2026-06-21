@@ -131,6 +131,81 @@ class OrderService
         });
     }
 
+    /**
+     * 回收过期未支付订单:关单 + 释放锁定卡 + 回补库存。返回成功回收单数。
+     * 每单独立事务 + 行锁 + 状态重查 → 幂等、可与并发安全共存(spec §10.3.6)。
+     */
+    public function reclaimExpired(int $limit = 100): int
+    {
+        $orderIds = Order::where('status', Order::STATUS_PENDING)
+            ->where('expire_at', '<', date('Y-m-d H:i:s'))
+            ->limit($limit)
+            ->order('id', 'asc')
+            ->column('id');
+
+        $count = 0;
+        foreach ($orderIds as $orderId) {
+            $attempt = 0;
+            while (true) {
+                try {
+                    if ($this->reclaimOne((int) $orderId)) {
+                        $count++;
+                    }
+                    break;
+                } catch (\think\db\exception\PDOException $e) {
+                    if ($this->isDeadlock($e) && ++$attempt < self::MAX_DEADLOCK_RETRY) {
+                        usleep(10000 * $attempt);
+                        continue;
+                    }
+                    throw $e;
+                }
+            }
+        }
+        return $count;
+    }
+
+    private function reclaimOne(int $orderId): bool
+    {
+        return Db::transaction(function () use ($orderId) {
+            $now = date('Y-m-d H:i:s');
+
+            $order = Order::find($orderId);
+            if (!$order || (int) $order->status !== Order::STATUS_PENDING) {
+                return false;
+            }
+
+            // 锁顺序与下单一致:先锁商品行,再锁订单行
+            Product::where('id', $order->product_id)->lock(true)->find();
+            $locked = Order::where('id', $orderId)->lock(true)->find();
+
+            // 锁内重查:已支付/已发货/已关闭 → 跳过(幂等)
+            if (!$locked || (int) $locked->status !== Order::STATUS_PENDING) {
+                return false;
+            }
+            if (strtotime($locked->expire_at) >= time()) {
+                return false; // 已不再过期
+            }
+
+            // 关单(affected_rows 守卫)
+            $closed = Db::name('orders')->where('id', $orderId)->where('status', Order::STATUS_PENDING)
+                ->update(['status' => Order::STATUS_CLOSED, 'update_time' => $now]);
+            if ($closed !== 1) {
+                return false;
+            }
+
+            // 仅释放本单"锁定中(1)"的卡;已售(2)/已作废不动
+            $released = Db::name('cards')
+                ->where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)
+                ->update(['status' => Card::STATUS_UNSOLD, 'order_id' => null, 'locked_at' => null, 'update_time' => $now]);
+
+            if ($released > 0) {
+                Db::name('products')->where('id', $order->product_id)->inc('stock', $released)->update();
+            }
+
+            return true;
+        });
+    }
+
     private function isDeadlock(\Throwable $e): bool
     {
         $msg = $e->getMessage();
