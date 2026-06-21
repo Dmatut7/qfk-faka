@@ -5,32 +5,67 @@ import { Icons } from '../Icons.jsx';
 import { merchantApi, adminApi, ApiError, getSession, setSession, clearSession } from './api.js';
 import { SCREENS } from './screens.js';
 
-/* 导航定义(key 同时是 SCREENS 的键) */
+/* 导航定义(分组;item.key 同时是 SCREENS 的键)。对标鲸发卡:分组小标题 + 该组若干项 */
 const MERCHANT_NAV = [
-  { key: 'm-stats', label: '数据概览', icon: 'Zap' },
-  { key: 'm-products', label: '商品管理', icon: 'Package' },
-  { key: 'm-shop', label: '店铺装修', icon: 'ShieldCheck' },
-  { key: 'm-categories', label: '分类管理', icon: 'Inbox' },
-  { key: 'm-cards', label: '卡密管理', icon: 'Lock' },
-  { key: 'm-orders', label: '订单管理', icon: 'Search' },
-  { key: 'm-wallet', label: '钱包 / 提现', icon: 'RefreshCw' },
+  { group: '概览', items: [
+    { key: 'm-stats', label: '数据概览', icon: 'Zap' },
+  ] },
+  { group: '商品', items: [
+    { key: 'm-products', label: '商品管理', icon: 'Package' },
+    { key: 'm-categories', label: '分类管理', icon: 'Inbox' },
+    { key: 'm-cards', label: '卡密管理', icon: 'Lock' },
+  ] },
+  { group: '交易', items: [
+    { key: 'm-orders', label: '订单管理', icon: 'Search' },
+  ] },
+  { group: '资金', items: [
+    { key: 'm-wallet', label: '钱包 / 提现', icon: 'RefreshCw' },
+  ] },
+  { group: '店铺', items: [
+    { key: 'm-shop', label: '店铺装修', icon: 'ShieldCheck' },
+  ] },
 ];
 const ADMIN_NAV = [
-  { key: 'a-dashboard', label: '仪表盘', icon: 'Zap' },
-  { key: 'a-merchants', label: '商户审核', icon: 'ShieldCheck' },
-  { key: 'a-channels', label: '支付渠道', icon: 'Zap' },
-  { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },
-  { key: 'a-settlement', label: '对账报表', icon: 'Package' },
-  { key: 'a-content', label: '内容管理', icon: 'Inbox' },
-  { key: 'a-invite', label: '邀请码', icon: 'ShieldCheck' },
-  { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
-  { key: 'a-products', label: '商品(跨商户)', icon: 'Inbox' },
-  { key: 'a-settings', label: '平台配置', icon: 'Lock' },
+  { group: '概览', items: [
+    { key: 'a-dashboard', label: '仪表盘', icon: 'Zap' },
+  ] },
+  { group: '商户管理', items: [
+    { key: 'a-merchants', label: '商户审核', icon: 'ShieldCheck' },
+    { key: 'a-invite', label: '邀请码', icon: 'Mail' },
+  ] },
+  { group: '交易', items: [
+    { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
+    { key: 'a-products', label: '商品(跨商户)', icon: 'Package' },
+  ] },
+  { group: '财务', items: [
+    { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },
+    { key: 'a-settlement', label: '对账报表', icon: 'Star' },
+  ] },
+  { group: '运营', items: [
+    { key: 'a-content', label: '内容管理', icon: 'Megaphone' },
+    { key: 'a-channels', label: '支付渠道', icon: 'Zap' },
+  ] },
+  { group: '系统', items: [
+    { key: 'a-settings', label: '平台配置', icon: 'Lock' },
+  ] },
 ];
+
+/* 扁平化所有导航项(用于查标题、取首项 key) */
+function flattenNav(nav) {
+  return nav.reduce((acc, g) => acc.concat(g.items), []);
+}
 
 export default function ConsoleApp() {
   const [session, setSess] = React.useState(() => getSession());
   const loggedIn = !!session.token;
+
+  // R19:token 失效(1001)时 api.js 已 clearSession + 派发 'mk-session-expired',
+  // 这里同步 React 会话状态 → 自动回登录页。
+  React.useEffect(() => {
+    const onExpired = () => setSess(getSession());
+    window.addEventListener('mk-session-expired', onExpired);
+    return () => window.removeEventListener('mk-session-expired', onExpired);
+  }, []);
 
   const onLogin = (token, role, user) => { setSession(token, role, user); setSess(getSession()); };
   const onLogout = () => {
@@ -252,7 +287,8 @@ function RegisterScreen({ onCancel, onRegistered }) {
 /* ============ 控制台布局 ============ */
 function Dashboard({ session, onLogout }) {
   const nav = session.role === 'admin' ? ADMIN_NAV : MERCHANT_NAV;
-  const [active, setActive] = React.useState(nav[0].key);
+  const flatNav = flattenNav(nav);
+  const [active, setActive] = React.useState(flatNav[0].key);
   const ActiveScreen = SCREENS[active];
 
   return (
@@ -271,36 +307,70 @@ function Dashboard({ session, onLogout }) {
           </div>
         </div>
         <nav style={{ flex: 1, padding: 10, overflowY: 'auto' }}>
-          {nav.map((item) => {
-            const Icon = Icons[item.icon] || Icons.Package;
-            const on = active === item.key;
-            return (
-              <button key={item.key} onClick={() => setActive(item.key)}
-                aria-current={on ? 'page' : undefined}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 2,
-                  border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
-                  fontFamily: 'var(--font-sans)', fontWeight: on ? 700 : 600, fontSize: 14,
-                  background: on ? 'var(--brand-soft)' : 'transparent',
-                  color: on ? 'var(--brand-active)' : 'var(--text-body)',
-                }}>
-                <Icon size={18} color={on ? 'var(--brand)' : 'var(--text-muted)'} />{item.label}
-              </button>
-            );
-          })}
+          {nav.map((g) => (
+            <div key={g.group} style={{ marginBottom: 6 }}>
+              <div style={{ padding: '8px 12px 4px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-subtle)' }}>
+                {g.group}
+              </div>
+              {g.items.map((item) => {
+                const Icon = Icons[item.icon] || Icons.Package;
+                const on = active === item.key;
+                return (
+                  <button key={item.key} onClick={() => setActive(item.key)}
+                    aria-current={on ? 'page' : undefined}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', marginBottom: 2,
+                      border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', textAlign: 'left',
+                      fontFamily: 'var(--font-sans)', fontWeight: on ? 700 : 600, fontSize: 14,
+                      background: on ? 'var(--brand-soft)' : 'transparent',
+                      color: on ? 'var(--brand-active)' : 'var(--text-body)',
+                    }}>
+                    <Icon size={18} color={on ? 'var(--brand)' : 'var(--text-muted)'} />{item.label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div style={{ padding: 12, borderTop: '1px solid var(--border)' }}>
           <Button variant="neutral" size="md" block iconLeft={<Icons.ChevronLeft size={16} />} onClick={onLogout}>退出登录</Button>
         </div>
       </aside>
 
-      {/* 内容 */}
-      <main style={{ flex: 1, minWidth: 0, padding: '24px 28px', maxWidth: 1180 }}>
-        <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', margin: '0 0 18px' }}>
-          {nav.find((n) => n.key === active)?.label}
-        </h1>
-        {ActiveScreen ? <ActiveScreen api={session.role === 'admin' ? adminApi : merchantApi} session={session} /> : <Placeholder navKey={active} />}
-      </main>
+      {/* 内容区:顶栏 + 主体 */}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* 顶栏:左面包屑 + 右用户菜单 */}
+        <header style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          height: 56, flex: 'none', padding: '0 28px', background: '#fff',
+          borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 20,
+        }}>
+          <nav aria-label="面包屑" style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, fontSize: 13.5 }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              秒卡 · {session.role === 'admin' ? '平台' : '商户'}
+            </span>
+            <Icons.ChevronRight size={14} color="var(--text-subtle)" />
+            <span style={{ color: 'var(--text-strong)', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {flatNav.find((n) => n.key === active)?.label}
+            </span>
+          </nav>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 'none' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--text-body)', fontWeight: 600 }}>
+              <Icons.ShieldCheck size={16} color="var(--text-muted)" />
+              {session.user?.store_name || session.user?.nickname || session.user?.username || '已登录'}
+            </span>
+            <Button variant="ghost" size="sm" iconLeft={<Icons.ChevronLeft size={15} />} onClick={onLogout}>退出</Button>
+          </div>
+        </header>
+
+        {/* 主内容 */}
+        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px', maxWidth: 1180 }}>
+          <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', margin: '0 0 18px' }}>
+            {flatNav.find((n) => n.key === active)?.label}
+          </h1>
+          {ActiveScreen ? <ActiveScreen api={session.role === 'admin' ? adminApi : merchantApi} session={session} onNavigate={(key) => { if (SCREENS[key]) setActive(key); }} /> : <Placeholder navKey={active} />}
+        </main>
+      </div>
     </div>
   );
 }

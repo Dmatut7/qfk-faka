@@ -70,7 +70,11 @@ async function call(path, { method = 'GET', body, auth = true } = {}) {
   let json;
   try { json = await res.json(); } catch { throw new ApiError(-1, '服务器响应异常'); }
   if (json.code !== 0) {
-    if (json.code === 1001) clearSession();
+    if (json.code === 1001) {
+      clearSession();
+      // 通知 UI 层登出回登录页(ConsoleApp 监听 'mk-session-expired')
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('mk-session-expired'));
+    }
     throw new ApiError(json.code, json.msg);
   }
   return json.data;
