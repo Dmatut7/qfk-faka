@@ -156,6 +156,8 @@ export const adminApi = {
   orders: (params) => call('/admin/orders' + qs(params)),
   products: (params) => call('/admin/products' + qs(params)),
 
+  logs: (params) => call('/admin/logs' + qs(params)),
+
   announcements: () => call('/admin/announcements'),
   createAnnouncement: (d) => call('/admin/announcements', { method: 'POST', body: d }),
   updateAnnouncement: (id, d) => call('/admin/announcements/' + id, { method: 'POST', body: d }),

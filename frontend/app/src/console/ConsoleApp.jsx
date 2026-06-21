@@ -47,6 +47,7 @@ const ADMIN_NAV = [
   ] },
   { group: '系统', items: [
     { key: 'a-settings', label: '平台配置', icon: 'Lock' },
+    { key: 'a-logs', label: '异常日志', icon: 'AlertTriangle' },
   ] },
 ];
 

@@ -17,6 +17,7 @@ import AdminInviteCodes from './admin/InviteCodes.jsx';
 import AdminOrders from './admin/Orders.jsx';
 import AdminProducts from './admin/Products.jsx';
 import AdminSettings from './admin/Settings.jsx';
+import AdminLogs from './admin/Logs.jsx';
 
 export const SCREENS = {
   // 商户后台
@@ -38,4 +39,5 @@ export const SCREENS = {
   'a-orders': AdminOrders,
   'a-products': AdminProducts,
   'a-settings': AdminSettings,
+  'a-logs': AdminLogs,
 };

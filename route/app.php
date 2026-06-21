@@ -65,6 +65,9 @@ Route::group('admin', function () {
         Route::get('orders', 'admin.Orders/index');
         Route::get('products', 'admin.Products/index');
 
+        // 系统日志
+        Route::get('logs', 'admin.Logs/index');
+
         // 平台公告管理
         Route::get('announcements', 'admin.Announcements/index');
         Route::post('announcements', 'admin.Announcements/create');

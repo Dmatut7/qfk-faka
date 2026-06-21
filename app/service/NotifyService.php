@@ -11,6 +11,7 @@ use app\model\MerchantFundLog;
 use app\model\Order;
 use app\model\Payment;
 use app\model\Product;
+use app\model\SystemLog;
 use app\service\pay\PayDriverInterface;
 use app\service\pay\PayManager;
 use app\util\Money;
@@ -47,6 +48,10 @@ class NotifyService
 
         // (1) 防伪造:验签
         if (!$driver->verify($params, $config)) {
+            $this->log('pay_verify_fail', SystemLog::LEVEL_WARNING, '支付回调验签失败', [
+                'channel'      => $channelCode,
+                'out_trade_no' => (string) ($params['out_trade_no'] ?? ''),
+            ], (string) ($params['out_trade_no'] ?? '') ?: null);
             return $this->ack($driver->failResponse(), false, Code::SIGN_INVALID);
         }
 
@@ -149,6 +154,11 @@ class NotifyService
             if ($status === Order::STATUS_CLOSED) {
                 $this->markPaymentSuccess($paymentId, $channelTradeNo, $paidAmount, $payload, $now);
                 Db::name('orders')->where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION, 'paid_at' => $now, 'update_time' => $now]);
+                $this->log('settle_exception', SystemLog::LEVEL_ERROR, '超时关闭订单收到成功支付,已收款不入账,转人工', [
+                    'order_id' => (int) $order->id,
+                    'amount'   => $paidAmount,
+                    'reason'   => 'closed_then_paid',
+                ], (string) $order->order_no);
                 return $this->ack($driver->successResponse(), false, Code::ORDER_EXCEPTION);
             }
 
@@ -167,6 +177,12 @@ class NotifyService
             if ($lockedCnt !== $qty) {
                 Db::name('orders')->where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION, 'paid_at' => $now, 'update_time' => $now]);
                 $this->doSettle($order, $now);
+                $this->log('settle_exception', SystemLog::LEVEL_ERROR, '卡密不足无法发货,已收款已结算,转人工补货', [
+                    'order_id'   => (int) $order->id,
+                    'need'       => $qty,
+                    'locked'     => $lockedCnt,
+                    'reason'     => 'card_shortage',
+                ], (string) $order->order_no);
                 return $this->ack($driver->successResponse(), false, Code::ORDER_EXCEPTION);
             }
 
@@ -240,6 +256,16 @@ class NotifyService
     private function ack(string $ack, bool $delivered, int $code): array
     {
         return ['ack' => $ack, 'delivered' => $delivered, 'code' => $code];
+    }
+
+    /** 旁路记日志:整体 try/catch,任何异常吞掉,绝不影响回调主流程。 */
+    private function log(string $type, string $level, string $message, array $context = [], ?string $orderNo = null): void
+    {
+        try {
+            (new SystemLogService())->record($type, $level, $message, $context, $orderNo);
+        } catch (\Throwable $e) {
+            // 日志失败绝不拖垮回调
+        }
     }
 
     private function isDeadlock(\Throwable $e): bool

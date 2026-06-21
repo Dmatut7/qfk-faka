@@ -7,6 +7,7 @@ use app\common\BizException;
 use app\common\Code;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
+use app\model\SystemLog;
 use app\model\Withdrawal;
 use app\util\Money;
 use think\facade\Db;
@@ -62,6 +63,12 @@ class AdminWithdrawService
             Db::name('withdrawals')->where('id', $w->id)
                 ->update(['status' => Withdrawal::STATUS_PAID, 'update_time' => $now]);
 
+            $this->log('withdraw_approve', SystemLog::LEVEL_INFO, '提现审核通过(已打款)', [
+                'withdrawal_id' => (int) $w->id,
+                'merchant_id'   => (int) $m->id,
+                'amount'        => $amount,
+            ]);
+
             return Withdrawal::find($w->id);
         });
     }
@@ -95,6 +102,12 @@ class AdminWithdrawService
                 'remark'        => '提现拒绝退回 #' . $w->id,
             ]);
 
+            $this->log('withdraw_reject', SystemLog::LEVEL_INFO, '提现审核拒绝(已退回可用余额)', [
+                'withdrawal_id' => (int) $w->id,
+                'merchant_id'   => (int) $m->id,
+                'amount'        => $amount,
+            ]);
+
             return Withdrawal::find($w->id);
         });
     }
@@ -110,6 +123,16 @@ class AdminWithdrawService
             throw new BizException(Code::STATE_INVALID, '仅待审提现单可审核');
         }
         return $w;
+    }
+
+    /** 旁路记日志:整体 try/catch,任何异常吞掉,绝不影响审批主流程。 */
+    private function log(string $type, string $level, string $message, array $context = []): void
+    {
+        try {
+            (new SystemLogService())->record($type, $level, $message, $context);
+        } catch (\Throwable $e) {
+            // 审批留痕失败绝不拖垮审批
+        }
     }
 
     private function lockMerchant(int $merchantId): Merchant
