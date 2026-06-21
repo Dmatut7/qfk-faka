@@ -54,9 +54,13 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
 
   const expired = remain != null && remain <= 0;
 
-  // 防止卸载后 setState
+  // 防止卸载后 setState。注意:挂载时必须重置为 true,否则 React 18 StrictMode
+  // 的 mount→unmount→remount 双调用会在首次 cleanup 把它永久置 false,导致轮询被跳过。
   const aliveRef = React.useRef(true);
-  React.useEffect(() => () => { aliveRef.current = false; }, []);
+  React.useEffect(() => {
+    aliveRef.current = true;
+    return () => { aliveRef.current = false; };
+  }, []);
 
   const total = Number(order.total || 0);
 
