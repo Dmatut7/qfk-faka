@@ -48,8 +48,8 @@
   - 验收:建表;`uniq(channel,channel_trade_no)`、`uniq_token`、`uniq(order_id,type)` 等关键唯一索引生效;外键级联策略正确。✅ NULL 不去重语义、JSON config、账本只增已验证 —— **M2 完成(13 表全部建好)**
 
 ## M3 — 鉴权
-- [ ] **T3.1** Token 服务:签发(存哈希+过期)、校验、撤销。(TDD)
-  - 验收:签发后可校验;过期/撤销后失效;错误 token 拒绝。
+- [x] **T3.1** Token 服务:签发(存哈希+过期)、校验、撤销。(TDD)
+  - 验收:签发后可校验;过期/撤销后失效;错误 token 拒绝。✅(仅存哈希、revokeAllFor、purgeExpired)
 - [ ] **T3.2** 平台管理员登录/登出 + `AdminAuth` 中间件。
   - 验收:正确密码登录得 token;错误密码 2001;受保护路由无 token 返回 401。
 - [ ] **T3.3** 商户登录/登出 + `MerchantAuth` 中间件;冻结商户拒绝登录。
