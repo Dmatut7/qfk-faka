@@ -113,7 +113,7 @@ export default function Stats({ api, session, onNavigate }) {
       <Panel title="热销商品" subtitle="按销量排序 Top 10">
         <DataTable
           columns={[
-            { key: 'product_id', title: '商品 ID', render: (r) => '#' + r.product_id },
+            { key: 'product_id', title: '商品', render: (r) => r.product_title || '#' + r.product_id },
             { key: 'qty', title: '销量', align: 'right', render: (r) => Number(r.qty || 0) },
             { key: 'order_count', title: '订单数', align: 'right', render: (r) => Number(r.order_count || 0) },
             { key: 'sales', title: '销售额', align: 'right', render: (r) => <Money amount={Number(r.sales || 0)} strong /> },

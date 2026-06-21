@@ -66,10 +66,10 @@ export default function Orders({ api }) {
       key: 'product', title: '商品', render: (r) => (
         <div style={{ minWidth: 0 }}>
           <div>
-            <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{productMap[r.product_id] || `商品 #${r.product_id}`}</span>
+            <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{r.product_title || productMap[r.product_id] || `商品 #${r.product_id}`}</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> ×{r.quantity}</span>
           </div>
-          {productMap[r.product_id] ? (
+          {(r.product_title || productMap[r.product_id]) ? (
             <div className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>#{r.product_id}</div>
           ) : null}
         </div>

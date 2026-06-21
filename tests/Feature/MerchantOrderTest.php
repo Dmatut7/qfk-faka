@@ -129,6 +129,34 @@ class MerchantOrderTest extends TestCase
         $this->assertSame(2, Card::where('order_id', $order->id)->where('status', Card::STATUS_SOLD)->count());
     }
 
+    public function testProductTitleSnapshotInListAndDetail(): void
+    {
+        $m = $this->makeMerchant();
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '原始商品名', 'price' => '10.00', 'status' => Product::STATUS_ON, 'stock' => 0]);
+        $s = 'PT-' . $p->id . '-' . uniqid();
+        Card::create(['merchant_id' => $m->id, 'product_id' => $p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);
+        Product::where('id', $p->id)->update(['stock' => 1]);
+        $order = $this->order($m, $p, 1);
+
+        // 下单即写入快照
+        $this->assertSame('原始商品名', Order::find($order->id)->product_title);
+
+        // 商品改名后,订单仍显示下单时的商品名
+        Product::where('id', $p->id)->update(['title' => '改名后的商品']);
+        $token = $this->bearer($this->merchantToken((int) $m->id));
+
+        $list = $this->callJson('GET', '/merchant/orders', [], $token);
+        $row  = null;
+        foreach ($list['data']['items'] as $it) {
+            if ((int) $it['id'] === (int) $order->id) { $row = $it; break; }
+        }
+        $this->assertNotNull($row);
+        $this->assertSame('原始商品名', $row['product_title']);
+
+        $d = $this->callJson('GET', '/merchant/orders/' . $order->id, [], $token);
+        $this->assertSame('原始商品名', $d['data']['product_title']);
+    }
+
     public function testRedeliverOwnership(): void
     {
         [$m, $p] = $this->ctx();

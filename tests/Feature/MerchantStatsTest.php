@@ -67,6 +67,9 @@ class MerchantStatsTest extends TestCase
         $this->assertSame((int) $hot->id, (int) $body['data'][0]['product_id']);
         $this->assertSame(5, (int) $body['data'][0]['qty']);
         $this->assertSame(3, (int) $body['data'][0]['order_count']);
+        // join products 取标题
+        $this->assertSame('热销', $body['data'][0]['product_title']);
+        $this->assertSame('冷门', $body['data'][1]['product_title']);
     }
 
     public function testDateRangeHalfOpen(): void

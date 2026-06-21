@@ -98,6 +98,7 @@ class OrderService
                 'order_no'      => OrderNo::generate(),
                 'merchant_id'   => $product->merchant_id,
                 'product_id'    => $productId,
+                'product_title' => $product->title, // 商品名快照(改名/删除后订单仍显示当时商品名)
                 'buyer_email'   => trim((string) $input['buyer_email']),
                 'buyer_contact' => $input['buyer_contact'] ?? null,
                 'quantity'      => $quantity,

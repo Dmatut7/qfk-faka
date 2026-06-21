@@ -1,0 +1,13 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const p = await (await b.newContext({ viewport: { width: 1280, height: 880 } })).newPage();
+await p.goto('http://127.0.0.1:5173/console.html', { waitUntil: 'domcontentloaded' });
+await p.getByRole('radio', { name: '商户登录' }).first().click();
+await p.locator('form input').nth(0).fill('demo_merchant');
+await p.locator('form input').nth(1).fill('demo123456');
+await p.getByRole('button', { name: /^登录$/ }).first().click();
+await p.locator('aside nav button', { hasText: '数据概览' }).first().waitFor({ timeout: 12000 });
+await p.waitForTimeout(1800);
+await p.screenshot({ path: 'e2e/shot-m-dashboard.png' });
+console.log('merchant dashboard shot ok');
+await b.close();

@@ -53,6 +53,8 @@ export default function Orders({ api, session }) {
     return m;
   }, [products.data]);
   const productTitle = (id) => productMap[id] || `#${id}`;
+  // 商品名解析:优先订单快照 product_title,其次 id→名 映射,最后回退 #id
+  const orderProductName = (r) => r.product_title || productMap[r.product_id] || `#${r.product_id}`;
 
   const list = useAsync(
     () =>
@@ -146,10 +148,10 @@ export default function Orders({ api, session }) {
       render: (r) => (
         <div style={{ minWidth: 0 }}>
           <div style={{ color: 'var(--text-strong)', fontWeight: 600 }}>
-            {productMap[r.product_id] || `#${r.product_id}`}{' '}
+            {orderProductName(r)}{' '}
             <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>×{r.quantity}</span>
           </div>
-          {productMap[r.product_id] ? (
+          {orderProductName(r) !== `#${r.product_id}` ? (
             <div className="tnum" style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>#{r.product_id}</div>
           ) : null}
         </div>
@@ -438,10 +440,18 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
           <Row label="订单号"><span className="tnum">{o.order_no}</span></Row>
           <Row label="状态"><StatusPill status={o.status} /></Row>
           <Row label="商品">
-            {productTitle ? productTitle(o.product_id) : `#${o.product_id}`} <span style={{ color: 'var(--text-muted)' }}>× {o.quantity}</span>
-            {productTitle && productTitle(o.product_id) !== `#${o.product_id}` ? (
-              <span className="tnum" style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>#{o.product_id}</span>
-            ) : null}
+            {(() => {
+              // 优先订单快照 product_title,其次 id→名 映射,最后回退 #id
+              const name = o.product_title || (productTitle ? productTitle(o.product_id) : `#${o.product_id}`);
+              return (
+                <>
+                  {name} <span style={{ color: 'var(--text-muted)' }}>× {o.quantity}</span>
+                  {name !== `#${o.product_id}` ? (
+                    <span className="tnum" style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>#{o.product_id}</span>
+                  ) : null}
+                </>
+              );
+            })()}
           </Row>
           <Row label="单价"><Money amount={o.unit_price} /></Row>
           <Row label="实付金额"><Money amount={o.total_amount} strong /></Row>
