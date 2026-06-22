@@ -396,6 +396,12 @@ export default function StorefrontHome({ shop, categories, products, loading, er
     for (const p of list) { const t = Number(p.goods_type ?? 1); c[t] = (c[t] || 0) + 1; }
     return c;
   }, [list]);
+  // 商品加载后,若默认类型(卡密)无货,自动切到第一个有货的类型(只在数据到位时跑一次,不干扰用户后续手选)
+  React.useEffect(() => {
+    if (!list.length) return;
+    setTypeFilter((cur) => ((typeCounts[cur] || 0) > 0 ? cur : ([1, 2, 3, 4].find((t) => (typeCounts[t] || 0) > 0) || cur)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list.length]);
   // 真正按 category_id 精确筛选 + 销售类型筛选(类型卡)。
   const byCat = cat === 'all' ? list : list.filter((p) => normId(p.category_id) === normId(cat));
   const byType = typeFilter ? byCat.filter((p) => Number(p.goods_type ?? 1) === typeFilter) : byCat;
@@ -427,7 +433,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
       {/* 店招封面:有封面图则全屏照片主导;无则橙色渐变兜底 */}
       <div style={{
-        height: 200, position: 'relative', overflow: 'hidden',
+        height: 168, position: 'relative', overflow: 'hidden',
         background: store.cover ? '#1c1c22' : 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
       }}>
         {store.cover && (
