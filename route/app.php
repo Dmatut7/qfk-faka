@@ -30,6 +30,7 @@ Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\Rat
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
 Route::post('buyer/coupon/validate', 'buyer.Coupon/validateCode')->middleware(\app\middleware\RateLimit::class, 60, 60); // 券码试算(防爆破 60次/分)
+Route::post('buyer/checkout/preview', 'buyer.Coupon/preview')->middleware(\app\middleware\RateLimit::class, 120, 60); // 结算试算(原价+最优优惠+应付)
 // 买家投诉(公开,以 order_no + 邮箱核验)
 Route::post('buyer/complaint', 'buyer.Complaint/create')->middleware(\app\middleware\RateLimit::class, 10, 60);
 Route::post('buyer/complaint/query', 'buyer.Complaint/query');

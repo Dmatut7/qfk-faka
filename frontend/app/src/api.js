@@ -97,6 +97,10 @@ export const api = {
   /** 优惠券试算:{ coupon_id, code, original_amount, discount, final_amount };不可用抛 ApiError */
   validateCoupon: ({ code, productId, quantity = 1 }) =>
     call('/buyer/coupon/validate', { method: 'POST', body: { code, product_id: productId, quantity } }),
+  /** 结算试算(原价含限时折扣 + 券/满减满折互斥取最优 + 应付):
+   *  { original_amount, discount, final_amount, discount_label, coupon_applied };券无效抛 ApiError */
+  checkoutPreview: ({ productId, quantity = 1, couponCode }) =>
+    call('/buyer/checkout/preview', { method: 'POST', body: { product_id: productId, quantity, ...(couponCode ? { coupon_code: couponCode } : {}) } }),
   /** 发起投诉(order_no+邮箱核验) */
   fileComplaint: ({ orderNo, email, type, description }) =>
     call('/buyer/complaint', { method: 'POST', body: { order_no: orderNo, email, type, description } }),

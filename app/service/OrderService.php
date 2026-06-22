@@ -115,34 +115,13 @@ class OrderService
             $original  = Money::mul($unitPrice, (string) $quantity);
 
             // 3.1) 优惠应用:优惠券(买家填码)与订单级促销(满减/满折,自动)「互斥取最优」。
-            //      券优惠 ≥ 促销优惠时用券(买家显式选择优先);核销在支付成功时。
-            $couponId      = null;
-            $couponCode    = '';
-            $discount      = '0.00';
-            $discountLabel = '';
-            $merchantId    = (int) $product->merchant_id;
-
-            $couponDiscount = '0.00';
-            $couponObj      = null;
-            $code           = trim((string) ($input['coupon_code'] ?? ''));
-            if ($code !== '') {
-                $cs             = new CouponService();
-                $couponObj      = $cs->findUsable($merchantId, $code, $original);
-                $couponDiscount = $cs->computeDiscount($couponObj, $original);
-            }
-            $promo         = (new PromotionService())->bestPromotion($merchantId, $original);
-            $promoDiscount = $promo ? $promo['discount'] : '0.00';
-
-            if (Money::cmp($couponDiscount, '0') > 0 && Money::cmp($couponDiscount, $promoDiscount) >= 0) {
-                $discount      = $couponDiscount;
-                $couponId      = (int) $couponObj->id;
-                $couponCode    = $couponObj->code;
-                $discountLabel = '券:' . $couponObj->code;
-            } elseif (Money::cmp($promoDiscount, '0') > 0) {
-                $discount      = $promoDiscount;
-                $discountLabel = $promo['label'];
-            }
-            $final = Money::sub($original, $discount);
+            //      共享 PricingService(与买家试算同一口径);券核销在支付成功时。
+            $b             = (new PricingService())->bestDiscount((int) $product->merchant_id, $original, (string) ($input['coupon_code'] ?? ''));
+            $discount      = $b['discount'];
+            $couponId      = $b['coupon_id'];
+            $couponCode    = $b['coupon_code'];
+            $discountLabel = $b['label'];
+            $final         = Money::sub($original, $discount);
 
             // 4) 建订单
             $order = Order::create([

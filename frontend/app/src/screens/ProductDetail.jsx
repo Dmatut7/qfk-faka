@@ -41,7 +41,8 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const [email, setEmail] = React.useState('');
   const [queryPassword, setQueryPassword] = React.useState('');
   const [couponCode, setCouponCode] = React.useState('');
-  const [couponInfo, setCouponInfo] = React.useState(null); // { discount, final_amount, original_amount, qty }
+  const [appliedCoupon, setAppliedCoupon] = React.useState(''); // 已验证生效的券码
+  const [preview, setPreview] = React.useState(null); // { original_amount, discount, final_amount, discount_label, coupon_applied }
   const [couponErr, setCouponErr] = React.useState('');
   const [couponChecking, setCouponChecking] = React.useState(false);
   const [touched, setTouched] = React.useState(false);
@@ -149,20 +150,33 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const priceCents = Math.round(Number(p.price) * 100);
   const totalCents = priceCents * safeQty;
   const total = totalCents / 100;
-  // 优惠券仅当其试算数量与当前数量一致时生效(改数量需重新试算)
-  const couponActive = couponInfo && Number(couponInfo.qty) === safeQty;
-  const payable = couponActive ? Number(couponInfo.final_amount) : total;
+  // 试算:含限时折扣价 + 自动满减满折 + 已生效券,口径与下单一致
+  const discountNum = preview ? Number(preview.discount) : 0;
+  const hasDiscount = discountNum > 0;
+  const payable = preview ? Number(preview.final_amount) : total;
+  const couponApplied = !!(preview && preview.coupon_applied);
+
+  // 数量 / 已用券变化时重新试算(含自动促销)。商品 id 也变则重置。
+  React.useEffect(() => {
+    if (out || !productId) return;
+    let alive = true;
+    api.checkoutPreview({ productId, quantity: safeQty, couponCode: appliedCoupon || undefined })
+      .then((r) => { if (alive) setPreview(r); })
+      .catch(() => { if (alive) setPreview(null); });
+    return () => { alive = false; };
+  }, [productId, safeQty, appliedCoupon, out]);
 
   const applyCoupon = async () => {
     const code = couponCode.trim();
     setCouponErr('');
-    setCouponInfo(null);
     if (!code) { setCouponErr('请输入优惠券码'); return; }
     setCouponChecking(true);
     try {
-      const r = await api.validateCoupon({ code, productId, quantity: safeQty });
-      setCouponInfo({ ...r, qty: safeQty });
+      // 先试算校验券是否可用(无效会抛错);成功则置为已用券,触发上面的试算
+      await api.checkoutPreview({ productId, quantity: safeQty, couponCode: code });
+      setAppliedCoupon(code);
     } catch (e) {
+      setAppliedCoupon('');
       setCouponErr(e instanceof ApiError ? e.message : '优惠券验证失败');
     } finally {
       setCouponChecking(false);
@@ -179,7 +193,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       const apiOrder = await api.createOrder({
         productId, quantity: safeQty, email: email.trim(),
         queryPassword: queryPassword.trim() || undefined,
-        couponCode: couponActive ? couponCode.trim() : undefined,
+        couponCode: appliedCoupon || undefined,
       });
       onOrderCreated && onOrderCreated(apiOrder, email.trim(), p);
     } catch (e) {
@@ -348,9 +362,14 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
             </div>
             <Button variant="secondary" size="md" onClick={applyCoupon} loading={couponChecking} disabled={out}>验证</Button>
           </div>
-          {couponActive && (
+          {couponApplied && (
             <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--success-fg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icons.Check size={14} color="var(--success-solid)" />已优惠 ¥{Number(couponInfo.discount).toFixed(2)}
+              <Icons.Check size={14} color="var(--success-solid)" />优惠券已生效
+            </div>
+          )}
+          {!couponApplied && hasDiscount && (
+            <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--brand-active)', fontWeight: 700 }}>
+              已享{preview.discount_label || '优惠'} −¥{discountNum.toFixed(2)}
             </div>
           )}
         </div>
@@ -358,7 +377,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
           <InfoRow label="单价">¥{p.price.toFixed(2)}</InfoRow>
           <InfoRow label="数量">{out ? '—' : `×${safeQty}`}</InfoRow>
-          {couponActive && <InfoRow label="优惠券抵扣">−¥{Number(couponInfo.discount).toFixed(2)}</InfoRow>}
+          {hasDiscount && <InfoRow label={preview.discount_label || '优惠'}>−¥{discountNum.toFixed(2)}</InfoRow>}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>预计应付</span>
             {out
