@@ -29,6 +29,10 @@ Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\Rat
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
 Route::post('buyer/coupon/validate', 'buyer.Coupon/validateCode')->middleware(\app\middleware\RateLimit::class, 60, 60); // 券码试算(防爆破 60次/分)
+// 买家投诉(公开,以 order_no + 邮箱核验)
+Route::post('buyer/complaint', 'buyer.Complaint/create')->middleware(\app\middleware\RateLimit::class, 10, 60);
+Route::post('buyer/complaint/query', 'buyer.Complaint/query');
+Route::post('buyer/complaint/:id/escalate', 'buyer.Complaint/escalate');
 
 // ============ 支付异步回调(公开,靠验签)============
 Route::rule('pay/notify/:channel', 'pay.Notify/index')->middleware(\app\middleware\RateLimit::class, 120, 60);
@@ -71,6 +75,11 @@ Route::group('admin', function () {
         // 跨商户只读视图 (T8.5)
         Route::get('orders', 'admin.Orders/index');
         Route::post('orders/:id/refund', 'admin.Orders/refund');
+
+        // 投诉仲裁
+        Route::get('complaints', 'admin.Complaints/index');
+        Route::post('complaints/:id/resolve', 'admin.Complaints/resolve');
+        Route::post('complaints/:id/reject', 'admin.Complaints/reject');
         Route::get('products', 'admin.Products/index');
 
         // 系统日志
@@ -141,6 +150,10 @@ Route::group('merchant', function () {
         Route::get('wallet/fund-logs', 'merchant.Wallet/fundLogs');
         Route::get('wallet/withdrawals', 'merchant.Wallet/withdrawals');
         Route::post('wallet/withdrawals', 'merchant.Wallet/applyWithdrawal');
+
+        // 投诉处理
+        Route::get('complaints', 'merchant.Complaint/index');
+        Route::post('complaints/:id/reply', 'merchant.Complaint/reply');
 
         // 优惠券管理(营销)
         Route::get('coupons', 'merchant.Coupon/index');
