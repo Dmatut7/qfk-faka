@@ -369,6 +369,36 @@ function groupByGoodsType(products) {
   }));
 }
 
+/* 顶部 4 横排销售类型卡(对标鲸商城PRO 店铺招牌):点击按类型筛选 */
+function TypeSummaryCards({ counts, active, onPick }) {
+  const types = GOODS_TYPE_ORDER.filter((t) => (counts[t] || 0) > 0);
+  if (types.length < 2) return null; // 单一类型店无需类型卡
+  return (
+    <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '18px 16px 0' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {types.map((t) => {
+          const meta = GOODS_TYPE_META[t];
+          const on = active === t;
+          return (
+            <button key={t} type="button" onClick={() => onPick(on ? null : t)} style={{
+              flex: '1 1 200px', minWidth: 170, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 10, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+              borderRadius: 'var(--radius-lg)', background: on ? 'var(--brand-soft)' : '#fff',
+              border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)', boxShadow: 'var(--shadow-xs)',
+            }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: on ? 'var(--brand-active)' : 'var(--text-strong)', letterSpacing: '-0.01em' }}>{meta.name}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4 }}>包含 {counts[t] || 0} 件商品</span>
+              </span>
+              <span style={{ fontSize: 26, flex: 'none' }} aria-hidden="true">{meta.emoji}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* 类型分组小节:标题(emoji + 名称 + 计数)+ 2 列网格 */
 function GoodsTypeSection({ group, onSelect }) {
   return (
@@ -401,6 +431,7 @@ function StateWrap({ children }) {
 
 export default function StorefrontHome({ shop, categories, products, loading, error, onReload, onSelect }) {
   const [cat, setCat] = React.useState('all');
+  const [typeFilter, setTypeFilter] = React.useState(null); // null=全部类型;否则 goods_type
   const [query, setQuery] = React.useState('');
   const [showContact, setShowContact] = React.useState(false);
   const list = products || [];
@@ -427,11 +458,18 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
   const allCount = list.length;
   const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
-  // 真正按 category_id 精确筛选。
+  // 按销售类型计数(对标鲸商城PRO 顶部 4 类型卡)
+  const typeCounts = React.useMemo(() => {
+    const c = {};
+    for (const p of list) { const t = Number(p.goods_type ?? 1); c[t] = (c[t] || 0) + 1; }
+    return c;
+  }, [list]);
+  // 真正按 category_id 精确筛选 + 销售类型筛选(类型卡)。
   const byCat = cat === 'all' ? list : list.filter((p) => normId(p.category_id) === normId(cat));
-  // 客户端实时搜索:在分类筛选结果上,按 name 包含关键词(不区分大小写)叠加过滤。
+  const byType = typeFilter ? byCat.filter((p) => Number(p.goods_type ?? 1) === typeFilter) : byCat;
+  // 客户端实时搜索:在筛选结果上,按 name 包含关键词(不区分大小写)叠加过滤。
   const q = query.trim().toLowerCase();
-  const shown = q ? byCat.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byCat;
+  const shown = q ? byType.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byType;
 
   const verified = Number(store.verified) === 1;
   // 平台公告(store.notices,由 App 注入)— 区别于下面的商户店铺公告 announcement 字段。
@@ -520,6 +558,9 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         )}
       </div>
 
+      {/* 顶部销售类型卡(对标鲸商城PRO 招牌) */}
+      {!loading && !error && <TypeSummaryCards counts={typeCounts} active={typeFilter} onPick={setTypeFilter} />}
+
       {/* 商品搜索框 */}
       {!loading && !error && (
         <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
@@ -555,27 +596,26 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         </div>
       )}
 
-      {/* 分类 tab(下划线样式) */}
+      {/* 分类筛选(带计数方框,对标鲸商城PRO) */}
       {tabs.length > 1 && !loading && !error && (
-        <div style={{ position: 'sticky', top: 'var(--topbar-h, 60px)', zIndex: 10, background: 'var(--bg-page)', marginTop: 16 }}>
-          <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', gap: 22, overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {tabs.map((c) => {
-                const on = c.id === cat;
-                return (
-                  <button key={String(c.id)} onClick={() => setCat(c.id)} style={{
-                    flex: 'none', position: 'relative', height: 46, padding: '0 2px', border: 'none', background: 'transparent', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontFamily: 'var(--font-sans)', fontWeight: on ? 800 : 600, fontSize: 15,
-                    color: on ? 'var(--brand-active)' : 'var(--text-muted)', whiteSpace: 'nowrap', transition: 'color .15s',
-                  }}>
-                    {c.image ? <img src={c.image} alt="" style={{ width: 20, height: 20, borderRadius: 5, objectFit: 'cover' }} /> : null}
-                    <span>{c.name}{!q && c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}</span>
-                    {on && <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0, width: 22, height: 3, borderRadius: 3, background: 'var(--brand)' }} />}
-                  </button>
-                );
-              })}
-            </div>
+        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '18px 16px 0' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {tabs.map((c) => {
+              const on = c.id === cat;
+              return (
+                <button key={String(c.id)} onClick={() => setCat(c.id)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', cursor: 'pointer',
+                  borderRadius: 'var(--radius-md)', background: on ? 'var(--brand-soft)' : '#fff',
+                  border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                  fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: on ? 800 : 600,
+                  color: on ? 'var(--brand-active)' : 'var(--text-body)', whiteSpace: 'nowrap', transition: 'all .12s',
+                }}>
+                  {c.image ? <img src={c.image} alt="" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'cover' }} /> : null}
+                  <span>{c.name}</span>
+                  {!q && c.goods_count != null ? <span style={{ fontSize: 12, color: on ? 'var(--brand-active)' : 'var(--text-subtle)' }}>{c.goods_count}</span> : null}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
