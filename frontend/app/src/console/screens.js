@@ -24,6 +24,7 @@ import AdminBigScreen from './admin/BigScreen.jsx';
 import AdminCronJobs from './admin/CronJobs.jsx';
 import AdminComplaints from './admin/Complaints.jsx';
 import AdminBlacklist from './admin/Blacklist.jsx';
+import AdminOperationLogs from './admin/OperationLogs.jsx';
 
 export const SCREENS = {
   // 商户后台
@@ -52,4 +53,5 @@ export const SCREENS = {
   'a-cron': AdminCronJobs,
   'a-complaints': AdminComplaints,
   'a-blacklist': AdminBlacklist,
+  'a-oplog': AdminOperationLogs,
 };

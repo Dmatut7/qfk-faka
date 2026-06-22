@@ -62,4 +62,10 @@ abstract class BaseApiController extends BaseController
             throw new BizException(Code::FORBIDDEN, '无权操作他人资源');
         }
     }
+
+    /** 平台操作审计:记录当前登录主体对敏感操作的留痕(旁路,失败不影响主流程) */
+    protected function audit(string $action, string $message, array $context = []): void
+    {
+        (new \app\service\SystemLogService())->operation($this->authId(), $action, $message, $context);
+    }
 }

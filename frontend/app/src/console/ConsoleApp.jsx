@@ -54,6 +54,7 @@ const ADMIN_NAV = [
   ] },
   { group: '系统', items: [
     { key: 'a-settings', label: '平台配置', icon: 'Lock' },
+    { key: 'a-oplog', label: '操作日志', icon: 'Search' },
     { key: 'a-logs', label: '异常日志', icon: 'AlertTriangle' },
     { key: 'a-cron', label: '任务计划', icon: 'RefreshCw' },
   ] },

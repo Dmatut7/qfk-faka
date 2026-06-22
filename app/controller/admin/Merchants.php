@@ -41,17 +41,23 @@ class Merchants extends BaseApiController
 
     public function approve(AdminMerchantService $svc, $id)
     {
-        return $this->success(['status' => (int) $svc->approve((int) $id)->status]);
+        $m = $svc->approve((int) $id);
+        $this->audit('merchant_approve', '审核通过商户 #' . (int) $id, ['merchant_id' => (int) $id]);
+        return $this->success(['status' => (int) $m->status]);
     }
 
     public function freeze(AdminMerchantService $svc, $id)
     {
-        return $this->success(['status' => (int) $svc->freeze((int) $id)->status]);
+        $m = $svc->freeze((int) $id);
+        $this->audit('merchant_freeze', '冻结商户 #' . (int) $id, ['merchant_id' => (int) $id]);
+        return $this->success(['status' => (int) $m->status]);
     }
 
     public function unfreeze(AdminMerchantService $svc, $id)
     {
-        return $this->success(['status' => (int) $svc->unfreeze((int) $id)->status]);
+        $m = $svc->unfreeze((int) $id);
+        $this->audit('merchant_unfreeze', '解冻商户 #' . (int) $id, ['merchant_id' => (int) $id]);
+        return $this->success(['status' => (int) $m->status]);
     }
 
     public function setCommission(AdminMerchantService $svc, $id)

@@ -46,6 +46,18 @@ class SystemLogService
     }
 
     /**
+     * 记录一条平台操作审计(type=admin_op)。actor 为操作管理员 id。
+     * 旁路设施,失败绝不影响主流程。
+     */
+    public function operation(int $actorId, string $action, string $message, array $context = []): void
+    {
+        $this->record('admin_op', SystemLog::LEVEL_INFO, $message, array_merge(
+            ['action' => $action, 'actor_id' => $actorId],
+            $context
+        ));
+    }
+
+    /**
      * 分页查询(可按 type / level 筛选),按时间倒序。
      * 返回 {total, page, items}。
      */

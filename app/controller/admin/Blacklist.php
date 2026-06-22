@@ -21,12 +21,14 @@ class Blacklist extends BaseApiController
         $d = $this->params(['email', 'reason']);
         $this->validate($d, ['email' => 'require|email']);
         $b = $svc->add((string) $d['email'], (string) ($d['reason'] ?? ''));
+        $this->audit('blacklist_add', '拉黑买家 ' . $b->email, ['email' => $b->email, 'reason' => $b->reason]);
         return $this->success(['id' => (int) $b->id, 'email' => $b->email, 'status' => (int) $b->status]);
     }
 
     public function remove(BuyerBlacklistService $svc, $id)
     {
         $svc->remove((int) $id);
+        $this->audit('blacklist_remove', '解除买家黑名单 #' . (int) $id, ['id' => (int) $id]);
         return $this->success(['id' => (int) $id]);
     }
 }

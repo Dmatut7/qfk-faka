@@ -25,6 +25,7 @@ class Complaints extends BaseApiController
         $remark = (string) $this->input('remark', '');
         $refund = (int) $this->input('refund', 0) === 1;
         $c = $svc->adminResolve((int) $id, $remark, $refund);
+        $this->audit('complaint_resolve', '裁决解决投诉 #' . $c->id . ($refund ? '(退款)' : ''), ['complaint_id' => (int) $c->id, 'order_no' => $c->order_no, 'refunded' => (int) $c->refunded, 'remark' => $remark]);
         return $this->success(['id' => (int) $c->id, 'status' => (int) $c->status, 'refunded' => (int) $c->refunded]);
     }
 
@@ -32,6 +33,7 @@ class Complaints extends BaseApiController
     {
         $remark = (string) $this->input('remark', '');
         $c = $svc->adminReject((int) $id, $remark);
+        $this->audit('complaint_reject', '驳回投诉 #' . $c->id, ['complaint_id' => (int) $c->id, 'order_no' => $c->order_no, 'remark' => $remark]);
         return $this->success(['id' => (int) $c->id, 'status' => (int) $c->status]);
     }
 }

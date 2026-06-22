@@ -21,7 +21,9 @@ class Orders extends BaseApiController
     /** 平台退款:状态置退款 + 卡密回库 + 反向资金 + 优惠券反核销 */
     public function refund(RefundService $svc, $id)
     {
-        $order = $svc->refund((int) $id, (string) $this->input('reason', ''));
+        $reason = (string) $this->input('reason', '');
+        $order  = $svc->refund((int) $id, $reason);
+        $this->audit('order_refund', '订单退款 ' . $order->order_no, ['order_id' => (int) $order->id, 'order_no' => $order->order_no, 'reason' => $reason]);
         return $this->success([
             'id'          => (int) $order->id,
             'order_no'    => $order->order_no,
