@@ -72,6 +72,14 @@ export const api = {
   shop: (slug = SHOP_SLUG) => call(`/s/${encodeURIComponent(slug)}`),
   /** 商品详情:{ id,title,price,description,stock,min_buy,max_buy,delivery_message,purchase_notice,show_stock_type } */
   product: (id) => call(`/buyer/product/${encodeURIComponent(id)}`),
+  /** 门户资讯/常见问题列表:type 1资讯/2常见问题/3单页;返回 { items:[{id,type,title,summary,category,views,create_time}] } */
+  articles: ({ type = 1, category = '', limit = 50 } = {}) => {
+    const qs = new URLSearchParams({ type: String(type), limit: String(limit) });
+    if (category) qs.set('category', category);
+    return call(`/index/articles?${qs.toString()}`);
+  },
+  /** 门户资讯详情(访问自增浏览量):{ id,type,title,summary,category,content,views,create_time } */
+  article: (id) => call(`/index/articles/${encodeURIComponent(id)}`),
   /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
   createOrder: ({ productId, quantity, email, queryPassword }) =>
     call('/buyer/order', {

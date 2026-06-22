@@ -2,12 +2,19 @@ import React from 'react';
 import { Icons } from '../Icons.jsx';
 import logoMark from '../../../design-system/assets/logo-mark.svg';
 
-/* 顶栏 — logo / 店名 / 取卡入口。从设计系统 storefront 端口为 ESM。 */
-export default function TopBar({ shopName, shopIntro, onHome, onLookup, back, onBack, title }) {
+const navLinkStyle = {
+  display: 'inline-flex', alignItems: 'center', gap: 5, height: 44, padding: '0 10px',
+  border: 'none', background: 'transparent', borderRadius: 'var(--radius-sm)',
+  fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--text-muted)',
+  cursor: 'pointer', whiteSpace: 'nowrap', flex: 'none',
+};
+
+/* 顶栏 — logo / 店名 / 门户入口 / 取卡入口。从设计系统 storefront 端口为 ESM。 */
+export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, onFaq, back, onBack, title }) {
   return (
     <>
     {/* 顶栏高度抽成全局 CSS 变量,供 sticky 分类 tab 等用 top:var(--topbar-h) 对齐,避免硬编码 60。 */}
-    <style>{':root{--topbar-h:60px;}'}</style>
+    <style>{':root{--topbar-h:60px;}@media(max-width:380px){.mk-navlabel{display:none;}}'}</style>
     <header
       style={{
         position: 'sticky', top: 0, zIndex: 20, background: 'rgba(255,255,255,0.86)',
@@ -59,18 +66,33 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, back, on
             )}
           </div>
         </div>
-        <button
-          onClick={onLookup}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 44, padding: '0 14px',
-            border: '1.5px solid var(--border-strong)', background: '#fff', borderRadius: 'var(--radius-pill)',
-            fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--text-strong)',
-            cursor: 'pointer', whiteSpace: 'nowrap', flex: 'none',
-          }}
-        >
-          <Icons.Package size={16} color="var(--brand)" />
-          取卡 / 查单
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
+          {/* 门户入口:资讯 / 常见问题(详情/支付等返回态隐藏,保持沉浸) */}
+          {!back && onNews && (
+            <button onClick={onNews} title="最新资讯" style={navLinkStyle}>
+              <Icons.Megaphone size={15} color="var(--text-muted)" />
+              <span className="mk-navlabel">资讯</span>
+            </button>
+          )}
+          {!back && onFaq && (
+            <button onClick={onFaq} title="常见问题" style={navLinkStyle}>
+              <Icons.Headset size={15} color="var(--text-muted)" />
+              <span className="mk-navlabel">帮助</span>
+            </button>
+          )}
+          <button
+            onClick={onLookup}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 44, padding: '0 14px',
+              border: '1.5px solid var(--border-strong)', background: '#fff', borderRadius: 'var(--radius-pill)',
+              fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13, color: 'var(--text-strong)',
+              cursor: 'pointer', whiteSpace: 'nowrap', flex: 'none',
+            }}
+          >
+            <Icons.Package size={16} color="var(--brand)" />
+            取卡 / 查单
+          </button>
+        </div>
       </div>
     </header>
     </>

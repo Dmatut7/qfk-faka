@@ -4,6 +4,7 @@ import StorefrontHome from './screens/StorefrontHome.jsx';
 import ProductDetail from './screens/ProductDetail.jsx';
 import PaymentScreen from './screens/PaymentScreen.jsx';
 import OrderLookup from './screens/OrderLookup.jsx';
+import Articles from './screens/Articles.jsx';
 import PlatformKefu from './components/PlatformKefu.jsx';
 import { api, normalizeProduct } from './api.js';
 
@@ -77,6 +78,8 @@ export default function App() {
     screen === 'pay' ? { back: true, onBack: () => go('detail'), title: '确认支付' } :
     screen === 'result' ? { back: true, onBack: () => go('home'), title: '取卡 / 订单' } :
     screen === 'lookup' ? { back: true, onBack: () => go('home'), title: '订单查询 / 取卡' } :
+    screen === 'news' ? { back: true, onBack: () => go('home'), title: '最新资讯' } :
+    screen === 'faq' ? { back: true, onBack: () => go('home'), title: '常见问题' } :
     {};
 
   return (
@@ -86,6 +89,8 @@ export default function App() {
         shopIntro={shop?.intro}
         onHome={() => go('home')}
         onLookup={() => { setResult(null); go('lookup'); }}
+        onNews={() => go('news')}
+        onFaq={() => go('faq')}
         {...barProps}
       />
 
@@ -120,6 +125,9 @@ export default function App() {
       )}
 
       {screen === 'lookup' && <OrderLookup onBack={() => go('home')} queryTips={config?.order_query_tips} />}
+
+      {screen === 'news' && <Articles type={1} onBack={() => go('home')} />}
+      {screen === 'faq' && <Articles type={2} onBack={() => go('home')} />}
 
       {/* 全局平台客服悬浮按钮(买家所有页面共用,区别于店铺商户客服) */}
       <PlatformKefu kefu={config?.kefu} />
