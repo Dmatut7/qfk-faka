@@ -10,7 +10,7 @@ const navLinkStyle = {
 };
 
 /* 顶栏 — logo / 店名 / 门户入口 / 取卡入口。从设计系统 storefront 端口为 ESM。 */
-export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, onFaq, back, onBack, title }) {
+export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, onFaq, onPortal, back, onBack, title }) {
   return (
     <>
     {/* 顶栏高度抽成全局 CSS 变量,供 sticky 分类 tab 等用 top:var(--topbar-h) 对齐,避免硬编码 60。 */}
@@ -67,7 +67,13 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
-          {/* 门户入口:资讯 / 常见问题(详情/支付等返回态隐藏,保持沉浸) */}
+          {/* 门户入口:平台 / 资讯 / 常见问题(详情/支付等返回态隐藏,保持沉浸) */}
+          {!back && onPortal && (
+            <button onClick={onPortal} title="平台首页" style={navLinkStyle}>
+              <Icons.ShieldCheck size={15} color="var(--text-muted)" />
+              <span className="mk-navlabel">平台</span>
+            </button>
+          )}
           {!back && onNews && (
             <button onClick={onNews} title="最新资讯" style={navLinkStyle}>
               <Icons.Megaphone size={15} color="var(--text-muted)" />

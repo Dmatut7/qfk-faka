@@ -20,6 +20,7 @@ Route::get('config', 'Config/index');
 Route::group('index', function () {
     Route::get('articles', 'index.Articles/list');
     Route::get('articles/:id', 'index.Articles/detail');
+    Route::get('platformStats', 'index.Platform/stats');
 });
 
 // ============ 买家前台 buyer(公开) ============

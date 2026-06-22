@@ -80,6 +80,8 @@ export const api = {
   },
   /** 门户资讯详情(访问自增浏览量):{ id,type,title,summary,category,content,views,create_time } */
   article: (id) => call(`/index/articles/${encodeURIComponent(id)}`),
+  /** 门户平台统计(公开,非敏感计数):{ merchants, products, orders } */
+  platformStats: () => call('/index/platformStats'),
   /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
   createOrder: ({ productId, quantity, email, queryPassword, couponCode }) =>
     call('/buyer/order', {
