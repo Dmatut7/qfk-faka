@@ -72,15 +72,30 @@ export const api = {
   shop: (slug = SHOP_SLUG) => call(`/s/${encodeURIComponent(slug)}`),
   /** 商品详情:{ id,title,price,description,stock,min_buy,max_buy,delivery_message,purchase_notice,show_stock_type } */
   product: (id) => call(`/buyer/product/${encodeURIComponent(id)}`),
-  /** 下单:返回 { order_no,total_amount,quantity,expire_at,status } */
-  createOrder: ({ productId, quantity, email }) =>
-    call('/buyer/order', { method: 'POST', body: { product_id: productId, quantity, buyer_email: email } }),
+  /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
+  createOrder: ({ productId, quantity, email, queryPassword }) =>
+    call('/buyer/order', {
+      method: 'POST',
+      body: {
+        product_id: productId,
+        quantity,
+        buyer_email: email,
+        ...(queryPassword ? { query_password: queryPassword } : {}),
+      },
+    }),
   /** 发起支付:返回 { payment_no, pay:{ method,url,params{...,sign} } } */
   pay: (orderNo, channel = PAY_CHANNEL) =>
     call(`/buyer/order/${encodeURIComponent(orderNo)}/pay`, { method: 'POST', body: { channel } }),
-  /** 查单/取卡:返回订单 +(仅 status=2)cards[] */
-  queryOrder: ({ orderNo, email }) =>
-    call('/buyer/order/query', { method: 'POST', body: { order_no: orderNo, email } }),
+  /** 查单/取卡:返回订单 +(仅 status=2)cards[];凭证二选一:email 或 password */
+  queryOrder: ({ orderNo, email, password }) =>
+    call('/buyer/order/query', {
+      method: 'POST',
+      body: {
+        order_no: orderNo,
+        ...(password ? { password } : {}),
+        ...(email ? { email } : {}),
+      },
+    }),
   /** 平台公开配置(无鉴权):
    *  { site:{title,name}, kefu:{qq,wechat,mobile,qrcode}, order_query_tips }
    *  缺省键返回空串。 */

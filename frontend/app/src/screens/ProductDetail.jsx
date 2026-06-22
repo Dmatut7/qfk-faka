@@ -39,6 +39,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
   const [qty, setQty] = React.useState(1);
   const [email, setEmail] = React.useState('');
+  const [queryPassword, setQueryPassword] = React.useState('');
   const [touched, setTouched] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitErr, setSubmitErr] = React.useState('');
@@ -146,7 +147,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     if (!emailOk) return;
     setSubmitting(true);
     try {
-      const apiOrder = await api.createOrder({ productId, quantity: safeQty, email: email.trim() });
+      const apiOrder = await api.createOrder({ productId, quantity: safeQty, email: email.trim(), queryPassword: queryPassword.trim() || undefined });
       onOrderCreated && onOrderCreated(apiOrder, email.trim(), p);
     } catch (e) {
       setSubmitErr(e instanceof ApiError ? e.message : '下单失败,请稍后重试');
@@ -285,6 +286,16 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
           onBlur={() => setTouched(true)}
           error={touched && !emailOk ? '请输入有效的邮箱地址,卡密将发送至此' : ''}
           hint="卡密将自动发送到此邮箱,并可在「取卡 / 查单」页查看"
+        />
+        <Input
+          label="查单密码(选填)"
+          type="password"
+          placeholder="设置后可凭订单号 + 密码查单"
+          autoComplete="new-password"
+          icon={<Icons.Lock size={18} />}
+          value={queryPassword}
+          onChange={(e) => setQueryPassword(e.target.value)}
+          hint="选填:设置后无需邮箱,凭订单号 + 此密码即可查单取卡"
         />
 
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>

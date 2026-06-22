@@ -80,6 +80,48 @@ class BuyerOrderTest extends TestCase
         $this->assertSame(404, $resp->getCode());
     }
 
+    public function testQueryByPasswordWhenSet(): void
+    {
+        $created = $this->callJson('POST', '/buyer/order', [
+            'product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'buyer@x.com', 'query_password' => 'pass123',
+        ]);
+        $no = $created['data']['order_no'];
+
+        // 用查单密码查得到(无需邮箱)
+        $q = $this->callJson('POST', '/buyer/order/query', ['order_no' => $no, 'password' => 'pass123']);
+        $this->assertSame(0, $q['code']);
+        $this->assertSame(Order::STATUS_PENDING, $q['data']['status']);
+
+        // 明文不落库
+        $order = Order::where('order_no', $no)->find();
+        $this->assertNotSame('pass123', (string) $order->query_password);
+        $this->assertTrue(password_verify('pass123', (string) $order->query_password));
+    }
+
+    public function testQueryWrongPassword403(): void
+    {
+        $created = $this->callJson('POST', '/buyer/order', [
+            'product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'buyer@x.com', 'query_password' => 'right',
+        ]);
+        $resp = $this->call('POST', '/buyer/order/query', ['order_no' => $created['data']['order_no'], 'password' => 'wrong']);
+        $this->assertSame(403, $resp->getCode());
+    }
+
+    public function testQueryByPasswordRejectedWhenNotSet(): void
+    {
+        // 未设置查单密码的订单不能用密码查(防绕过邮箱)
+        $created = $this->callJson('POST', '/buyer/order', ['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'buyer@x.com']);
+        $resp = $this->call('POST', '/buyer/order/query', ['order_no' => $created['data']['order_no'], 'password' => 'anything']);
+        $this->assertSame(403, $resp->getCode());
+    }
+
+    public function testQueryRequiresSomeCredential(): void
+    {
+        $created = $this->callJson('POST', '/buyer/order', ['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'buyer@x.com']);
+        $r = $this->callJson('POST', '/buyer/order/query', ['order_no' => $created['data']['order_no']]);
+        $this->assertSame(Code::PARAM_ERROR, $r['code']);
+    }
+
     public function testQueryDeliveredReturnsCards(): void
     {
         $created = $this->callJson('POST', '/buyer/order', ['product_id' => $this->p->id, 'quantity' => 2, 'buyer_email' => 'buyer@x.com']);

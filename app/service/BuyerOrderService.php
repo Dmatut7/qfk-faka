@@ -8,19 +8,18 @@ use app\common\Code;
 use app\model\Order;
 
 /**
- * 买家前台订单查询:order_no + 邮箱核验后返回状态;仅已发货才返回卡密。
+ * 买家前台订单查询:order_no + 凭证(邮箱 或 查单密码)核验后返回状态;仅已发货才返回卡密。
+ * 凭证二选一:传 password 用查单密码核验(需下单时设置),否则用邮箱核验。
  */
 class BuyerOrderService
 {
-    public function query(string $orderNo, string $email): array
+    public function query(string $orderNo, ?string $email = null, ?string $password = null): array
     {
         $order = Order::where('order_no', $orderNo)->find();
         if (!$order) {
             throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
         }
-        if (strcasecmp((string) $order->buyer_email, trim($email)) !== 0) {
-            throw new BizException(Code::FORBIDDEN, '邮箱与订单不匹配');
-        }
+        $this->verifyCredential($order, $email, $password);
 
         $data = [
             'order_no'     => $order->order_no,
@@ -45,5 +44,30 @@ class BuyerOrderService
         }
 
         return $data;
+    }
+
+    /**
+     * 凭证核验:优先查单密码,其次邮箱。两者皆缺则参数错误。
+     * - password 非空:订单须已设置 query_password 且 bcrypt 校验通过,否则 403。
+     * - 否则用 email 大小写不敏感匹配 buyer_email,不符 403。
+     */
+    private function verifyCredential(Order $order, ?string $email, ?string $password): void
+    {
+        $pwd = trim((string) $password);
+        if ($pwd !== '') {
+            $hash = (string) $order->query_password;
+            if ($hash === '' || !password_verify($pwd, $hash)) {
+                throw new BizException(Code::FORBIDDEN, '查单密码不正确');
+            }
+            return;
+        }
+
+        $mail = trim((string) $email);
+        if ($mail === '') {
+            throw new BizException(Code::PARAM_ERROR, '请提供邮箱或查单密码');
+        }
+        if (strcasecmp((string) $order->buyer_email, $mail) !== 0) {
+            throw new BizException(Code::FORBIDDEN, '邮箱与订单不匹配');
+        }
     }
 }

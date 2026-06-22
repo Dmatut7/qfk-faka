@@ -53,6 +53,16 @@ class OrderService
     }
 
     /**
+     * 查单密码哈希:非空则 bcrypt 落库,空串表示未设置(此单只能用邮箱查)。
+     * 不存明文,避免泄露面。
+     */
+    private function hashQueryPassword($raw): string
+    {
+        $pwd = trim((string) $raw);
+        return $pwd === '' ? '' : password_hash($pwd, PASSWORD_BCRYPT);
+    }
+
+    /**
      * 单次预占(置于一个事务内)。
      */
     private function reserve(int $productId, int $quantity, array $input): Order
@@ -101,6 +111,7 @@ class OrderService
                 'product_title' => $product->title, // 商品名快照(改名/删除后订单仍显示当时商品名)
                 'buyer_email'   => trim((string) $input['buyer_email']),
                 'buyer_contact' => $input['buyer_contact'] ?? null,
+                'query_password' => $this->hashQueryPassword($input['query_password'] ?? ''),
                 'quantity'      => $quantity,
                 'unit_price'    => $unitPrice,
                 'total_amount'  => $total,

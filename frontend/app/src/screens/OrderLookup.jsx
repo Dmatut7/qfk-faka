@@ -45,7 +45,9 @@ function OrderQueryTips({ text }) {
 export default function OrderLookup({ initialResult, onBack, queryTips }) {
   const [orderNo, setOrderNo] = React.useState('');
   const [email, setEmail] = React.useState('');
-  const [fieldErr, setFieldErr] = React.useState({ orderNo: '', email: '' });
+  const [password, setPassword] = React.useState('');
+  const [mode, setMode] = React.useState('email'); // 'email' | 'password' 查单凭证
+  const [fieldErr, setFieldErr] = React.useState({ orderNo: '', email: '', password: '' });
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [result, setResult] = React.useState(initialResult || null);
@@ -66,15 +68,21 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
   const search = async () => {
     const on = orderNo.trim();
     const em = email.trim();
-    const fe = { orderNo: on ? '' : '请输入订单号', email: em ? '' : '请输入邮箱' };
+    const pw = password.trim();
+    const byPwd = mode === 'password';
+    const fe = {
+      orderNo: on ? '' : '请输入订单号',
+      email: byPwd ? '' : (em ? '' : '请输入邮箱'),
+      password: byPwd ? (pw ? '' : '请输入查单密码') : '',
+    };
     setFieldErr(fe);
-    if (fe.orderNo || fe.email) return;
+    if (fe.orderNo || fe.email || fe.password) return;
 
     setError('');
     setResult(null);
     setLoading(true);
     try {
-      const order = await api.queryOrder({ orderNo: on, email: em });
+      const order = await api.queryOrder(byPwd ? { orderNo: on, password: pw } : { orderNo: on, email: em });
       // 后端查单只返回 product_id;尽力补一次商品详情,让结果显示真实商品名(失败不影响)。
       let enriched = order;
       if (order && !order.product && order.product_id != null) {
@@ -85,10 +93,10 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       }
       setResult(enriched);
     } catch (e) {
-      // 2003 邮箱与订单不匹配:订单号本身存在,问题在邮箱,给出针对性文案。
+      // 2003 凭证与订单不匹配:订单号本身存在,问题在凭证,给出针对性文案。
       let msg;
       if (e instanceof ApiError && e.code === 2003) {
-        msg = '订单号或邮箱有误,请核对邮箱';
+        msg = mode === 'password' ? '订单号或查单密码有误' : '订单号或邮箱有误,请核对邮箱';
       } else {
         msg = e instanceof ApiError ? e.message : '查询失败,请稍后重试';
       }
@@ -135,17 +143,48 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
               autoComplete="off"
               disabled={loading}
             />
-            <Input
-              label="邮箱"
-              placeholder="下单时填写的邮箱"
-              type="email"
-              icon={<Icons.Mail size={18} />}
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setFieldErr((s) => ({ ...s, email: '' })); setError(''); }}
-              error={fieldErr.email}
-              autoComplete="email"
-              disabled={loading}
-            />
+            {/* 凭证方式切换:邮箱 / 查单密码 */}
+            <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+              {[['email', '邮箱查单'], ['password', '密码查单']].map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => { setMode(m); setError(''); setFieldErr((s) => ({ ...s, email: '', password: '' })); }}
+                  disabled={loading}
+                  style={{
+                    flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', border: 'none',
+                    background: mode === m ? 'var(--brand-soft)' : '#fff',
+                    color: mode === m ? 'var(--brand-active)' : 'var(--text-muted)',
+                  }}
+                >{label}</button>
+              ))}
+            </div>
+            {mode === 'email' ? (
+              <Input
+                label="邮箱"
+                placeholder="下单时填写的邮箱"
+                type="email"
+                icon={<Icons.Mail size={18} />}
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setFieldErr((s) => ({ ...s, email: '' })); setError(''); }}
+                error={fieldErr.email}
+                autoComplete="email"
+                disabled={loading}
+              />
+            ) : (
+              <Input
+                label="查单密码"
+                placeholder="下单时设置的查单密码"
+                type="password"
+                icon={<Icons.Lock size={18} />}
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setFieldErr((s) => ({ ...s, password: '' })); setError(''); }}
+                error={fieldErr.password}
+                autoComplete="off"
+                disabled={loading}
+              />
+            )}
           </div>
           <div style={{ marginTop: 14 }}>
             <Button type="submit" variant="primary" size="lg" block loading={loading} iconLeft={loading ? undefined : <Icons.Search size={18} />}>

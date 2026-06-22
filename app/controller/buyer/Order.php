@@ -15,7 +15,7 @@ class Order extends BaseApiController
 {
     public function create(OrderService $svc)
     {
-        $d = $this->params(['product_id', 'quantity', 'buyer_email', 'buyer_contact']);
+        $d = $this->params(['product_id', 'quantity', 'buyer_email', 'buyer_contact', 'query_password']);
         $this->validate($d, [
             'product_id'  => 'require|integer',
             'quantity'    => 'require|integer|egt:1',
@@ -46,12 +46,16 @@ class Order extends BaseApiController
 
     public function query(BuyerOrderService $svc)
     {
-        $d = $this->params(['order_no', 'email']);
+        $d = $this->params(['order_no', 'email', 'password']);
+        // 凭证二选一:邮箱 或 查单密码;具体核验在 Service 内完成
         $this->validate($d, [
             'order_no' => 'require',
-            'email'    => 'require|email',
         ]);
 
-        return $this->success($svc->query($d['order_no'], $d['email']));
+        return $this->success($svc->query(
+            (string) $d['order_no'],
+            isset($d['email']) ? (string) $d['email'] : null,
+            isset($d['password']) ? (string) $d['password'] : null
+        ));
     }
 }
