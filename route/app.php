@@ -16,6 +16,12 @@ Route::get('health', 'Health/index');
 // 平台公开配置(无鉴权)
 Route::get('config', 'Config/index');
 
+// ============ 门户公开 API(/index/*,无鉴权)============
+Route::group('index', function () {
+    Route::get('articles', 'index.Articles/list');
+    Route::get('articles/:id', 'index.Articles/detail');
+});
+
 // ============ 买家前台 buyer(公开) ============
 Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
