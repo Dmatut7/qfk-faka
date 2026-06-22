@@ -211,7 +211,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       )}
 
       {/* 结果区 */}
-      {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} />}
+      {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} contactPassword={password.trim()} />}
 
       {/* toast */}
       <div role="status" aria-live="polite" aria-atomic="true">
@@ -233,7 +233,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
 const DELIVER_NOUN = { 1: '卡密', 2: '内容', 3: '资源', 4: '权益' };
 const deliverNoun = (gt) => DELIVER_NOUN[Number(gt) || 1] || '卡密';
 
-function OrderResult({ result, flashToast, contactEmail = '' }) {
+function OrderResult({ result, flashToast, contactEmail = '', contactPassword = '' }) {
   const r = result;
   const statusNum = Number(r.status);
   const key = statusKey(statusNum);
@@ -241,6 +241,8 @@ function OrderResult({ result, flashToast, contactEmail = '' }) {
   const noun = deliverNoun(r.goods_type);
   // 已收款订单(已发货/异常/已退款)可申请售后
   const canComplain = [STATUS.DELIVERED, STATUS.EXCEPTION, 4].includes(statusNum);
+  // 知识类(goods_type=2)且已发货 → 可站内阅读章节
+  const canRead = Number(r.goods_type) === 2 && statusNum === STATUS.DELIVERED;
 
   // 商品信息:订单里可能没有完整商品对象,做优雅缺省
   const prod = r.product ? normalizeProduct(r.product) : null;
@@ -377,9 +379,69 @@ function OrderResult({ result, flashToast, contactEmail = '' }) {
           </div>
         )}
 
+        {/* 知识类:站内阅读章节 */}
+        {canRead && <ChapterReader orderNo={r.order_no} email={contactEmail} password={contactPassword} />}
+
         {/* 申请售后 / 投诉(已收款订单) */}
         {canComplain && <ComplaintBox orderNo={r.order_no} defaultEmail={contactEmail} flashToast={flashToast} />}
       </div>
+    </div>
+  );
+}
+
+/* 知识类章节阅读:购后凭订单凭证拉取章节全文,站内展开阅读 */
+function ChapterReader({ orderNo, email, password }) {
+  const [open, setOpen] = React.useState(false);
+  const [chapters, setChapters] = React.useState(null);
+  const [active, setActive] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const [err, setErr] = React.useState('');
+
+  const load = async () => {
+    setOpen(true);
+    if (chapters) return;
+    setLoading(true); setErr('');
+    try {
+      const d = await api.orderChapters({ orderNo, email: email || undefined, password: password || undefined });
+      setChapters(Array.isArray(d.chapters) ? d.chapters : []);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : '内容加载失败');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+      {!open ? (
+        <button onClick={load} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, border: '1.5px solid var(--brand)', background: 'var(--brand-soft)',
+          borderRadius: 'var(--radius-pill)', padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 700, color: 'var(--brand-active)',
+        }}><Icons.Inbox size={16} color="var(--brand)" />阅读内容</button>
+      ) : loading ? (
+        <div style={{ textAlign: 'center', color: 'var(--text-subtle)', padding: '20px 0' }}>加载中…</div>
+      ) : err ? (
+        <div style={{ fontSize: 13, color: 'var(--danger-fg)' }}>{err}</div>
+      ) : !chapters || chapters.length === 0 ? (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>暂无可阅读章节。</div>
+      ) : (
+        <div>
+          {/* 章节目录 */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+            {chapters.map((c, i) => (
+              <button key={c.id} onClick={() => setActive(i)} style={{
+                padding: '5px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-sans)',
+                border: i === active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                background: i === active ? 'var(--brand-soft)' : '#fff', color: i === active ? 'var(--brand-active)' : 'var(--text-muted)',
+              }}>{c.title}</button>
+            ))}
+          </div>
+          {/* 当前章节正文 */}
+          <article style={{ background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '16px 18px' }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 800, color: 'var(--text-strong)' }}>{chapters[active].title}</h3>
+            <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text-body)', wordBreak: 'break-word' }}
+              dangerouslySetInnerHTML={{ __html: chapters[active].content || '' }} />
+          </article>
+        </div>
+      )}
     </div>
   );
 }

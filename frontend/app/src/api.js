@@ -84,6 +84,11 @@ export const api = {
   platformStats: () => call('/index/platformStats'),
   /** 门户禁售目录(公开,按类目分组):{ groups:[{category, items:[{title,description}]}] } */
   forbiddenCatalog: () => call('/index/forbidden'),
+  /** 知识类商品章节目录(购前,仅标题):{ items:[{id,title}] } */
+  productChapters: (id) => call(`/buyer/product/${encodeURIComponent(id)}/chapters`),
+  /** 购后阅读章节(验证订单归属):{ chapters:[{id,title,content}] } */
+  orderChapters: ({ orderNo, email, password }) =>
+    call('/buyer/order/chapters', { method: 'POST', body: { order_no: orderNo, ...(password ? { password } : {}), ...(email ? { email } : {}) } }),
   /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
   createOrder: ({ productId, quantity, email, queryPassword, couponCode }) =>
     call('/buyer/order', {

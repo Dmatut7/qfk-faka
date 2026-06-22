@@ -4,6 +4,7 @@ import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
+import ChaptersModal from './ChaptersModal.jsx';
 
 const TYPE_AUTO = 1;
 const TYPE_MANUAL = 2;
@@ -46,6 +47,7 @@ export default function Products({ api, session }) {
 
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editing, setEditing] = React.useState(null); // null=新建,否则为编辑中的 row
+  const [chaptersOf, setChaptersOf] = React.useState(null); // 当前管理章节的知识类商品
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState('');
@@ -218,6 +220,9 @@ export default function Products({ api, session }) {
         return (
           <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
             <Button size="sm" variant="neutral" disabled={busy} onClick={() => openEdit(r)}>编辑</Button>
+            {Number(r.goods_type) === 2 && (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => setChaptersOf(r)}>章节</Button>
+            )}
             <Button
               size="sm"
               variant={Number(r.status) === STATUS_ON ? 'ghost' : 'secondary'}
@@ -383,6 +388,8 @@ export default function Products({ api, session }) {
           </Field>
         </div>
       </Modal>
+
+      {chaptersOf && <ChaptersModal api={api} product={chaptersOf} onClose={() => setChaptersOf(null)} />}
     </div>
   );
 }
