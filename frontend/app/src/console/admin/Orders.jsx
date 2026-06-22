@@ -134,15 +134,17 @@ export default function Orders({ api }) {
     },
   ];
 
-  // 本页内按状态计数(只读视图,统计当前页可见数据)
-  const counts = items.reduce((acc, o) => { acc[o.status] = (acc[o.status] || 0) + 1; return acc; }, {});
+  // 全局各状态计数(后端 status_counts,不随分页/所选状态失真);后端未返回时兜底退化为本页统计
+  const counts = list.data?.status_counts || items.reduce((acc, o) => { acc[o.status] = (acc[o.status] || 0) + 1; return acc; }, {});
+  const grandTotal = list.data?.status_counts ? Object.values(counts).reduce((a, b) => a + Number(b || 0), 0) : total;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard label="本页订单" value={items.length} icon="Package" tone="brand" sub={`共 ${total} 单`} />
+        <StatCard label="订单总数" value={grandTotal} icon="Package" tone="brand" sub="全平台累计" />
         <StatCard label="待支付" value={counts[0] || 0} icon="Clock" tone="pending" />
         <StatCard label="已发货" value={counts[2] || 0} icon="Check" tone="success" />
+        <StatCard label="已退款" value={counts[4] || 0} icon="RefreshCw" tone="neutral" />
         <StatCard label="异常待人工" value={counts[5] || 0} icon="AlertTriangle" tone="danger" />
       </div>
 

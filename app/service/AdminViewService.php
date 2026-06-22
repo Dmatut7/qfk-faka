@@ -126,20 +126,33 @@ class AdminViewService
      */
     public function orders(array $filter, int $page = 1, int $size = 20): array
     {
-        $q = Order::order('id', 'desc');
-        if (isset($filter['merchant_id']) && $filter['merchant_id'] !== '') {
-            $q->where('merchant_id', (int) $filter['merchant_id']);
+        // 非 status 的基础筛选(merchant_id / order_no);供"列表"与"全局状态计数"共用,
+        // 让统计卡反映全局各状态总数(不随分页/所选状态 tab 失真)。
+        $applyBase = function ($q) use ($filter) {
+            if (isset($filter['merchant_id']) && $filter['merchant_id'] !== '') {
+                $q->where('merchant_id', (int) $filter['merchant_id']);
+            }
+            if (!empty($filter['order_no'])) {
+                $q->where('order_no', $filter['order_no']);
+            }
+            return $q;
+        };
+
+        // 全局各状态计数(忽略 status 筛选与分页)
+        $rows = $applyBase(Order::field('status, COUNT(*) AS c'))->group('status')->select()->toArray();
+        $statusCounts = [];
+        foreach ($rows as $r) {
+            $statusCounts[(int) $r['status']] = (int) $r['c'];
         }
+
+        $q = $applyBase(Order::order('id', 'desc'));
         if (isset($filter['status']) && $filter['status'] !== '') {
             $q->where('status', (int) $filter['status']);
-        }
-        if (!empty($filter['order_no'])) {
-            $q->where('order_no', $filter['order_no']);
         }
         $total = $q->count();
         $items = $q->page($page, $size)->select()->toArray();
 
-        return ['total' => $total, 'page' => $page, 'items' => $items];
+        return ['total' => $total, 'page' => $page, 'items' => $items, 'status_counts' => $statusCounts];
     }
 
     /**
