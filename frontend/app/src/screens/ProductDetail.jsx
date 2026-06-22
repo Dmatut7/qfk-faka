@@ -237,7 +237,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const cardStyle = { background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-xs)' };
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '18px 16px 132px' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '18px 16px calc(176px + env(safe-area-inset-bottom, 0px))' }}>
       {onBack && (
         <button
           type="button"

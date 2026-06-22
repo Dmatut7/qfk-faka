@@ -38,14 +38,14 @@ export default function Products({ api, session }) {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const columns = [
-    { key: 'id', title: 'ID', width: 72, render: (r) => <span style={{ color: 'var(--color-text-muted)' }}>#{r.id}</span> },
+    { key: 'id', title: 'ID', width: 72, render: (r) => <span style={{ color: 'var(--text-muted)' }}>#{r.id}</span> },
     {
       key: 'title',
       title: '商品',
       render: (r) => (
         <div>
           <div style={{ fontWeight: 600 }}>{r.title}</div>
-          {r.sku ? <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{r.sku}</div> : null}
+          {r.sku ? <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.sku}</div> : null}
         </div>
       ),
     },
@@ -73,7 +73,7 @@ export default function Products({ api, session }) {
       align: 'right',
       width: 90,
       render: (r) => (
-        <span style={{ color: Number(r.stock) <= 0 ? 'var(--color-danger)' : 'inherit' }}>{r.stock}</span>
+        <span style={{ color: Number(r.stock) <= 0 ? 'var(--danger-fg)' : 'inherit', fontWeight: Number(r.stock) <= 0 ? 700 : 400 }}>{r.stock}</span>
       ),
     },
     { key: 'sales_count', title: '销量', align: 'right', width: 90, render: (r) => <span>{r.sales_count}</span> },
@@ -95,7 +95,7 @@ export default function Products({ api, session }) {
       title="跨商户商品"
       subtitle="平台只读视图,展示全部商户商品"
       actions={
-        <Button variant="ghost" onClick={x.reload} icon={<Icons.RefreshCw />}>
+        <Button variant="ghost" onClick={x.reload} iconLeft={<Icons.RefreshCw />}>
           刷新
         </Button>
       }
@@ -103,7 +103,7 @@ export default function Products({ api, session }) {
       <Toolbar
         right={
           <>
-            <Button variant="primary" onClick={apply} icon={<Icons.Search />}>
+            <Button variant="primary" onClick={apply} iconLeft={<Icons.Search />}>
               查询
             </Button>
             <Button variant="ghost" onClick={reset}>
@@ -129,12 +129,12 @@ export default function Products({ api, session }) {
           value={status}
           onChange={(e) => setStatus(e.target.value)}
           style={{
-            height: 36,
+            height: 44,
             padding: '0 12px',
             borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--color-border)',
-            background: 'var(--color-surface)',
-            color: 'var(--color-text)',
+            border: '1.5px solid var(--border-strong)',
+            background: '#fff',
+            color: 'var(--text-strong)',
           }}
         >
           <option value="">全部状态</option>
@@ -154,7 +154,7 @@ export default function Products({ api, session }) {
 
       {total > 0 && pages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-          <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>共 {total} 项 · 第 {curPage} / {pages} 页</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>共 {total} 项 · 第 {curPage} / {pages} 页</span>
           <Button size="sm" variant="ghost" disabled={curPage <= 1 || x.loading}
             onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</Button>
           <Button size="sm" variant="ghost" disabled={curPage >= pages || x.loading}

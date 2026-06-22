@@ -84,7 +84,7 @@ export default function InviteCodes({ api }) {
       ),
     },
     {
-      key: 'ops', title: '操作', align: 'right', width: 1, render: (r) => {
+      key: 'ops', title: '操作', align: 'right', width: 1, nowrap: true, render: (r) => {
         const busy = busyId === r.id;
         const used = Number(r.used_count || 0);
         return (

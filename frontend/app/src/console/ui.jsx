@@ -144,7 +144,7 @@ export function DataTable({ columns, rows, loading, error, onReload, rowKey = 'i
           {rows.map((r, i) => (
             <tr key={r[rowKey] ?? i} style={{ borderBottom: '1px solid var(--slate-100)' }}>
               {columns.map((c) => (
-                <td key={c.key} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle', maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <td key={c.key} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle', ...(c.nowrap ? { whiteSpace: 'nowrap' } : { maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
                   {c.render ? c.render(r) : r[c.key]}
                 </td>
               ))}

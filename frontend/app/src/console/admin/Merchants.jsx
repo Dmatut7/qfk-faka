@@ -89,7 +89,7 @@ export default function Merchants({ api }) {
       ),
     },
     {
-      key: 'ops', title: '操作', align: 'right', width: 1, render: (r) => {
+      key: 'ops', title: '操作', align: 'right', width: 1, nowrap: true, render: (r) => {
         const busy = busyId === r.id;
         // 任一行操作进行中时,禁用所有行内按钮(防跨行并发审批)
         const otherBusy = busyId != null && busyId !== r.id;

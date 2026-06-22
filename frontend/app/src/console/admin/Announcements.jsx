@@ -112,7 +112,7 @@ export default function Announcements({ api }) {
       ),
     },
     {
-      key: 'ops', title: '操作', align: 'right', width: 1, render: (r) => (
+      key: 'ops', title: '操作', align: 'right', width: 1, nowrap: true, render: (r) => (
         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
           <Button size="sm" variant="neutral"
             onClick={() => openEdit(r)}>编辑</Button>
