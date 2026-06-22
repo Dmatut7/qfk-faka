@@ -5,6 +5,7 @@ import MerchantShop from './merchant/Shop.jsx';
 import MerchantCategories from './merchant/Categories.jsx';
 import MerchantCards from './merchant/Cards.jsx';
 import MerchantOrders from './merchant/Orders.jsx';
+import MerchantCoupons from './merchant/Coupons.jsx';
 import MerchantWallet from './merchant/Wallet.jsx';
 
 import AdminDashboard from './admin/Dashboard.jsx';
@@ -29,6 +30,7 @@ export const SCREENS = {
   'm-categories': MerchantCategories,
   'm-cards': MerchantCards,
   'm-orders': MerchantOrders,
+  'm-coupons': MerchantCoupons,
   'm-wallet': MerchantWallet,
   // 平台后台
   'a-dashboard': AdminDashboard,

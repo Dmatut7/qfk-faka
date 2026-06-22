@@ -96,6 +96,11 @@ export const merchantApi = {
   updateCategory: (id, d) => call(`/merchant/categories/${id}`, { method: 'POST', body: d }),
   deleteCategory: (id) => call(`/merchant/categories/${id}/delete`, { method: 'POST' }),
 
+  coupons: () => call('/merchant/coupons'),
+  createCoupon: (d) => call('/merchant/coupons', { method: 'POST', body: d }),
+  updateCoupon: (id, d) => call(`/merchant/coupons/${id}`, { method: 'POST', body: d }),
+  deleteCoupon: (id) => call(`/merchant/coupons/${id}/delete`, { method: 'POST' }),
+
   products: (params) => call('/merchant/products' + qs(params)),
   createProduct: (d) => call('/merchant/products', { method: 'POST', body: d }),
   updateProduct: (id, d) => call(`/merchant/products/${id}`, { method: 'POST', body: d }),

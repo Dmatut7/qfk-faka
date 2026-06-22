@@ -18,6 +18,9 @@ const MERCHANT_NAV = [
   { group: '交易', items: [
     { key: 'm-orders', label: '订单管理', icon: 'Search' },
   ] },
+  { group: '营销', items: [
+    { key: 'm-coupons', label: '优惠券', icon: 'Star' },
+  ] },
   { group: '资金', items: [
     { key: 'm-wallet', label: '钱包 / 提现', icon: 'RefreshCw' },
   ] },
