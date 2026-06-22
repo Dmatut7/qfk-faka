@@ -20,6 +20,16 @@ const TYPES = [
   'login_fail',
 ];
 
+/* 类型 → 中文标签 + 语义色调(异常红/橙,操作类绿/中性);避免裸英文枚举误读 */
+const TYPE_LABELS = {
+  pay_verify_fail:  { label: '支付验签失败', tone: 'danger' },
+  settle_exception: { label: '结算异常', tone: 'danger' },
+  stock_not_enough: { label: '库存不足', tone: 'pending' },
+  login_fail:       { label: '登录失败', tone: 'pending' },
+  withdraw_approve: { label: '提现打款', tone: 'success' },
+  withdraw_reject:  { label: '驳回提现', tone: 'neutral' },
+};
+
 const PAGE_SIZE = 20;
 
 const selectStyle = {
@@ -56,9 +66,10 @@ export default function Logs({ api }) {
       ),
     },
     {
-      key: 'type', title: '类型', render: (r) => (
-        <Pill tone="brand">{r.type}</Pill>
-      ),
+      key: 'type', title: '类型', render: (r) => {
+        const m = TYPE_LABELS[r.type] || { label: r.type, tone: 'neutral' };
+        return <Pill tone={m.tone}>{m.label}</Pill>;
+      },
     },
     {
       key: 'level', title: '级别', render: (r) => {
@@ -80,7 +91,7 @@ export default function Logs({ api }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <Panel title="异常日志" subtitle="平台系统日志:支付验签、结算、库存、提现、登录等异常按类型 / 级别筛选" padded={false}>
+      <Panel title="异常日志" subtitle="平台系统日志:支付验签 / 结算 / 库存 / 登录异常,及提现打款等关键操作留痕,按类型 / 级别筛选" padded={false}>
         <div style={{ padding: 18 }}>
           <Toolbar right={
             <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
@@ -88,7 +99,7 @@ export default function Logs({ api }) {
           }>
             <select value={type} onChange={(e) => setType(e.target.value)} style={selectStyle}>
               <option value="">全部类型</option>
-              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]?.label || t}</option>)}
             </select>
             <select value={level} onChange={(e) => setLevel(e.target.value)} style={selectStyle}>
               <option value="">全部级别</option>
