@@ -104,6 +104,11 @@ export const merchantApi = {
   complaints: (params) => call('/merchant/complaints' + qs(params)),
   replyComplaint: (id, reply) => call(`/merchant/complaints/${id}/reply`, { method: 'POST', body: { reply } }),
 
+  promotions: () => call('/merchant/promotions'),
+  createPromotion: (d) => call('/merchant/promotions', { method: 'POST', body: d }),
+  updatePromotion: (id, d) => call(`/merchant/promotions/${id}`, { method: 'POST', body: d }),
+  deletePromotion: (id) => call(`/merchant/promotions/${id}/delete`, { method: 'POST' }),
+
   products: (params) => call('/merchant/products' + qs(params)),
   createProduct: (d) => call('/merchant/products', { method: 'POST', body: d }),
   updateProduct: (id, d) => call(`/merchant/products/${id}`, { method: 'POST', body: d }),

@@ -6,6 +6,7 @@ import MerchantCategories from './merchant/Categories.jsx';
 import MerchantCards from './merchant/Cards.jsx';
 import MerchantOrders from './merchant/Orders.jsx';
 import MerchantCoupons from './merchant/Coupons.jsx';
+import MerchantPromotions from './merchant/Promotions.jsx';
 import MerchantComplaints from './merchant/Complaints.jsx';
 import MerchantWallet from './merchant/Wallet.jsx';
 
@@ -36,6 +37,7 @@ export const SCREENS = {
   'm-orders': MerchantOrders,
   'm-complaints': MerchantComplaints,
   'm-coupons': MerchantCoupons,
+  'm-promotions': MerchantPromotions,
   'm-wallet': MerchantWallet,
   // 平台后台
   'a-dashboard': AdminDashboard,

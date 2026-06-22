@@ -21,6 +21,7 @@ const MERCHANT_NAV = [
   ] },
   { group: '营销', items: [
     { key: 'm-coupons', label: '优惠券', icon: 'Star' },
+    { key: 'm-promotions', label: '满减满折', icon: 'Zap' },
   ] },
   { group: '资金', items: [
     { key: 'm-wallet', label: '钱包 / 提现', icon: 'RefreshCw' },
