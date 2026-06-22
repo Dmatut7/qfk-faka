@@ -113,13 +113,15 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
   // ---- loaded ----
   const p = product;
-  const out = p.stock <= 0;
+  // 非卡密类(知识/资源/权益)无卡库存概念,视为现货可购;仅卡密类受 stock 约束。
+  const isCard = Number(p.goods_type ?? 1) === 1;
+  const out = isCard ? p.stock <= 0 : false;
   const hasSold = p.sold != null;
   const hasOriginal = p.original != null && p.original > p.price;
 
-  // 库存展示:show_stock_type=1 精确「库存 N」;=0 模糊(充足>20/少量1-20/缺货0)。
-  // 缺货始终「缺货」。返回 {variant, text} 供 Badge 渲染。
+  // 库存展示:非卡密类显示「现货」;卡密类 show_stock_type=1 精确「库存 N」,=0 模糊(充足>20/少量1-20/缺货0)。
   const stockBadge = (() => {
+    if (!isCard) return { variant: 'success', text: '现货' };
     if (out) return { variant: 'danger', text: '缺货' };
     if (Number(p.show_stock_type) === 1) return { variant: 'success', text: `库存 ${p.stock}` };
     if (p.stock <= 20) return { variant: 'pending', text: '库存少量' };
@@ -127,8 +129,12 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   })();
 
   const minBuy = Math.max(1, p.min_buy || 1);
-  // max_buy>0 ? min(max_buy, stock) : stock
-  const maxBuy = out ? minBuy : (p.max_buy > 0 ? Math.min(p.max_buy, p.stock) : p.stock);
+  // 卡密:max_buy>0 ? min(max_buy, stock) : stock;非卡密:仅受 max_buy 约束(无 stock 上限,缺省 99)
+  const maxBuy = out
+    ? minBuy
+    : (isCard
+      ? (p.max_buy > 0 ? Math.min(p.max_buy, p.stock) : p.stock)
+      : (p.max_buy > 0 ? p.max_buy : 99));
   // 受 stock/限购约束的有效上限(至少 minBuy 以保证 stepper 合法)
   const effMax = Math.max(minBuy, maxBuy);
 

@@ -153,6 +153,8 @@ export function normalizeProduct(p) {
     max_buy: Number(p.max_buy ?? 0), // 0 = 不限
     delivery_message: p.delivery_message || '',
     category_id,
+    // 商品类型:1卡密/2知识/3资源/4权益,缺省卡密。
+    goods_type: Number(p.goods_type ?? 1),
     // 购买须知(下单前提示),纯文本;空视为无。
     purchase_notice: p.purchase_notice != null ? String(p.purchase_notice) : '',
     // 库存显示方式:0=模糊标签,1=精确数字。归一化为数字,缺省 0。

@@ -43,9 +43,11 @@ function Stat({ value, label, icon }) {
 /* —— 库存标签 ——
    showStockType=1 精确显示「库存 N」;否则模糊(充足/少量/缺货)。
    缺货(stock<=0)始终显示「缺货」,与显示方式无关。 */
-function StockPill({ stock, showStockType }) {
+function StockPill({ stock, showStockType, isCard = true }) {
   let bg = 'var(--success-bg)', fg = 'var(--success-fg)', bd = 'var(--success-border)', txt = '库存充足';
-  if (stock <= 0) { bg = 'var(--surface-sunken)'; fg = 'var(--text-muted)'; bd = 'var(--border)'; txt = '缺货'; }
+  // 非卡密类(知识/资源/权益)无卡库存概念,统一显示「现货」
+  if (!isCard) { txt = '现货'; }
+  else if (stock <= 0) { bg = 'var(--surface-sunken)'; fg = 'var(--text-muted)'; bd = 'var(--border)'; txt = '缺货'; }
   else if (Number(showStockType) === 1) { txt = `库存 ${stock}`; }
   else if (stock <= 20) { bg = 'var(--pending-bg)'; fg = 'var(--pending-fg)'; bd = 'var(--pending-border)'; txt = '库存少量'; }
   return (
@@ -80,7 +82,8 @@ function GoodsThumb({ src, alt, thumb, fontSize = 38 }) {
 
 /* —— 带图商品卡(2 列网格用) —— */
 function GoodsCard({ p, onClick }) {
-  const out = p.stock <= 0;
+  const isCard = Number(p.goods_type ?? 1) === 1;
+  const out = isCard ? p.stock <= 0 : false;
   const hasOriginal = p.original != null && p.original > p.price;
   return (
     <button
@@ -100,7 +103,7 @@ function GoodsCard({ p, onClick }) {
       {/* 图片 16:9 */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
         <GoodsThumb src={p.image} alt={p.name} thumb={p.thumb} fontSize={38} />
-        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} showStockType={p.show_stock_type} /></div>
+        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} showStockType={p.show_stock_type} isCard={isCard} /></div>
       </div>
       {/* 内容 */}
       <div style={{ padding: '10px 11px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>

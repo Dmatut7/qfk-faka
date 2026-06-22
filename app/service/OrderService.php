@@ -86,17 +86,23 @@ class OrderService
                 throw new BizException(Code::BUY_LIMIT, "超过单笔限购({$product->max_buy})");
             }
 
-            // 2) 取可售卡:FOR UPDATE SKIP LOCKED(各并发请求拿到不同的卡)
-            $cardIds = Db::name('cards')
-                ->where('product_id', $productId)
-                ->where('status', Card::STATUS_UNSOLD)
-                ->order('id', 'asc')
-                ->limit($quantity)
-                ->lock('FOR UPDATE SKIP LOCKED')
-                ->column('id');
+            // 商品类型路由:卡密类走 cards 一卡一售预占;非卡密类(知识/资源/权益)不占卡、无卡库存约束。
+            $isCard = $product->isCardType();
 
-            if (count($cardIds) < $quantity) {
-                throw new BizException(Code::STOCK_NOT_ENOUGH, '库存不足');
+            // 2) 卡密类:取可售卡 FOR UPDATE SKIP LOCKED(各并发请求拿到不同的卡)
+            $cardIds = [];
+            if ($isCard) {
+                $cardIds = Db::name('cards')
+                    ->where('product_id', $productId)
+                    ->where('status', Card::STATUS_UNSOLD)
+                    ->order('id', 'asc')
+                    ->limit($quantity)
+                    ->lock('FOR UPDATE SKIP LOCKED')
+                    ->column('id');
+
+                if (count($cardIds) < $quantity) {
+                    throw new BizException(Code::STOCK_NOT_ENOUGH, '库存不足');
+                }
             }
 
             // 3) 金额(bcmath,禁止浮点)
@@ -109,6 +115,7 @@ class OrderService
                 'merchant_id'   => $product->merchant_id,
                 'product_id'    => $productId,
                 'product_title' => $product->title, // 商品名快照(改名/删除后订单仍显示当时商品名)
+                'goods_type'    => (int) $product->goods_type, // 类型快照,决定发货路由
                 'buyer_email'   => trim((string) $input['buyer_email']),
                 'buyer_contact' => $input['buyer_contact'] ?? null,
                 'query_password' => $this->hashQueryPassword($input['query_password'] ?? ''),
@@ -120,24 +127,26 @@ class OrderService
                 'expire_at'     => date('Y-m-d H:i:s', time() + self::ORDER_TTL),
             ]);
 
-            // 5) 锁定卡并二次校验:affected_rows 必须等于数量,否则回滚整笔
-            $affected = Db::name('cards')
-                ->whereIn('id', $cardIds)
-                ->where('status', Card::STATUS_UNSOLD)
-                ->update([
-                    'status'      => Card::STATUS_LOCKED,
-                    'order_id'    => $order->id,
-                    'locked_at'   => $now,
-                    'update_time' => $now,
-                ]);
+            // 5) 卡密类:锁定卡并二次校验 affected_rows 必须等于数量,否则回滚整笔
+            if ($isCard) {
+                $affected = Db::name('cards')
+                    ->whereIn('id', $cardIds)
+                    ->where('status', Card::STATUS_UNSOLD)
+                    ->update([
+                        'status'      => Card::STATUS_LOCKED,
+                        'order_id'    => $order->id,
+                        'locked_at'   => $now,
+                        'update_time' => $now,
+                    ]);
 
-            if ($affected !== $quantity) {
-                throw new BizException(Code::STOCK_NOT_ENOUGH, '库存并发冲突,请重试');
+                if ($affected !== $quantity) {
+                    throw new BizException(Code::STOCK_NOT_ENOUGH, '库存并发冲突,请重试');
+                }
+
+                // 6) stock 缓存相对递减(下限 0;真实库存以 cards 为准)
+                Db::name('products')->where('id', $productId)
+                    ->update(['stock' => Db::raw("GREATEST(stock - {$quantity}, 0)"), 'update_time' => $now]);
             }
-
-            // 6) stock 缓存相对递减(下限 0;真实库存以 cards 为准)
-            Db::name('products')->where('id', $productId)
-                ->update(['stock' => Db::raw("GREATEST(stock - {$quantity}, 0)"), 'update_time' => $now]);
 
             return $order;
         });

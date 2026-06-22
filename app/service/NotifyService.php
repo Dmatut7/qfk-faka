@@ -141,7 +141,7 @@ class NotifyService
             }
 
             // 锁顺序与下单/回收一致:先锁商品行(串行化闸门),再锁订单行
-            Product::where('id', $order->product_id)->lock(true)->find();
+            $product = Product::where('id', $order->product_id)->lock(true)->find();
             $order = Order::where('id', $order->id)->lock(true)->find();
             $status = (int) $order->status;
 
@@ -169,6 +169,21 @@ class NotifyService
 
             // ====== status == 待支付:正常发货 ======
             $this->markPaymentSuccess($paymentId, $channelTradeNo, $paidAmount, $payload, $now);
+
+            // 非卡密类(知识/资源/权益):无卡发货,内容 = 商品 delivery_message;结算照常。
+            // 类型以订单快照 goods_type 为准(不依赖商品仍存在/未改)。
+            if ((int) $order->goods_type !== Product::GOODS_TYPE_CARD) {
+                $content = $product ? (string) $product->delivery_message : '';
+                Db::name('orders')->where('id', $order->id)->update([
+                    'status'            => Order::STATUS_DELIVERED,
+                    'delivered_content' => $content,
+                    'paid_at'           => $now,
+                    'delivered_at'      => $now,
+                    'update_time'       => $now,
+                ]);
+                $this->doSettle($order, $now);
+                return $this->ack($driver->successResponse(), true, Code::SUCCESS);
+            }
 
             $qty       = (int) $order->quantity;
             $lockedCnt = Card::where('order_id', $order->id)->where('status', Card::STATUS_LOCKED)->count();
