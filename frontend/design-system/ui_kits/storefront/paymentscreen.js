@@ -1,6 +1,6 @@
 /* Payment screen — order summary, method selection, pay action. */
 function PaymentScreen({ order, onPaid }) {
-  const { CheckoutSteps, PaymentOption, PriceTag, Button } = window.MiaoKa_cadc89;
+  const { CheckoutSteps, PaymentOption, PriceTag, Button } = window.MiaoKa_b7a409;
   const [method, setMethod] = React.useState('wechat');
   const [paying, setPaying] = React.useState(false);
   const p = order.product;

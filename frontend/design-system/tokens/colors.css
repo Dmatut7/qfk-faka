@@ -1,51 +1,52 @@
 /* ============================================================
-   秒卡 MiaoKa · Color tokens
-   Clean, fresh, trustworthy. Trust-blue primary, cool slate
-   neutrals, green = paid/in-stock, amber = pending, red = sold out.
+   秒卡 MiaoKa · Color tokens  (淘宝商业风 / Taobao-commercial)
+   Warm orange brand, vivid red prices, dense promo badges.
+   green = 有货/已支付/补贴, amber = 待支付, red = 价格/缺货/失败.
    ============================================================ */
 :root {
-  /* --- Cool slate neutrals --- */
-  --slate-50:  #F6F8FB;
-  --slate-100: #EDF1F7;
-  --slate-150: #E4EAF2;
-  --slate-200: #DCE3ED;
-  --slate-300: #C3CEDC;
-  --slate-400: #6B7A90;  /* darkened from #94A3B8 for WCAG AA on white (~4.5:1) */
-  --slate-500: #586375;  /* darkened from #64748B for WCAG AA on bg-page (~4.5:1) */
-  --slate-600: #4B5A70;
-  --slate-700: #354155;
-  --slate-800: #1F2A3C;
-  --slate-900: #121B2A;
+  /* --- Neutral grays (warm-neutral, Taobao-like) --- */
+  --slate-50:  #F7F7F8;
+  --slate-100: #F0F1F2;
+  --slate-150: #E9EAEC;
+  --slate-200: #E3E5E8;
+  --slate-300: #CBD0D6;
+  --slate-400: #8A909A;  /* AA on white */
+  --slate-500: #6B7280;  /* AA on bg-page */
+  --slate-600: #4D545E;
+  --slate-700: #353B45;
+  --slate-800: #20242C;
+  --slate-900: #111418;
 
-  /* --- Trust blue (primary) --- */
-  --blue-50:  #EAF1FF;
-  --blue-100: #D6E3FF;
-  --blue-200: #B0C8FF;
-  --blue-300: #7FA3FF;
-  --blue-400: #5283FB;
-  --blue-500: #2F6BFF;  /* primary */
-  --blue-600: #1F54E6;  /* hover */
-  --blue-700: #1A45BD;  /* active */
-  --blue-900: #11297A;
+  /* --- 淘宝橙 Taobao orange (primary) --- */
+  --orange-50:  #FFF3EC;
+  --orange-100: #FFE3D1;
+  --orange-200: #FFC9A8;
+  --orange-300: #FFA877;
+  --orange-400: #FF7B33;
+  --orange-500: #FF5000;  /* primary 淘宝橙 */
+  --orange-600: #E64600;  /* hover */
+  --orange-700: #C23A00;  /* active */
+  --orange-900: #7A2400;
 
-  /* --- Green (success / paid / in-stock) --- */
+  /* --- Vivid red (price / danger / sold out) --- */
+  --red-50:  #FFECEA;
+  --red-100: #FFD3CE;
+  --red-500: #FA2C19;  /* price & danger */
+  --red-600: #DD1C0B;
+  --red-700: #B71607;
+
+  /* --- Green (success / paid / in-stock / 补贴) --- */
   --green-50:  #E7F8EF;
-  --green-100: #C9EFD9;
-  --green-500: #15A65A;
-  --green-600: #128A4B;
-  --green-700: #0E6E3C;
+  --green-100: #C2EFD7;
+  --green-500: #00B578;  /* Taobao subsidy green */
+  --green-600: #009965;
+  --green-700: #00794F;
 
-  /* --- Amber (pending / awaiting payment) --- */
-  --amber-50:  #FEF4E2;
-  --amber-100: #FCE6BC;
-  --amber-500: #E8920C;
-  --amber-600: #C5790A;
-
-  /* --- Red (danger / sold out / failed) --- */
-  --red-50:  #FDECEC;
-  --red-100: #FAD4D5;
-  --red-500: #E0444A;
-  --red-600: #C5343A;
+  /* --- Amber (pending / awaiting payment / 立减) --- */
+  --amber-50:  #FFF6E5;
+  --amber-100: #FFE6B8;
+  --amber-500: #FF9000;
+  --amber-600: #E07B00;
 
   /* --- Teal accent (secure / encrypted / delivery) --- */
   --teal-50:  #E3F7F6;
@@ -55,37 +56,45 @@
   /* ============================================================
      Semantic aliases
      ============================================================ */
-  --brand:        var(--blue-500);
-  --brand-hover:  var(--blue-600);
-  --brand-active: var(--blue-700);
-  --brand-soft:   var(--blue-50);
-  --brand-soft-border: var(--blue-100);
+  --brand:        var(--orange-500);
+  --brand-hover:  var(--orange-600);
+  --brand-active: var(--orange-700);
+  --brand-soft:   var(--orange-50);
+  --brand-soft-border: var(--orange-100);
 
-  --bg-page:      var(--slate-50);
+  /* Taobao gradients — buy CTA (red→orange) vs cart CTA (gold→orange) */
+  --cta-gradient-buy:  linear-gradient(90deg, #FF7B33 0%, #FF5000 100%);  /* @kind other */
+  --cta-gradient-cart: linear-gradient(90deg, #FFC04D 0%, #FF9000 100%);  /* @kind other */
+  --brand-gradient:    linear-gradient(135deg, #FF7B33 0%, #FF5000 100%);  /* @kind other */
+
+  --bg-page:      #F5F5F6;
   --bg-page-alt:  #FFFFFF;
   --surface-card: #FFFFFF;
   --surface-sunken: var(--slate-100);
   --surface-raised: #FFFFFF;
-  --surface-overlay: rgba(18, 27, 42, 0.55);
+  --surface-overlay: rgba(17, 20, 24, 0.55);
 
   --text-strong:  var(--slate-900);
   --text-body:    var(--slate-700);
   --text-muted:   var(--slate-500);
   --text-subtle:  var(--slate-400);
   --text-on-brand: #FFFFFF;
-  --text-link:    var(--blue-600);
+  --text-link:    var(--orange-600);
 
   --border:        var(--slate-200);
   --border-strong: var(--slate-300);
-  --border-brand:  var(--blue-300);
+  --border-brand:  var(--orange-300);
 
-  /* state: success */
+  /* state: success / 补贴(政府补贴 green tag) */
   --success-fg:   var(--green-700);
   --success-bg:   var(--green-50);
   --success-solid: var(--green-500);
   --success-border: var(--green-100);
+  --subsidy-fg:   #00794F;
+  --subsidy-bg:   #E5F7EF;
+  --subsidy-border: #B8ECD6;
   /* state: pending */
-  --pending-fg:   #9A5E08;  /* deeper amber for >=4.5:1 chip text on amber-50 */
+  --pending-fg:   #9A5E08;
   --pending-bg:   var(--amber-50);
   --pending-solid: var(--amber-500);
   --pending-border: var(--amber-100);
@@ -95,11 +104,18 @@
   --danger-solid: var(--red-500);
   --danger-border: var(--red-100);
   /* accent: secure */
-  --secure-fg:    #0A6F69;  /* deeper teal for >=4.5:1 chip text on teal-50 */
+  --secure-fg:    #0A6F69;
   --secure-bg:    var(--teal-50);
   --secure-solid: var(--teal-500);
 
+  /* promo (超级立减 solid red badge / 限时 corner) */
+  --promo-solid:  #FA2C19;
+  --promo-fg:     #FFFFFF;
+  --promo-soft-fg: #DD1C0B;
+  --promo-soft-bg: #FFECEA;
+  --promo-soft-border: #FFC9C2;
+
   /* price / money emphasis */
-  --price-color:  var(--slate-900);
-  --price-accent: var(--red-500);  /* reuse single semantic red; was #E5484D, near-identical to danger red — collapsed to avoid two competing reds */
+  --price-color:  var(--red-500);
+  --price-accent: var(--red-500);
 }

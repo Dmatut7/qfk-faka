@@ -9,7 +9,7 @@ function InfoRow({ label, children }) {
 }
 
 function ProductDetail({ product, onBuy }) {
-  const { CheckoutSteps, QuantityStepper, Input, Badge, PriceTag, Button } = window.MiaoKa_cadc89;
+  const { CheckoutSteps, QuantityStepper, Input, Badge, PriceTag, Button } = window.MiaoKa_b7a409;
   const [qty, setQty] = React.useState(1);
   const [email, setEmail] = React.useState('');
   const [touched, setTouched] = React.useState(false);

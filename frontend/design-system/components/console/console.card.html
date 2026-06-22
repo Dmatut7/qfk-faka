@@ -1,0 +1,52 @@
+<!-- @dsCard group="Components" viewport="700x460" name="Console 后台组件" subtitle="StatCard · Panel · Pill · DataTable" -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  html, body { background: var(--bg-page); margin: 0; }
+  #root { padding: 18px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script type="text/babel">
+const { StatCard, Panel, Pill, DataTable } = window.MiaoKa_b7a409;
+const Bolt = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
+);
+const Money = ({ amount, strong }) => <span className="tnum" style={{ fontWeight: strong ? 800 : 600 }}>¥{Number(amount).toFixed(2)}</span>;
+function Demo() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <StatCard filled label="今日成交额" icon={<Bolt size={18} color="#fff" />} value="¥12,840.00" sub="昨日 ¥9,610.00 · 累计 ¥386,200" />
+        <StatCard label="今日订单" tone="success" icon={<Bolt />} value="128" sub={<span>昨日 96 · <span style={{ color: 'var(--success-fg)', fontWeight: 700 }}>↑ 32</span></span>} />
+        <StatCard label="入驻商户" tone="secure" icon={<Bolt />} value="86" sub="待审核 3 · 冻结 1" />
+      </div>
+      <Panel title="最近订单" subtitle="跨商户 · 实时" actions={<Pill tone="brand">实时</Pill>} padded={false}>
+        <DataTable rowKey="no" columns={[
+          { key: 'no', title: '订单号', render: r => <span className="ds-mono">{r.no}</span> },
+          { key: 'goods', title: '商品' },
+          { key: 'amt', title: '实付', align: 'right', render: r => <Money amount={r.amt} strong /> },
+          { key: 'st', title: '状态', render: r => <Pill tone={r.tone} dot>{r.st}</Pill> },
+        ]} rows={[
+          { no: 'MK20260621A3F9', goods: 'Netflix 高级会员 · 1月', amt: 29.9, st: '已发货', tone: 'success' },
+          { no: 'MK20260621B7C2', goods: 'ChatGPT Plus 代充', amt: 119, st: '发货中', tone: 'brand' },
+          { no: 'MK20260620D1E8', goods: 'Steam 充值卡 100元', amt: 96, st: '待支付', tone: 'pending' },
+          { no: 'MK20260620F5A1', goods: 'Office 2021 密钥', amt: 68, st: '已退款', tone: 'danger' },
+        ]} />
+      </Panel>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

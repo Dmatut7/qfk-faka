@@ -1,16 +1,15 @@
-<!-- @dsCard group="Storefront 买家前台" viewport="420x860" name="买家前台 · 完整流程" subtitle="淘宝风:店招 → 商品网格 → 下单 → 付款 → 取卡,可交互" -->
+<!-- @dsCard group="Merchant 商户后台" viewport="1180x760" name="商户后台 · 数据概览" subtitle="双层侧栏 + 数据卡 + 表格,可切换页面" -->
 <!DOCTYPE html>
 <html lang="zh">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>极客发卡 · 买家前台</title>
+<title>秒卡 · 商户后台</title>
 <link rel="stylesheet" href="../../styles.css" />
 <style>
-  html, body { background: var(--bg-page); }
+  html, body { background: var(--bg-page); margin: 0; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--slate-300); border-radius: 99px; border: 2px solid var(--bg-page); }
-  div[style*="overflow-x: auto"]::-webkit-scrollbar, div[style*="overflowX"]::-webkit-scrollbar { height: 0; }
 </style>
 </head>
 <body>
@@ -22,11 +21,7 @@
 <script>window.__MK_KIT = true;</script>
 <script src="data.js"></script>
 <script type="text/babel" src="icons.js"></script>
-<script type="text/babel" src="topbar.js"></script>
-<script type="text/babel" src="storefronthome.js"></script>
-<script type="text/babel" src="productdetail.js"></script>
-<script type="text/babel" src="paymentscreen.js"></script>
-<script type="text/babel" src="orderlookup.js"></script>
-<script type="text/babel" src="app.js"></script>
+<script type="text/babel" src="helpers.js"></script>
+<script type="text/babel" src="merchantapp.js"></script>
 </body>
 </html>

@@ -1,11 +1,13 @@
 import React from 'react';
 
 const CSS = `
-.mk-price{ display:inline-flex; align-items:baseline; gap:8px; font-family:var(--font-sans); }
-.mk-price__main{ display:inline-flex; align-items:baseline; color:var(--price-accent); font-weight:var(--fw-extra); letter-spacing:var(--ls-snug); font-variant-numeric:tabular-nums; }
-.mk-price__sym{ font-size:.62em; font-weight:var(--fw-bold); margin-right:1px; align-self:flex-start; margin-top:.18em; }
+.mk-price{ display:inline-flex; align-items:baseline; gap:7px; font-family:var(--font-sans); }
+.mk-price__main{ display:inline-flex; align-items:baseline; color:var(--price-accent); font-weight:var(--fw-extra); letter-spacing:var(--ls-snug); font-variant-numeric:tabular-nums; line-height:1; }
+.mk-price__sym{ font-size:.6em; font-weight:var(--fw-bold); margin-right:1px; align-self:flex-start; margin-top:.16em; }
+.mk-price__dec{ font-size:.66em; font-weight:var(--fw-extra); }
 .mk-price--neutral .mk-price__main{ color:var(--price-color); }
 .mk-price__orig{ color:var(--text-subtle); text-decoration:line-through; font-weight:var(--fw-medium); font-variant-numeric:tabular-nums; }
+.mk-price__label{ font-size:var(--text-xs); color:var(--text-muted); font-weight:var(--fw-semibold); align-self:flex-end; margin-bottom:.12em; }
 .mk-price--sm .mk-price__main{ font-size:var(--text-lg); }
 .mk-price--md .mk-price__main{ font-size:var(--text-2xl); }
 .mk-price--lg .mk-price__main{ font-size:var(--text-4xl); }
@@ -17,23 +19,27 @@ if (typeof document !== 'undefined' && !document.getElementById('mk-price-css'))
   const s = document.createElement('style'); s.id = 'mk-price-css'; s.textContent = CSS; document.head.appendChild(s);
 }
 
-function fmt(n) {
-  if (typeof n !== 'number') return n;
-  // NaN/Infinity 等非有限数返回占位,避免显示 ¥NaN
-  if (!Number.isFinite(n)) return '0.00';
-  return n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function parts(n) {
+  if (typeof n !== 'number') return { int: String(n), dec: '' };
+  if (!Number.isFinite(n)) return { int: '0', dec: '.00' };
+  const s = n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const i = s.lastIndexOf('.');
+  return i === -1 ? { int: s, dec: '' } : { int: s.slice(0, i), dec: s.slice(i) };
 }
 
 export function PriceTag({
   amount, original, currency = '¥', size = 'md', tone = 'accent',
-  className = '', ...rest
+  label, splitDecimals = true, className = '', ...rest
 }) {
+  const { int, dec } = parts(amount);
+  const o = original != null ? parts(original) : null;
   return (
     <span className={['mk-price', `mk-price--${size}`, tone === 'neutral' ? 'mk-price--neutral' : '', className].filter(Boolean).join(' ')} {...rest}>
       <span className="mk-price__main">
-        <span className="mk-price__sym">{currency}</span>{fmt(amount)}
+        <span className="mk-price__sym">{currency}</span>{int}{dec && (splitDecimals ? <span className="mk-price__dec">{dec}</span> : dec)}
       </span>
-      {original != null && <span className="mk-price__orig">{currency}{fmt(original)}</span>}
+      {label && <span className="mk-price__label">{label}</span>}
+      {o && <span className="mk-price__orig">{currency}{o.int}{o.dec}</span>}
     </span>
   );
 }

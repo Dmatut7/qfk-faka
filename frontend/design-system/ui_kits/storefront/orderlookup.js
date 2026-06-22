@@ -6,7 +6,7 @@ function genKeys(product, qty) {
 }
 
 function OrderLookup({ order, onShop }) {
-  const { Input, Button, OrderStatusBadge, CardKey } = window.MiaoKa_cadc89;
+  const { Input, Button, OrderStatusBadge, CardKey } = window.MiaoKa_b7a409;
   const [mode, setMode] = React.useState('order');
   const [q, setQ] = React.useState('');
   const [error, setError] = React.useState('');
@@ -74,7 +74,7 @@ function OrderLookup({ order, onShop }) {
 }
 
 function OrderResult({ result, onCopyAll, onShop, flashToast }) {
-  const { OrderStatusBadge, CardKey, Button } = window.MiaoKa_cadc89;
+  const { OrderStatusBadge, CardKey, Button } = window.MiaoKa_b7a409;
   const delivered = result.status === 'delivered';
   const r = result;
 

@@ -26,8 +26,8 @@ const CSS = `
 .mk-btn--primary:hover:not([disabled]){ --_bg:var(--brand-hover); }
 .mk-btn--primary:active:not([disabled]){ --_bg:var(--brand-active); }
 
-.mk-btn--secondary{ --_bg:#fff; --_fg:var(--brand); --_bd:var(--blue-200); box-shadow:var(--shadow-xs); }
-.mk-btn--secondary:hover:not([disabled]){ --_bg:var(--brand-soft); --_bd:var(--blue-300); }
+.mk-btn--secondary{ --_bg:#fff; --_fg:var(--brand); --_bd:var(--orange-200); box-shadow:var(--shadow-xs); }
+.mk-btn--secondary:hover:not([disabled]){ --_bg:var(--brand-soft); --_bd:var(--orange-300); }
 
 .mk-btn--neutral{ --_bg:#fff; --_fg:var(--text-strong); --_bd:var(--border-strong); box-shadow:var(--shadow-xs); }
 .mk-btn--neutral:hover:not([disabled]){ --_bg:var(--surface-sunken); }
@@ -35,7 +35,13 @@ const CSS = `
 .mk-btn--ghost{ --_bg:transparent; --_fg:var(--text-body); box-shadow:none; }
 .mk-btn--ghost:hover:not([disabled]){ --_bg:var(--surface-sunken); }
 
-.mk-btn--danger{ --_bg:var(--danger-solid); --_fg:#fff; box-shadow:0 8px 20px rgba(224,68,74,.26); }
+/* Taobao CTA gradients — 立即购买 (red→orange) / 加入购物车 (gold→orange) */
+.mk-btn--buy{ --_fg:#fff; background:var(--cta-gradient-buy); box-shadow:var(--shadow-brand); }
+.mk-btn--buy:hover:not([disabled]){ filter:brightness(1.04); }
+.mk-btn--cart{ --_fg:#fff; background:var(--cta-gradient-cart); box-shadow:0 8px 20px rgba(255,144,0,.28); }
+.mk-btn--cart:hover:not([disabled]){ filter:brightness(1.04); }
+
+.mk-btn--danger{ --_bg:var(--danger-solid); --_fg:#fff; box-shadow:0 8px 20px rgba(250,44,25,.26); }
 .mk-btn--danger:hover:not([disabled]){ --_bg:var(--red-600); }
 
 .mk-btn--success{ --_bg:var(--success-solid); --_fg:#fff; box-shadow:0 8px 20px rgba(21,166,90,.24); }

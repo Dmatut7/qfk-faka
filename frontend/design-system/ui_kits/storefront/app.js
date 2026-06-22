@@ -25,8 +25,14 @@ function App() {
   const [screen, setScreen] = React.useState('home');
   const [product, setProduct] = React.useState(null);
   const [order, setOrder] = React.useState(null);
+  const [toast, setToast] = React.useState(null);
 
   const go = (s) => { setScreen(s); window.scrollTo(0, 0); };
+  const flashToast = React.useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(window.__mkToastT);
+    window.__mkToastT = setTimeout(() => setToast(null), 1800);
+  }, []);
 
   const selectProduct = (p) => { setProduct(p); go('detail'); };
   const buy = (o) => { setOrder({ ...o, orderNo: mkOrderNo(), status: 'pending' }); go('pay'); };
@@ -41,12 +47,19 @@ function App() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <TopBar onHome={() => go('home')} onLookup={() => { go('lookup'); }} {...barProps} />
-      {screen === 'home' && <StorefrontHome onSelect={selectProduct} />}
+      {screen === 'home' && <StorefrontHome onSelect={selectProduct} flashToast={flashToast} />}
       {screen === 'detail' && product && <ProductDetail product={product} onBuy={buy} />}
       {screen === 'pay' && order && <PaymentScreen order={order} onPaid={paid} />}
       {screen === 'lookup' && <OrderLookup order={order && order.status === 'delivered' ? order : null} onShop={() => go(order ? 'pay' : 'home')} />}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 76, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
+          background: 'rgba(17,20,24,.9)', color: '#fff', padding: '10px 18px', borderRadius: 'var(--radius-pill)',
+          fontSize: 13.5, fontWeight: 700, boxShadow: 'var(--shadow-lg)', whiteSpace: 'nowrap', backdropFilter: 'blur(8px)',
+        }}>{toast}</div>
+      )}
     </div>
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+if (window.__MK_KIT) ReactDOM.createRoot(document.getElementById('root')).render(<App />);

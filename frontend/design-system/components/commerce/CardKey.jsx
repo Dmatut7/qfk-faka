@@ -21,7 +21,7 @@ const CSS = `
   -webkit-tap-highlight-color:transparent;
 }
 .mk-cardkey__copy:hover{ background:var(--brand-soft); }
-.mk-cardkey__copy:active{ background:var(--blue-100); }
+.mk-cardkey__copy:active{ background:var(--orange-100); }
 .mk-cardkey__copy svg{ width:16px; height:16px; }
 .mk-cardkey__copy--done{ color:var(--success-fg); }
 

@@ -19,7 +19,7 @@
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 <script src="../../_ds_bundle.js"></script>
 <script type="text/babel">
-const { ProductCard, ProductListItem, CardKey, OrderStatusBadge, PaymentOption, CheckoutSteps } = window.MiaoKa_cadc89;
+const { ProductCard, ProductListItem, CardKey, OrderStatusBadge, PaymentOption, CheckoutSteps } = window.MiaoKa_b7a409;
 function Demo() {
   const [m, setM] = React.useState('wechat');
   return (
@@ -31,9 +31,10 @@ function Demo() {
 
       <div>
         <div className="sec">Product Cards</div>
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-          <ProductCard name="Netflix 高级会员 1个月" desc="独享车位 · 自动发货 · 秒到账" price={29.9} original={49} stock={128} sold={2304} thumb="🎬" />
-          <ProductCard name="ChatGPT Plus 充值" desc="官方直充 · 稳定不掉" price={119} stock={0} thumb="🤖" />
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(168px, 1fr))', gap:12}}>
+          <ProductCard name="Netflix 高级会员 · 1个月" subtitle="本店流媒体热销第1名" price={29.9} original={49} priceLabel="补贴后" stock={128} sold={2304} thumb="🎬" category="流媒体会员" typeLabel="卡密" promo="超级立减" tags={[{text:'平台担保',tone:'subsidy'},{text:'立减20%',tone:'promo'}]} />
+          <ProductCard name="ChatGPT Plus 代充" subtitle="官方直充 · 稳定不掉" price={119} original={158} priceLabel="首单价" stock={4} sold={1890} thumb="🤖" category="AI 工具" typeLabel="权益" tags={[{text:'平台担保',tone:'subsidy'}]} />
+          <ProductCard name="Spotify Premium · 3个月" subtitle="官方车位 · 无广告" price={45} original={60} stock={0} sold={980} thumb="🎵" category="流媒体会员" typeLabel="卡密" />
         </div>
       </div>
 

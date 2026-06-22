@@ -20,7 +20,7 @@ const CSS = `
 .mk-input:disabled{ background:var(--surface-sunken); color:var(--text-muted); cursor:not-allowed; }
 .mk-input--has-icon{ padding-left:42px; }
 .mk-input--error{ border-color:var(--danger-solid); }
-.mk-input--error:focus{ box-shadow:0 0 0 3px rgba(224,68,74,.24); }
+.mk-input--error:focus{ box-shadow:0 0 0 3px rgba(250,44,25,.22); }
 .mk-input__icon{ position:absolute; left:14px; display:flex; color:var(--text-muted); pointer-events:none; }
 .mk-input__icon svg{ width:18px; height:18px; }
 `;
