@@ -110,6 +110,19 @@ export default function Stats({ api, session, onNavigate }) {
             </span>
           }
         />
+        <StatCard
+          label="今日毛利"
+          value={<Money amount={Number(s.profit_today || 0)} strong />}
+          icon="Lock"
+          tone="secure"
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 <Money amount={Number(s.profit_yesterday || 0)} /></span>
+              <Delta money today={Number(s.profit_today || 0)} yesterday={Number(s.profit_yesterday || 0)} />
+              <span style={{ color: 'var(--text-subtle)' }}>本月 <Money amount={Number(s.profit_month || 0)} /></span>
+            </span>
+          }
+        />
       </div>
 
       {/* 常用功能 */}

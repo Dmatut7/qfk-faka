@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace tests\Feature;
 
+use app\model\MerchantFundLog;
 use app\model\Order;
 use app\model\Product;
 use app\util\OrderNo;
@@ -20,6 +21,18 @@ class MerchantStatsTest extends TestCase
             'order_no' => OrderNo::generate(), 'merchant_id' => $merchantId, 'product_id' => $productId,
             'buyer_email' => 'b@x.com', 'quantity' => $qty, 'unit_price' => $total, 'total_amount' => $total,
             'status' => $status, 'expire_at' => date('Y-m-d H:i:s', time() + 900),
+        ]);
+    }
+
+    /** 平台抽佣流水(amount 存负数,口径同 AdminViewService) */
+    private function commissionLog(int $merchantId, string $negAmount): MerchantFundLog
+    {
+        return MerchantFundLog::create([
+            'merchant_id'   => $merchantId,
+            'type'          => MerchantFundLog::TYPE_COMMISSION,
+            'amount'        => $negAmount,
+            'balance_after' => '0.00',
+            'remark'        => '平台佣金',
         ]);
     }
 
@@ -114,6 +127,37 @@ class MerchantStatsTest extends TestCase
         // sales = 12+8+5+30+4+77 = 136.00;order_count = 6
         $this->assertSame('136.00', $body['data']['sales']);
         $this->assertSame(6, $body['data']['order_count']);
+    }
+
+    /** 毛利 = 已发货销售额 − 平台抽佣(同期),今日/昨日/本月分别核算 */
+    public function testGrossProfitNetsOutCommission(): void
+    {
+        $m     = $this->makeMerchant();
+        $other = $this->makeMerchant();
+        $p     = Product::create(['merchant_id' => $m->id, 'title' => 'c', 'price' => '1.00']);
+
+        // 今日:已发货 100.00;平台抽佣 -15.00(本商户)→ 今日毛利 85.00
+        $this->mkOrder($m->id, $p->id, '100.00', Order::STATUS_DELIVERED);
+        $this->commissionLog($m->id, '-10.00');
+        $this->commissionLog($m->id, '-5.00');
+        // 别的商户的佣金流水不得计入
+        $this->commissionLog($other->id, '-99.00');
+
+        // 昨日:已发货 40.00;抽佣 -6.00 → 昨日毛利 34.00
+        $this->mkOrder($m->id, $p->id, '40.00', Order::STATUS_DELIVERED);
+        $cy = $this->commissionLog($m->id, '-6.00');
+        $yesterday = date('Y-m-d 12:00:00', strtotime('-1 day'));
+        Db::name('orders')->where('merchant_id', $m->id)->where('total_amount', '40.00')->update(['create_time' => $yesterday]);
+        MerchantFundLog::where('id', $cy->id)->update(['create_time' => $yesterday]);
+
+        $body = $this->callJson('GET', '/merchant/stats/summary', [], $this->bearer($this->merchantToken((int) $m->id)));
+        $d    = $body['data'];
+
+        $this->assertSame('85.00', $d['profit_today']);
+        $this->assertSame('34.00', $d['profit_yesterday']);
+        // 本月毛利:今昨同月时 = 85 + 34 = 119;月初边界(昨日跨月)则仅今日 85
+        $monthExpected = (date('Y-m') === date('Y-m', strtotime('-1 day'))) ? '119.00' : '85.00';
+        $this->assertSame($monthExpected, $d['profit_month']);
     }
 
     public function testDateRangeHalfOpen(): void
