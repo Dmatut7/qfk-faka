@@ -108,11 +108,14 @@ export default function Withdrawals({ api, session }) {
     }
   }
 
-  // 概览:待审核笔数与待审核金额合计(仅当前页可见行,以后端列表为准)
+  // 概览:全局待审核笔数与金额合计(后端 pending_summary,忽略分页/保留筛选)。
+  // 后端缺失时兜底退化为本页可见行统计。
+  const summary = list.data?.pending_summary;
   const pendingRows = rows.filter((r) => Number(r.status) === 0);
-  const pendingCount = pendingRows.length;
-  // 金额按整数分累加再除回,避免浮点累计误差
-  const pendingSum = pendingRows.reduce((acc, r) => acc + Math.round(Number(r.amount || 0) * 100), 0) / 100;
+  // 本页兜底金额:按整数分累加再除回,避免浮点累计误差
+  const pendingSumFallback = pendingRows.reduce((acc, r) => acc + Math.round(Number(r.amount || 0) * 100), 0) / 100;
+  const pendingCount = summary ? summary.count : pendingRows.length;
+  const pendingSum = summary ? summary.amount : pendingSumFallback;
 
   const columns = [
     { key: 'id', title: '单号', width: 80, render: (r) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>#{r.id}</span> },
@@ -174,14 +177,14 @@ export default function Withdrawals({ api, session }) {
       title="提现审核"
       subtitle="审核商户提现申请;通过=扣减冻结并打款,拒绝=解冻退回商户可用余额"
     >
-      {/* 概览(当前列表中的待审核情况) */}
+      {/* 概览(全局待审核情况) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
         <StatCard
-          label="当前待审核笔数"
+          label="待审核笔数"
           value={pendingCount}
           icon="Clock"
           tone="pending"
-          sub="仅统计本页可见的待审核单"
+          sub="全部待审核提现单(不限当前页)"
         />
         <StatCard
           label="待审核金额合计"

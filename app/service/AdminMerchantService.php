@@ -16,17 +16,29 @@ class AdminMerchantService
 {
     public function list(array $filter, int $page = 1, int $size = 20): array
     {
-        $q = Merchant::order('id', 'desc');
-        if (!empty($filter['keyword'])) {
-            $kw = '%' . $filter['keyword'] . '%';
-            $q->where('username|store_name|email', 'like', $kw);
+        // 非 status 的基础筛选(keyword);供"列表"与"全局状态计数"共用,
+        // 让统计卡反映全局各状态总数(不随分页/所选状态 tab 失真)。
+        $applyBase = function ($q) use ($filter) {
+            if (!empty($filter['keyword'])) {
+                $q->where('username|store_name|email', 'like', '%' . $filter['keyword'] . '%');
+            }
+            return $q;
+        };
+
+        // 全局各状态计数(忽略 status 筛选与分页,保留 keyword 筛选)
+        $rows = $applyBase(Merchant::field('status, COUNT(*) AS c'))->group('status')->select()->toArray();
+        $statusCounts = [];
+        foreach ($rows as $r) {
+            $statusCounts[(int) $r['status']] = (int) $r['c'];
         }
+
+        $q = $applyBase(Merchant::order('id', 'desc'));
         if (isset($filter['status']) && $filter['status'] !== '') {
             $q->where('status', (int) $filter['status']);
         }
         $total = $q->count();
         $items = $q->page($page, $size)->select()->toArray();
-        return ['total' => $total, 'page' => $page, 'items' => $items];
+        return ['total' => $total, 'page' => $page, 'items' => $items, 'status_counts' => $statusCounts];
     }
 
     /** 审核通过:待审核(0)→ 正常(1) */

@@ -41,7 +41,9 @@ export default function Complaints({ api }) {
     } finally { setBusy(false); }
   };
 
-  const counts = items.reduce((a, c) => { a[c.status] = (a[c.status] || 0) + 1; return a; }, {});
+  // 全局各状态计数(后端聚合,忽略 status 筛选/分页,口径不随翻页失真)
+  const counts = list.data?.status_counts || {};
+  const totalCount = Object.values(counts).reduce((a, n) => a + Number(n || 0), 0);
 
   const columns = [
     { key: 'order_no', title: '订单 / 发起人', render: (r) => (
@@ -75,7 +77,7 @@ export default function Complaints({ api }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard label="本页投诉" value={items.length} icon="AlertTriangle" tone="brand" />
+        <StatCard label="投诉总数" value={totalCount} icon="AlertTriangle" tone="brand" />
         <StatCard label="平台介入中" value={counts[2] || 0} icon="AlertTriangle" tone="danger" />
         <StatCard label="待商户处理" value={counts[0] || 0} icon="Clock" tone="pending" />
         <StatCard label="已解决" value={counts[3] || 0} icon="Check" tone="success" />

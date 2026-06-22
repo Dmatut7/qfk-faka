@@ -160,19 +160,32 @@ class AdminViewService
      */
     public function products(array $filter, int $page = 1, int $size = 20): array
     {
-        $q = Product::order('id', 'desc');
-        if (isset($filter['merchant_id']) && $filter['merchant_id'] !== '') {
-            $q->where('merchant_id', (int) $filter['merchant_id']);
-        }
+        // 非 status 基础筛选(merchant_id / keyword);列表与全局统计共用。
+        $applyBase = function ($q) use ($filter) {
+            if (isset($filter['merchant_id']) && $filter['merchant_id'] !== '') {
+                $q->where('merchant_id', (int) $filter['merchant_id']);
+            }
+            if (!empty($filter['keyword'])) {
+                $q->where('title', 'like', '%' . $filter['keyword'] . '%');
+            }
+            return $q;
+        };
+
+        // 全局统计:在售/下架 + 缺货(在售且 stock<=0),供统计卡全局口径
+        $onSale  = (int) $applyBase(Product::where('status', 1))->count();
+        $offSale = (int) $applyBase(Product::where('status', '<>', 1))->count();
+        $outStock = (int) $applyBase(Product::where('status', 1)->where('stock', '<=', 0))->count();
+
+        $q = $applyBase(Product::order('id', 'desc'));
         if (isset($filter['status']) && $filter['status'] !== '') {
             $q->where('status', (int) $filter['status']);
-        }
-        if (!empty($filter['keyword'])) {
-            $q->where('title', 'like', '%' . $filter['keyword'] . '%');
         }
         $total = $q->count();
         $items = $q->page($page, $size)->select()->toArray();
 
-        return ['total' => $total, 'page' => $page, 'items' => $items];
+        return [
+            'total' => $total, 'page' => $page, 'items' => $items,
+            'summary' => ['on_sale' => $onSale, 'off_sale' => $offSale, 'out_stock' => $outStock, 'total' => $onSale + $offSale],
+        ];
     }
 }

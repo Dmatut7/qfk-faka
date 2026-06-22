@@ -50,10 +50,12 @@ export default function Products({ api, session }) {
   const curPage = x.data?.page || page;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // 统计:商品总数取后端 total;在售/下架/缺货按当前页列表计数(仅本页)
-  const onSaleCount = rows.filter((r) => Number(r.status) === 1).length;
-  const offShelfCount = rows.filter((r) => Number(r.status) !== 1).length;
-  const outOfStockCount = rows.filter((r) => isOutOfStock(r)).length;
+  // 统计卡:全局口径,取后端 summary(避免本页 reduce 导致翻页失真),兜底 0
+  const summary = x.data?.summary || {};
+  const summaryTotal = summary.total || 0;
+  const onSaleCount = summary.on_sale || 0;
+  const offShelfCount = summary.off_sale || 0;
+  const outOfStockCount = summary.out_stock || 0;
 
   const columns = [
     { key: 'id', title: 'ID', width: 72, render: (r) => <span style={{ color: 'var(--text-muted)' }}>#{r.id}</span> },
@@ -136,10 +138,10 @@ export default function Products({ api, session }) {
       }
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-        <StatCard label="商品总数" value={total} icon="Package" tone="brand" />
-        <StatCard label="在售(本页)" value={onSaleCount} icon="Check" tone="success" />
-        <StatCard label="下架(本页)" value={offShelfCount} icon="Inbox" tone="neutral" />
-        <StatCard label="缺货(本页)" value={outOfStockCount} icon="AlertTriangle" tone="danger" />
+        <StatCard label="商品总数" value={summaryTotal} icon="Package" tone="brand" />
+        <StatCard label="在售" value={onSaleCount} icon="Check" tone="success" />
+        <StatCard label="下架" value={offShelfCount} icon="Inbox" tone="neutral" />
+        <StatCard label="缺货" value={outOfStockCount} icon="AlertTriangle" tone="danger" />
       </div>
 
       <Toolbar

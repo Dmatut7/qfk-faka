@@ -40,7 +40,28 @@ class AdminWithdrawService
         }
         $total = $q->count();
         $items = $q->page($page, $size)->select()->toArray();
-        return ['total' => $total, 'page' => $page, 'items' => $items];
+
+        // 全局待审核口径(忽略分页,保留 merchant_id 等其它筛选):
+        // 待审核笔数与金额合计;金额用 bcmath(Money)累加避免浮点误差。
+        $pendingWhere = ['status' => Withdrawal::STATUS_PENDING];
+        if (!empty($filter['merchant_id'])) {
+            $pendingWhere['merchant_id'] = (int) $filter['merchant_id'];
+        }
+        $pendingCount  = Withdrawal::where($pendingWhere)->count();
+        $pendingAmount = '0.00';
+        foreach (Withdrawal::where($pendingWhere)->column('amount') as $amt) {
+            $pendingAmount = Money::add($pendingAmount, (string) $amt);
+        }
+
+        return [
+            'total'           => $total,
+            'page'            => $page,
+            'items'           => $items,
+            'pending_summary' => [
+                'count'  => $pendingCount,
+                'amount' => $pendingAmount,
+            ],
+        ];
     }
 
     /** 审核打款:待审 → 已打款。frozen-=A,不动 balance,不记收入流水。 */

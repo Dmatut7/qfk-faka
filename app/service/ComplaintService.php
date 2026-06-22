@@ -94,16 +94,37 @@ class ComplaintService
 
     // ===== 平台 =====
 
+    /**
+     * 平台投诉列表 + 全局各状态计数。
+     * status_counts 反映全局(忽略 status 筛选、保留 merchant 筛选)各状态总数,
+     * 让统计卡不随分页/所选状态 tab 失真。口径同 AdminViewService::orders。
+     *
+     * @return array{items: array, status_counts: array<int,int>}
+     */
     public function adminList(?int $status = null, ?int $merchantId = null): array
     {
-        $q = Complaint::order('id', 'desc');
+        // 非 status 的基础筛选(merchant_id);供"列表"与"全局状态计数"共用
+        $applyBase = function ($q) use ($merchantId) {
+            if ($merchantId !== null) {
+                $q->where('merchant_id', $merchantId);
+            }
+            return $q;
+        };
+
+        // 全局各状态计数(忽略 status 筛选)
+        $rows = $applyBase(Complaint::field('status, COUNT(*) AS c'))->group('status')->select()->toArray();
+        $statusCounts = [];
+        foreach ($rows as $r) {
+            $statusCounts[(int) $r['status']] = (int) $r['c'];
+        }
+
+        $q = $applyBase(Complaint::order('id', 'desc'));
         if ($status !== null) {
             $q->where('status', $status);
         }
-        if ($merchantId !== null) {
-            $q->where('merchant_id', $merchantId);
-        }
-        return $q->select()->toArray();
+        $items = $q->select()->toArray();
+
+        return ['items' => $items, 'status_counts' => $statusCounts];
     }
 
     /** 平台裁决-解决,refund=true 时联动退款(订单可退则退,已退则仅标记) */

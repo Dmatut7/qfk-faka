@@ -54,10 +54,17 @@ export default function Merchants({ api }) {
     }
   };
 
-  const counts = items.reduce((acc, m) => {
+  // 全局各状态计数(后端 list.data.status_counts);后端缺省时兜底退化为本页 reduce 口径
+  const pageCounts = items.reduce((acc, m) => {
     acc[m.status] = (acc[m.status] || 0) + 1;
     return acc;
   }, {});
+  const counts = list.data?.status_counts || pageCounts;
+  // 商户总数:全局口径优先用各状态之和,否则用分页 total
+  const hasGlobalCounts = !!list.data?.status_counts;
+  const totalMerchants = hasGlobalCounts
+    ? (counts[0] || 0) + (counts[1] || 0) + (counts[2] || 0)
+    : total;
 
   const columns = [
     {
@@ -126,7 +133,7 @@ export default function Merchants({ api }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <StatCard label="本页商户" value={items.length} icon="Package" tone="brand" sub={`共 ${total} 家`} />
+        <StatCard label="商户总数" value={totalMerchants} icon="Package" tone="brand" sub={`共 ${total} 家`} />
         <StatCard label="待审核" value={counts[0] || 0} icon="Clock" tone="pending" />
         <StatCard label="正常" value={counts[1] || 0} icon="ShieldCheck" tone="success" />
         <StatCard label="冻结" value={counts[2] || 0} icon="Lock" tone="danger" />
