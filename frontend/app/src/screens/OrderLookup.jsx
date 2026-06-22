@@ -482,11 +482,19 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
         {/* 资源类:限时签名下载链(30 分钟有效期) */}
         {statusNum === STATUS.DELIVERED && r.download_url && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-            <Button as="a" href={/^https?:\/\//i.test(r.download_url) ? r.download_url : BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
-              下载资源
-            </Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <Button as="a" href={/^https?:\/\//i.test(r.download_url) ? r.download_url : BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
+                下载资源
+              </Button>
+              {!directMode && (
+                <Button variant="secondary" size="md" loading={loading} onClick={search} iconLeft={<Icons.RefreshCw size={16} />}>
+                  刷新下载链
+                </Button>
+              )}
+            </div>
             <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <Icons.Clock size={13} color="var(--text-subtle)" />链接有效期 30 分钟,过期请重新查单获取。
+              <Icons.Clock size={13} color="var(--text-subtle)" />
+              {directMode ? '链接有效期 30 分钟,过期请到「取卡 / 查单」页重新查单获取。' : '链接有效期 30 分钟,过期点「刷新下载链」即可重新获取。'}
             </div>
           </div>
         )}
