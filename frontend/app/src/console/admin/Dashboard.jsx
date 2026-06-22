@@ -138,7 +138,7 @@ function GreetingCard({ greet, onReload, loading }) {
     <section style={{
       position: 'relative', overflow: 'hidden',
       borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)',
-      background: 'linear-gradient(120deg, var(--secure-solid, #2563eb) 0%, var(--brand, #4f46e5) 60%, var(--brand-active, #4338ca) 100%)',
+      background: 'linear-gradient(120deg, var(--orange-400) 0%, var(--orange-500) 55%, var(--orange-700) 100%)',
       color: '#fff', padding: '22px 24px',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
     }}>

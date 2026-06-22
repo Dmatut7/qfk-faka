@@ -127,7 +127,7 @@ export default function PlatformKefu({ kefu }) {
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
           width: 56, height: 56, borderRadius: '50%', border: 'none', cursor: 'pointer',
           background: 'var(--brand)', color: '#fff', fontFamily: 'var(--font-sans)',
-          boxShadow: 'var(--shadow-brand, 0 6px 18px rgba(47,107,255,.4))',
+          boxShadow: 'var(--shadow-brand, 0 6px 18px rgba(255,80,0,.4))',
         }}
       >
         <Icons.Headset size={20} color="#fff" />

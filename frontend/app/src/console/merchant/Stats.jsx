@@ -86,14 +86,15 @@ export default function Stats({ api, session, onNavigate }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
         <StatCard
           label="今日成交额"
-          value={<Money amount={Number(s.sales_today || 0)} strong />}
+          value={<Money amount={Number(s.sales_today || 0)} strong color="#fff" />}
           icon="Zap"
           tone="brand"
+          filled
           sub={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span>昨日 <Money amount={Number(s.sales_yesterday || 0)} /></span>
+              <span>昨日 <Money amount={Number(s.sales_yesterday || 0)} color="#fff" /></span>
               <Delta money today={Number(s.sales_today || 0)} yesterday={Number(s.sales_yesterday || 0)} />
-              <span style={{ color: 'var(--text-subtle)' }}>累计 <Money amount={Number(s.sales || 0)} /></span>
+              <span style={{ opacity: 0.85 }}>累计 <Money amount={Number(s.sales || 0)} color="#fff" /></span>
             </span>
           }
         />

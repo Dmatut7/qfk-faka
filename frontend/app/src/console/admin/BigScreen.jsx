@@ -46,11 +46,11 @@ export default function BigScreen({ api }) {
   }
 
   const cards8 = [
-    { label: '今日成交额', icon: 'Zap', accent: '#34d399', money: true, value: n(sales.today), sub: <>昨日 <Money amount={n(sales.yesterday)} /></> },
-    { label: '今日订单', icon: 'Search', accent: '#60a5fa', value: n(orders.today), sub: `昨日 ${n(orders.yesterday)} 单` },
-    { label: '总成交额', icon: 'Star', accent: '#a78bfa', money: true, value: n(sales.total), sub: '平台累计成交' },
-    { label: '平台抽佣', icon: 'Lock', accent: '#f472b6', money: true, value: n(commission.total), sub: <>今日 <Money amount={n(commission.today)} /></> },
-    { label: '入驻商户', icon: 'ShieldCheck', accent: '#22d3ee', value: n(merchants.total), sub: `正常 ${n(merchants.active)} · 待审 ${n(merchants.pending)}` },
+    { label: '今日成交额', icon: 'Zap', accent: '#FF5000', money: true, value: n(sales.today), sub: <>昨日 <Money amount={n(sales.yesterday)} /></> },
+    { label: '今日订单', icon: 'Search', accent: '#0FA9A0', value: n(orders.today), sub: `昨日 ${n(orders.yesterday)} 单` },
+    { label: '总成交额', icon: 'Star', accent: '#FF9000', money: true, value: n(sales.total), sub: '平台累计成交' },
+    { label: '平台抽佣', icon: 'Lock', accent: '#FF7B33', money: true, value: n(commission.total), sub: <>今日 <Money amount={n(commission.today)} /></> },
+    { label: '入驻商户', icon: 'ShieldCheck', accent: '#00B578', value: n(merchants.total), sub: `正常 ${n(merchants.active)} · 待审 ${n(merchants.pending)}` },
     { label: '在售商品', icon: 'Package', accent: '#fbbf24', value: n(products.on_sale), sub: `商品总数 ${n(products.total)}` },
     { label: '未售卡密', icon: 'Inbox', accent: '#4ade80', value: n(cards.unsold), sub: '可发放库存' },
     { label: '待审提现', icon: 'RefreshCw', accent: '#fb923c', value: n(withdrawals.pending_count), sub: <>金额 <Money amount={n(withdrawals.pending_amount)} /></> },
@@ -63,14 +63,14 @@ export default function BigScreen({ api }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span style={{
             width: 44, height: 44, borderRadius: 12, flex: 'none',
-            background: 'linear-gradient(135deg,#6366f1,#22d3ee)',
+            background: 'linear-gradient(135deg,#FF7B33,#FF5000)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 22px rgba(99,102,241,0.7)',
+            boxShadow: '0 0 22px rgba(255,80,0,0.55)',
           }}>
             <Icons.Zap size={24} color="#fff" />
           </span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '0.01em', color: '#f8fafc', textShadow: '0 0 18px rgba(99,102,241,0.45)' }}>
+            <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: '0.01em', color: '#f8fafc', textShadow: '0 0 18px rgba(255,80,0,0.4)' }}>
               秒卡 · 运营大屏
             </div>
             <div style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 3 }}>实时经营概览 · 数据更新于 {ts}</div>
