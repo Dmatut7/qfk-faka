@@ -8,7 +8,7 @@ import { Input } from '../../../../design-system/components/core/Input.jsx';
 const STATUS_SHOWN = 1;
 const STATUS_HIDDEN = 0;
 
-const emptyForm = { name: '', sort: '0', status: STATUS_SHOWN };
+const emptyForm = { name: '', image: '', sort: '0', status: STATUS_SHOWN };
 
 export default function Categories({ api, session }) {
   const list = useAsync(() => api.categories(), []);
@@ -34,6 +34,7 @@ export default function Categories({ api, session }) {
     setEditing(row);
     setForm({
       name: row.name ?? '',
+      image: row.image ?? '',
       sort: String(row.sort ?? 0),
       status: Number(row.status),
     });
@@ -50,6 +51,7 @@ export default function Categories({ api, session }) {
     setFormErr('');
     const payload = {
       name: form.name.trim(),
+      image: form.image.trim(),
       sort: Number(form.sort) || 0,
       status: Number(form.status),
     };
@@ -85,6 +87,14 @@ export default function Categories({ api, session }) {
 
   const columns = [
     { key: 'sort', title: '排序', width: 80, align: 'right', render: (row) => row.sort },
+    {
+      key: 'image',
+      title: '分类图',
+      width: 72,
+      render: (row) => row.image
+        ? <img src={row.image} alt="" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+        : <span style={{ color: 'var(--text-subtle)', fontSize: 12 }}>—</span>,
+    },
     { key: 'name', title: '分类名', render: (row) => row.name },
     {
       key: 'status',
@@ -165,6 +175,16 @@ export default function Categories({ api, session }) {
             placeholder="如:游戏点卡"
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           />
+        </Field>
+        <Field label="分类图(选填)" hint="图片 URL,显示在店铺分类 Tab;留空则不显示">
+          <Input
+            value={form.image}
+            placeholder="https://…/category.png"
+            onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
+          />
+          {form.image.trim() ? (
+            <img src={form.image.trim()} alt="" style={{ marginTop: 8, width: 56, height: 56, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--border)' }} />
+          ) : null}
         </Field>
         <Field label="排序" hint="数字越小越靠前">
           <Input

@@ -18,14 +18,14 @@ class Category extends BaseApiController
 
     public function create(CategoryService $svc)
     {
-        $d = $this->params(['name', 'sort', 'status']);
+        $d = $this->params(['name', 'image', 'sort', 'status']);
         $this->validate($d, ['name' => 'require|max:64'], ['name.require' => '分类名必填']);
         return $this->success($svc->create($this->authId(), $d)->toArray());
     }
 
     public function update(CategoryService $svc, $id)
     {
-        $d = $this->params(['name', 'sort', 'status']);
+        $d = $this->params(['name', 'image', 'sort', 'status']);
         return $this->success($svc->update($this->authId(), (int) $id, $d)->toArray());
     }
 

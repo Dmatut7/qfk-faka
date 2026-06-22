@@ -359,6 +359,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       return cs.map((c) => ({
         id: normId(c.id),
         name: c.name || ('分类 ' + c.id),
+        image: c.image || null,
         goods_count: c.goods_count,
       }));
     }
@@ -510,10 +511,12 @@ export default function StorefrontHome({ shop, categories, products, loading, er
                 return (
                   <button key={String(c.id)} onClick={() => setCat(c.id)} style={{
                     flex: 'none', position: 'relative', height: 46, padding: '0 2px', border: 'none', background: 'transparent', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
                     fontFamily: 'var(--font-sans)', fontWeight: on ? 800 : 600, fontSize: 15,
                     color: on ? 'var(--brand-active)' : 'var(--text-muted)', whiteSpace: 'nowrap', transition: 'color .15s',
                   }}>
-                    {c.name}{!q && c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}
+                    {c.image ? <img src={c.image} alt="" style={{ width: 20, height: 20, borderRadius: 5, objectFit: 'cover' }} /> : null}
+                    <span>{c.name}{!q && c.goods_count != null ? <span style={{ fontSize: 12, marginLeft: 3, opacity: .7 }}>{c.goods_count}</span> : null}</span>
                     {on && <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0, width: 22, height: 3, borderRadius: 3, background: 'var(--brand)' }} />}
                   </button>
                 );

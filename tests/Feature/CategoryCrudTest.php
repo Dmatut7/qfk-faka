@@ -46,6 +46,25 @@ class CategoryCrudTest extends TestCase
         $this->assertSame(0, Category::find($cat->id)->status);
     }
 
+    public function testImagePersistsAndClears(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->bearer($this->merchantToken((int) $m->id));
+
+        // 创建带分类图
+        $c = $this->callJson('POST', '/merchant/categories', ['name' => '游戏', 'image' => 'https://cdn/x.png'], $token);
+        $this->assertSame(0, $c['code']);
+        $this->assertSame('https://cdn/x.png', Category::find($c['data']['id'])->image);
+
+        // 改图
+        $this->callJson('POST', '/merchant/categories/' . $c['data']['id'], ['image' => 'https://cdn/y.png'], $token);
+        $this->assertSame('https://cdn/y.png', Category::find($c['data']['id'])->image);
+
+        // 空串清除 → null
+        $this->callJson('POST', '/merchant/categories/' . $c['data']['id'], ['image' => ''], $token);
+        $this->assertNull(Category::find($c['data']['id'])->image);
+    }
+
     public function testDelete(): void
     {
         $m = $this->makeMerchant();

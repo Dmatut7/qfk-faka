@@ -26,6 +26,7 @@ class CategoryService
         return Category::create([
             'merchant_id' => $merchantId,
             'name'        => $d['name'],
+            'image'       => isset($d['image']) ? (trim((string) $d['image']) ?: null) : null,
             'sort'        => (int) ($d['sort'] ?? 0),
             'status'      => isset($d['status']) ? (int) $d['status'] : Category::STATUS_SHOWN,
         ]);
@@ -34,7 +35,11 @@ class CategoryService
     public function update(int $merchantId, int $id, array $d): Category
     {
         $c = $this->findOwned($merchantId, $id);
-        $patch = array_intersect_key($d, array_flip(['name', 'sort', 'status']));
+        $patch = array_intersect_key($d, array_flip(['name', 'image', 'sort', 'status']));
+        // image 空串视为清除分类图(落 null)
+        if (array_key_exists('image', $patch)) {
+            $patch['image'] = trim((string) $patch['image']) ?: null;
+        }
         if ($patch) {
             $c->save($patch);
         }
