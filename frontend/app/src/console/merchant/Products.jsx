@@ -28,6 +28,9 @@ const EMPTY_FORM = {
   image: '',
   price: '',
   market_price: '',
+  discount_price: '',
+  discount_start: '',
+  discount_end: '',
   type: TYPE_AUTO,
   min_buy: 1,
   max_buy: 0,
@@ -72,6 +75,9 @@ export default function Products({ api, session }) {
       image: row.image || '',
       price: row.price == null ? '' : String(row.price),
       market_price: row.market_price == null ? '' : String(row.market_price),
+      discount_price: row.discount_price == null ? '' : String(row.discount_price),
+      discount_start: (row.discount_start || '').slice(0, 16).replace(' ', 'T'),
+      discount_end: (row.discount_end || '').slice(0, 16).replace(' ', 'T'),
       type: Number(row.type) || TYPE_AUTO,
       goods_type: Number(row.goods_type) || 1,
       min_buy: row.min_buy ?? 1,
@@ -99,6 +105,9 @@ export default function Products({ api, session }) {
       image: form.image.trim(),
       price: form.price,
       market_price: form.market_price === '' ? '' : form.market_price,
+      discount_price: form.discount_price === '' ? '' : form.discount_price,
+      discount_start: form.discount_start ? form.discount_start.replace('T', ' ') + ':00' : '',
+      discount_end: form.discount_end ? form.discount_end.replace('T', ' ') + ':00' : '',
       type: Number(form.type),
       goods_type: Number(form.goods_type) || 1,
       min_buy: Math.max(1, Number(form.min_buy) || 1),
@@ -320,6 +329,13 @@ export default function Products({ api, session }) {
             <Input label="价格 (元)" required type="number" min="0" step="0.01" value={form.price} onChange={set('price')} placeholder="0.00" />
             <Input label="划线原价(可选)" hint="市场价" type="number" min="0" step="0.01" value={form.market_price} onChange={set('market_price')} placeholder="0.00" />
             <Input label="SKU(可选)" value={form.sku} onChange={set('sku')} placeholder="自定义货号" />
+          </div>
+
+          {/* 限时折扣(可选):窗口内按折扣价售卖 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
+            <Input label="折扣开始" type="datetime-local" value={form.discount_start} onChange={set('discount_start')} />
+            <Input label="折扣结束" type="datetime-local" value={form.discount_end} onChange={set('discount_end')} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

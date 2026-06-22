@@ -146,11 +146,12 @@ function hashStr(s) {
 
 const THUMBS = ['📦', '🎬', '🤖', '🪟', '🎵', '🎨', '🎮', '⚔️', '🎟️', '💎'];
 export function normalizeProduct(p) {
-  const price = Number(p.price);
-  // market_price 是「划线原价」,仅当 > 实售价才作为 original 展示。
+  const price = Number(p.price); // 后端 price 恒为应收价(限时折扣生效则为折扣价)
+  const onSale = !!p.on_sale;
+  // 限时折扣生效:划线价用 original_price(原价);否则用 market_price(静态划线原价)。
+  const listPrice = p.original_price != null && p.original_price !== '' ? Number(p.original_price) : undefined;
   const mkt = p.market_price != null && p.market_price !== '' ? Number(p.market_price) : undefined;
-  // 兼容旧字段 original;新契约用 market_price。
-  const origRaw = mkt != null ? mkt : (p.original != null ? Number(p.original) : undefined);
+  const origRaw = (onSale && listPrice != null) ? listPrice : (mkt != null ? mkt : (p.original != null ? Number(p.original) : undefined));
   const original = origRaw != null && Number.isFinite(origRaw) && origRaw > price ? origRaw : undefined;
   // 商品主图 URL(后端 image),空串视为无图,回落 emoji 占位。
   const image = p.image != null && String(p.image).trim() !== '' ? String(p.image) : '';
@@ -174,6 +175,9 @@ export function normalizeProduct(p) {
     max_buy: Number(p.max_buy ?? 0), // 0 = 不限
     delivery_message: p.delivery_message || '',
     category_id,
+    // 限时折扣:是否促销中 + 结束时间(倒计时),价格已由后端折算进 price。
+    on_sale: onSale,
+    discount_end: p.discount_end || null,
     // 商品类型:1卡密/2知识/3资源/4权益,缺省卡密。
     goods_type: Number(p.goods_type ?? 1),
     // 购买须知(下单前提示),纯文本;空视为无。

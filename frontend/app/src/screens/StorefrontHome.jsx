@@ -104,6 +104,9 @@ function GoodsCard({ p, onClick }) {
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
         <GoodsThumb src={p.image} alt={p.name} thumb={p.thumb} fontSize={38} />
         <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} showStockType={p.show_stock_type} isCard={isCard} /></div>
+        {p.on_sale && (
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 3, height: 20, padding: '0 8px', background: 'var(--danger-solid, #e5484d)', color: '#fff', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 800 }}>限时</div>
+        )}
       </div>
       {/* 内容 */}
       <div style={{ padding: '10px 11px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
