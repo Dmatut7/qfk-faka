@@ -25,6 +25,7 @@ class BuyerOrderService
             'order_no'     => $order->order_no,
             'status'       => (int) $order->status,
             'product_id'   => (int) $order->product_id,
+            'goods_type'   => (int) ($order->goods_type ?? 1),
             'quantity'     => (int) $order->quantity,
             'total_amount' => $order->total_amount,
             'created_at'   => $order->create_time,

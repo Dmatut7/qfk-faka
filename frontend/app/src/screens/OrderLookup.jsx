@@ -229,11 +229,16 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
   );
 }
 
+/* 发货物按商品类型的称谓(卡密店保持「卡密」原文案不变) */
+const DELIVER_NOUN = { 1: '卡密', 2: '内容', 3: '资源', 4: '权益' };
+const deliverNoun = (gt) => DELIVER_NOUN[Number(gt) || 1] || '卡密';
+
 function OrderResult({ result, flashToast }) {
   const r = result;
   const statusNum = Number(r.status);
   const key = statusKey(statusNum);
   const cards = Array.isArray(r.cards) ? r.cards : [];
+  const noun = deliverNoun(r.goods_type);
 
   // 商品信息:订单里可能没有完整商品对象,做优雅缺省
   const prod = r.product ? normalizeProduct(r.product) : null;
@@ -297,7 +302,7 @@ function OrderResult({ result, flashToast }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 800, color: 'var(--success-fg)' }}>
-                <Icons.ShieldCheck size={16} color="var(--success-solid)" />卡密已发放({cards.length})
+                <Icons.ShieldCheck size={16} color="var(--success-solid)" />{noun}已发放({cards.length})
               </div>
               {cards.length > 1 && (
                 <button onClick={copyAll} style={{
@@ -311,15 +316,15 @@ function OrderResult({ result, flashToast }) {
                 <CardKey
                   key={code}
                   index={cards.length > 1 ? i + 1 : undefined}
-                  label="卡密"
+                  label={noun}
                   code={code}
-                  onCopy={() => flashToast('已复制卡密')}
+                  onCopy={() => flashToast('已复制' + noun)}
                 />
               ))}
             </div>
             <div style={{ marginTop: 14, display: 'flex', gap: 9, padding: '12px 14px', background: 'var(--pending-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--pending-border)' }}>
               <Icons.Clock size={16} color="var(--pending-solid)" />
-              <span style={{ fontSize: 12.5, color: 'var(--pending-fg)', lineHeight: 1.5 }}>请尽快复制并妥善保管卡密。卡密仅展示给本订单,如遇问题请在 24 小时内联系客服。</span>
+              <span style={{ fontSize: 12.5, color: 'var(--pending-fg)', lineHeight: 1.5 }}>请尽快复制并妥善保管{noun}。{noun}仅展示给本订单,如遇问题请在 24 小时内联系客服。</span>
             </div>
           </div>
         )}
@@ -327,7 +332,7 @@ function OrderResult({ result, flashToast }) {
         {/* 待支付:locked 占位,不展示卡密 */}
         {statusNum === STATUS.PENDING && (
           <div>
-            <CardKey locked label="卡密" lockedHint="订单待支付,完成付款后卡密将在此自动显示" />
+            <CardKey locked label={noun} lockedHint={`订单待支付,完成付款后${noun}将在此自动显示`} />
             <SupportHint text="该订单尚未支付。如已付款但未到账,请稍候片刻或联系客服核对。" />
           </div>
         )}
@@ -335,7 +340,7 @@ function OrderResult({ result, flashToast }) {
         {/* 已支付 · 发货中(status=1):介于待支付与发货之间 */}
         {statusNum === STATUS.PAID && (
           <div>
-            <CardKey locked label="卡密" lockedHint="已收到付款,正在为您发货,卡密稍后将在此显示" />
+            <CardKey locked label={noun} lockedHint={`已收到付款,正在为您发货,${noun}稍后将在此显示`} />
             <SupportHint text="款项已收到,系统正在自动发货,请稍候刷新查询。" />
           </div>
         )}

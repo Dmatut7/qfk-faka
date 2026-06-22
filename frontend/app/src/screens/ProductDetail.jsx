@@ -210,8 +210,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       <div style={{ marginTop: 16 }}>
         <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{p.name}</h1>
         <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <Badge variant="brand">{({ 1: '卡密', 2: '知识', 3: '资源', 4: '权益' }[Number(p.goods_type) || 1])}</Badge>
           <Badge variant={stockBadge.variant} dot>{stockBadge.text}</Badge>
-          <Badge variant="secure" icon={<Icons.Zap size={13} />}>自动发货</Badge>
+          <Badge variant="secure" icon={<Icons.Zap size={13} />}>{isCard ? '自动发货' : '即时发货'}</Badge>
           {hasSold && <Badge variant="neutral">已售 {p.sold}</Badge>}
         </div>
       </div>

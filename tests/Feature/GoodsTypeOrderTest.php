@@ -106,6 +106,11 @@ class GoodsTypeOrderTest extends TestCase
         $this->assertSame('18.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'));
         $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_INCOME)->count());
         $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_COMMISSION)->count());
+
+        // 买家查单返回 goods_type(供前端按类型标注发货内容),内容随发货快照返回
+        $q = $this->callJson('POST', '/buyer/order/query', ['order_no' => $order->order_no, 'email' => 'b@x.com']);
+        $this->assertSame(Product::GOODS_TYPE_RESOURCE, (int) $q['data']['goods_type']);
+        $this->assertSame($content, $q['data']['delivered_content']);
     }
 
     public function testCardProductStillRequiresCards(): void
