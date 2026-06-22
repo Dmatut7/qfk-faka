@@ -20,6 +20,14 @@ const GOODS_TYPES = [
 ];
 const goodsTypeLabel = (v) => (GOODS_TYPES.find((g) => g.v === Number(v)) || GOODS_TYPES[0]).label;
 
+// 金额纪律:把元字符串转成整数分,避免浮点比较误差;非法/空返回 null
+const toCents = (v) => {
+  if (v === '' || v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 100);
+};
+
 const EMPTY_FORM = {
   goods_type: 1,
   resource_url: '',
@@ -52,8 +60,14 @@ export default function Products({ api, session }) {
   const [form, setForm] = React.useState(EMPTY_FORM);
   const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState('');
+  const [fieldErrors, setFieldErrors] = React.useState({}); // 字段级红字提示(限时折扣校验)
   const [busyId, setBusyId] = React.useState(0);
   const [rowError, setRowError] = React.useState('');
+
+  // 列表搜索/筛选(纯前端 filter 现有 rows)
+  const [search, setSearch] = React.useState('');
+  const [typeFilter, setTypeFilter] = React.useState(''); // '' = 全部商品类型
+  const [statusFilter, setStatusFilter] = React.useState(''); // '' = 全部状态
 
   const cats = categories.data || [];
   const catName = (id) => {
@@ -65,6 +79,7 @@ export default function Products({ api, session }) {
     setEditing(null);
     setForm(EMPTY_FORM);
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   }
 
@@ -92,6 +107,7 @@ export default function Products({ api, session }) {
       sort: row.sort ?? 0,
     });
     setFormError('');
+    setFieldErrors({});
     setModalOpen(true);
   }
 
@@ -99,8 +115,31 @@ export default function Products({ api, session }) {
 
   async function submit() {
     setFormError('');
+    setFieldErrors({});
     if (!form.title.trim()) { setFormError('请填写商品标题'); return; }
     if (!(Number(form.price) > 0)) { setFormError('价格必须大于 0'); return; }
+
+    // 限时折扣校验(金额纪律:整数分比较,避免浮点误差)
+    const fe = {};
+    const priceCents = toCents(form.price);
+    const discountCents = toCents(form.discount_price);
+    if (form.discount_price !== '') {
+      if (discountCents == null || discountCents <= 0) {
+        fe.discount_price = '限时折扣价必须大于 0';
+      } else if (priceCents != null && discountCents >= priceCents) {
+        fe.discount_price = '限时折扣价必须低于售价';
+      }
+    }
+    // 折扣起止时间:两者都填时,开始须早于结束
+    if (form.discount_start && form.discount_end && form.discount_start >= form.discount_end) {
+      fe.discount_end = '折扣结束时间必须晚于开始时间';
+    }
+    if (Object.keys(fe).length > 0) {
+      setFieldErrors(fe);
+      setFormError('限时折扣设置有误,请检查标红项');
+      return;
+    }
+
     const payload = {
       category_id: form.category_id === '' ? '' : Number(form.category_id),
       title: form.title.trim(),
@@ -166,6 +205,18 @@ export default function Products({ api, session }) {
   const onSale = rows.filter((r) => Number(r.status) === STATUS_ON).length;
   const stockSum = rows.reduce((s, r) => s + (Number(r.stock) || 0), 0);
   const salesSum = rows.reduce((s, r) => s + (Number(r.sales_count) || 0), 0);
+
+  // 纯前端过滤:关键词(标题/SKU)+ 商品类型 + 状态
+  const kw = search.trim().toLowerCase();
+  const filteredRows = rows.filter((r) => {
+    if (kw) {
+      const hay = `${r.title || ''} ${r.sku || ''}`.toLowerCase();
+      if (!hay.includes(kw)) return false;
+    }
+    if (typeFilter !== '' && (Number(r.goods_type) || 1) !== Number(typeFilter)) return false;
+    if (statusFilter !== '' && Number(r.status) !== Number(statusFilter)) return false;
+    return true;
+  });
 
   const columns = [
     {
@@ -266,15 +317,36 @@ export default function Products({ api, session }) {
               刷新
             </Button>
           }>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>共 {total} 件商品</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>共 {filteredRows.length} / {total} 件商品</span>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <span style={{ position: 'absolute', left: 10, display: 'flex', color: 'var(--text-subtle)', pointerEvents: 'none' }}>
+                <Icons.Search size={15} />
+              </span>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="搜索标题 / SKU"
+                aria-label="搜索商品"
+                style={{ ...filterControlStyle, width: 200, paddingLeft: 32 }}
+              />
+            </div>
+            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="按商品类型筛选" style={filterControlStyle}>
+              <option value="">全部类型</option>
+              {GOODS_TYPES.map((g) => <option key={g.v} value={g.v}>{g.label}</option>)}
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="按状态筛选" style={filterControlStyle}>
+              <option value="">全部状态</option>
+              <option value={STATUS_ON}>在售</option>
+              <option value={STATUS_OFF}>下架</option>
+            </select>
           </Toolbar>
           <DataTable
             columns={columns}
-            rows={rows}
+            rows={filteredRows}
             loading={products.loading}
             error={products.error}
             onReload={products.reload}
-            empty="还没有商品,点击「新建商品」开始"
+            empty={total > 0 ? '没有匹配的商品,试试调整搜索或筛选' : '还没有商品,点击「新建商品」开始'}
             emptyIcon="Package"
           />
         </div>
@@ -297,25 +369,35 @@ export default function Products({ api, session }) {
 
           <Input label="商品标题" required value={form.title} onChange={set('title')} placeholder="例如:Netflix 高级会员月卡" />
 
-          <Field label="商品类型" hint="卡密走一卡一售;知识/资源/权益走对应内容发货">
+          <Field
+            label="商品类型"
+            hint={editing
+              ? '编辑时不可切换类型:卡密/知识/资源发货机制不同,切换会与已有卡密/章节错配'
+              : '卡密走一卡一售;知识/资源/权益走对应内容发货'}
+          >
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {GOODS_TYPES.map((g) => {
+              {/* 编辑已存在商品时锁定类型:只展示当前类型,不可切换;仅新建可选 */}
+              {(editing ? GOODS_TYPES.filter((g) => g.v === (Number(form.goods_type) || 1)) : GOODS_TYPES).map((g) => {
                 const on = Number(form.goods_type) === g.v;
                 const Icon = Icons[g.icon] || Icons.Package;
                 return (
                   <button
                     key={g.v}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, goods_type: g.v }))}
+                    disabled={!!editing}
+                    aria-pressed={on}
+                    onClick={editing ? undefined : () => setForm((f) => ({ ...f, goods_type: g.v }))}
                     style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px',
+                      cursor: editing ? 'not-allowed' : 'pointer',
                       borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 700,
                       border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                       background: on ? 'var(--brand-soft)' : '#fff',
                       color: on ? 'var(--brand-active)' : 'var(--text-muted)',
+                      opacity: editing ? 0.85 : 1,
                     }}
                   >
-                    <Icon size={15} />{g.label}
+                    <Icon size={15} />{g.label}{editing && <Icons.Lock size={13} />}
                   </button>
                 );
               })}
@@ -341,9 +423,9 @@ export default function Products({ api, session }) {
 
           {/* 限时折扣(可选):窗口内按折扣价售卖 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
-            <Input label="折扣开始" type="datetime-local" value={form.discount_start} onChange={set('discount_start')} />
-            <Input label="折扣结束" type="datetime-local" value={form.discount_end} onChange={set('discount_end')} />
+            <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" error={fieldErrors.discount_price || undefined} type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
+            <Input label="折扣开始" error={fieldErrors.discount_start || undefined} type="datetime-local" value={form.discount_start} onChange={set('discount_start')} />
+            <Input label="折扣结束" error={fieldErrors.discount_end || undefined} type="datetime-local" value={form.discount_end} onChange={set('discount_end')} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -404,6 +486,13 @@ export default function Products({ api, session }) {
 
 const selectStyle = {
   width: '100%', height: 44, padding: '0 12px', fontSize: 'var(--text-base)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+  background: '#fff', color: 'var(--text-strong)', cursor: 'pointer',
+};
+
+// 工具条内紧凑筛选控件(搜索框 / 下拉)
+const filterControlStyle = {
+  height: 34, padding: '0 10px', fontSize: 13, fontFamily: 'var(--font-sans)',
   border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
   background: '#fff', color: 'var(--text-strong)', cursor: 'pointer',
 };

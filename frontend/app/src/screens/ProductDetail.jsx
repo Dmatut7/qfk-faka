@@ -65,6 +65,8 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
   // 知识类章节目录(购前预览,仅标题):{ items:[{id,title}] }
   const [chapters, setChapters] = React.useState(null);
+  // 章节目录加载失败态:用于区分「加载中(null)」与「失败可重试」
+  const [chaptersErr, setChaptersErr] = React.useState(false);
 
   const load = React.useCallback(() => {
     let alive = true;
@@ -109,14 +111,37 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
   // 知识类(goods_type=2)拉章节目录预览;非知识类不请求,清空。
   const isKnowledge = Number((product && product.goods_type) ?? 1) === 2;
-  React.useEffect(() => {
-    if (!productId || !isKnowledge) { setChapters(null); return; }
+  const loadChapters = React.useCallback(() => {
     let alive = true;
+    setChaptersErr(false);
+    setChapters(null);
     api.productChapters(productId)
       .then((r) => { if (alive) setChapters(Array.isArray(r && r.items) ? r.items : []); })
-      .catch(() => { if (alive) setChapters(null); });
+      .catch(() => { if (alive) setChaptersErr(true); });
     return () => { alive = false; };
-  }, [productId, isKnowledge]);
+  }, [productId]);
+  React.useEffect(() => {
+    if (!productId || !isKnowledge) { setChapters(null); setChaptersErr(false); return undefined; }
+    return loadChapters();
+  }, [productId, isKnowledge, loadChapters]);
+
+  // 数量/已用券变化时重新试算(含自动促销)。必须在任何早退之前调用,保证每次渲染 hook 顺序恒定。
+  React.useEffect(() => {
+    if (!product || !productId) return undefined;
+    const isCardP = Number(product.goods_type ?? 1) === 1;
+    const outP = isCardP ? product.stock <= 0 : false;
+    if (outP) return undefined;
+    const minB = Math.max(1, product.min_buy || 1);
+    const maxB = isCardP
+      ? (product.max_buy > 0 ? Math.min(product.max_buy, product.stock) : product.stock)
+      : (product.max_buy > 0 ? product.max_buy : 99);
+    const sQty = Math.min(Math.max(qty, minB), Math.max(minB, maxB));
+    let alive = true;
+    api.checkoutPreview({ productId, quantity: sQty, couponCode: appliedCoupon || undefined })
+      .then((r) => { if (alive) setPreview(r); })
+      .catch(() => { if (alive) setPreview(null); });
+    return () => { alive = false; };
+  }, [productId, qty, appliedCoupon, product]);
 
   // ---- loading ----
   if (loading) {
@@ -185,15 +210,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const payable = preview ? Number(preview.final_amount) : total;
   const couponApplied = !!(preview && preview.coupon_applied);
 
-  // 数量 / 已用券变化时重新试算(含自动促销)。商品 id 也变则重置。
-  React.useEffect(() => {
-    if (out || !productId) return;
-    let alive = true;
-    api.checkoutPreview({ productId, quantity: safeQty, couponCode: appliedCoupon || undefined })
-      .then((r) => { if (alive) setPreview(r); })
-      .catch(() => { if (alive) setPreview(null); });
-    return () => { alive = false; };
-  }, [productId, safeQty, appliedCoupon, out]);
+  // (试算 useEffect 已上移至早退之前,保证 hook 顺序恒定;此处不再重复声明)
 
   const applyCoupon = async () => {
     const code = couponCode.trim();
@@ -331,7 +348,19 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       {isKnowledge && (
         <div style={{ marginTop: 16, ...cardStyle }}>
           <SectionTitle icon={<Icons.Inbox size={16} color="var(--brand)" />}>章节目录</SectionTitle>
-          {chapters == null ? (
+          {chaptersErr ? (
+            <button
+              type="button"
+              onClick={loadChapters}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, border: 'none', background: 'none',
+                padding: '6px 0', color: 'var(--brand-active)', fontSize: 13.5, fontWeight: 700,
+                fontFamily: 'var(--font-sans)', cursor: 'pointer',
+              }}
+            >
+              <Icons.RefreshCw size={14} color="var(--brand-active)" />章节目录加载失败,点此重试
+            </button>
+          ) : chapters == null ? (
             <div style={{ fontSize: 13.5, color: 'var(--text-muted)', padding: '6px 0' }}>正在加载章节目录…</div>
           ) : chapters.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--text-muted)', padding: '6px 0' }}>暂无可预览章节,购买后即可解锁全部内容</div>
@@ -390,12 +419,34 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       <div style={{ marginTop: 16, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
         <SectionTitle icon={<Icons.Zap size={16} color="var(--brand)" />}>购买信息</SectionTitle>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 0' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>购买数量</span>
           {out
             ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger-fg)' }}>暂时缺货</span>
             : <QuantityStepper value={safeQty} min={minBuy} max={effMax} onChange={setQty} />}
         </div>
+        {/* 起购/限购/库存提示:命中上下限时标橙强调,否则灰色小字 */}
+        {!out && (() => {
+          const hints = [];
+          if (minBuy > 1) hints.push({ text: `${minBuy} 件起购`, hit: safeQty <= minBuy });
+          // 卡密类有效上限来自库存约束时显示「仅剩 N 件」,否则若 max_buy 限购显示「每单最多 N 件」
+          if (isCard && p.max_buy > 0 && p.stock < p.max_buy) {
+            hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
+          } else if (isCard && !(p.max_buy > 0) && p.stock < 99) {
+            hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
+          } else if (p.max_buy > 0) {
+            hints.push({ text: `每单最多 ${p.max_buy} 件`, hit: safeQty >= effMax });
+          }
+          if (hints.length === 0) return null;
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 12px', marginTop: 8 }}>
+              {hints.map((h, i) => (
+                <span key={i} style={{ fontSize: 12.5, fontWeight: h.hit ? 700 : 600, color: h.hit ? 'var(--brand-active)' : 'var(--text-muted)' }}>{h.text}</span>
+              ))}
+            </div>
+          );
+        })()}
+        <div style={{ height: 16 }} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Input
@@ -441,6 +492,17 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
             {couponApplied && (
               <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--success-fg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Icons.Check size={14} color="var(--success-solid)" />优惠券已生效
+                {appliedCoupon && (
+                  <button
+                    type="button"
+                    onClick={() => { setCouponCode(''); setAppliedCoupon(''); setCouponErr(''); }}
+                    style={{
+                      border: 'none', background: 'none', padding: 0, marginLeft: 2,
+                      color: 'var(--brand-active)', fontSize: 12.5, fontWeight: 700,
+                      fontFamily: 'var(--font-sans)', cursor: 'pointer', textDecoration: 'underline',
+                    }}
+                  >移除</button>
+                )}
               </div>
             )}
             {!couponApplied && hasDiscount && (

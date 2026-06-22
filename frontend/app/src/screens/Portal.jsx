@@ -14,7 +14,7 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, o
 
   React.useEffect(() => {
     let alive = true;
-    api.platformStats().then((s) => alive && setStats(s)).catch(() => {});
+    api.platformStats().then((s) => alive && setStats(s)).catch(() => { if (alive) setStats({ merchants: 0, products: 0, orders: 0 }); });
     api.articles({ type: 1, limit: 5 }).then((d) => alive && setNews(Array.isArray(d.items) ? d.items : [])).catch((e) => { if (!(e instanceof ApiError)) { /* 静默 */ } });
     return () => { alive = false; };
   }, []);
@@ -22,18 +22,18 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, o
   const openConsole = () => { if (typeof window !== 'undefined') window.open('/console.html', '_blank', 'noopener'); };
 
   const STAT = [
-    { k: 'merchants', label: '入驻商家', icon: 'Package' },
+    { k: 'merchants', label: '入驻商家', icon: 'ShieldCheck' },
     { k: 'products', label: '在售商品', icon: 'Inbox' },
     { k: 'orders', label: '累计成交', icon: 'Check' },
   ];
+  // 宫格各入口唯一图标;「最新资讯」不入宫格(底部已有独立列表区,避免重复入口)。
   const ENTRIES = [
     { label: '进入商城', icon: 'Package', onClick: onEnterShop },
     { label: '订单查询', icon: 'Search', onClick: onLookup },
     { label: '常见问题', icon: 'Headset', onClick: onFaq },
-    { label: '最新资讯', icon: 'Megaphone', onClick: onNews },
     { label: '禁售目录', icon: 'Lock', onClick: onForbidden },
-    { label: '开通小店', icon: 'ShieldCheck', onClick: openConsole },
-    { label: '商家中心', icon: 'Lock', onClick: openConsole },
+    { label: '开通小店', icon: 'Zap', onClick: openConsole },
+    { label: '商家中心', icon: 'Star', onClick: openConsole },
   ];
 
   return (
@@ -77,8 +77,8 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, o
                 <Icon size={22} color="var(--brand)" />
               </span>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 25, fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                  {stats ? (stats[s.k] ?? 0) : '—'}
+                <div style={{ fontSize: 25, fontWeight: 800, color: stats ? 'var(--text-strong)' : 'var(--text-subtle)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                  {stats ? (stats[s.k] ?? 0) : '…'}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{s.label}</div>
               </div>
@@ -122,7 +122,7 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, o
           </button>
         </div>
         {news.length === 0 ? (
-          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13.5 }}>暂无资讯</div>
+          <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13.5 }}>暂无资讯,敬请期待</div>
         ) : (
           <div>
             {news.map((a) => (
@@ -132,7 +132,17 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, o
                 onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--brand-soft)'; }}
                 onMouseLeave={(ev) => { ev.currentTarget.style.background = 'var(--surface-card)'; }}
               >
-                <span style={{ fontSize: 14, color: 'var(--text-strong)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    {a.category ? (
+                      <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--brand)', background: 'var(--brand-soft)', borderRadius: 'var(--radius-sm)', padding: '1px 7px', lineHeight: 1.6 }}>{a.category}</span>
+                    ) : null}
+                    <span style={{ fontSize: 14, color: 'var(--text-strong)', fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
+                  </span>
+                  {a.summary ? (
+                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.summary}</span>
+                  ) : null}
+                </span>
                 <span style={{ fontSize: 12, color: 'var(--text-subtle)', flex: 'none', fontVariantNumeric: 'tabular-nums' }}>{String(a.create_time || '').slice(0, 10)}</span>
               </button>
             ))}

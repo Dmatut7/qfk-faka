@@ -324,8 +324,8 @@ function StateWrap({ children }) {
   );
 }
 
-/* 商品网格(2 列移动 / auto-fill ≥168 桌面) */
-const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 };
+/* 商品网格(2 列移动 / auto-fill ≥176 桌面) */
+const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', gap: 10 };
 
 /* 排序项:综合 / 销量 / 上新 / 价格 */
 const SORTS = ['综合', '销量', '上新', '价格'];
@@ -337,6 +337,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const [sort, setSort] = React.useState('综合'); // 综合 / 销量 / 上新 / 价格
   const [priceDir, setPriceDir] = React.useState('desc'); // 价格排序方向
   const [showContact, setShowContact] = React.useState(false);
+  const gridRef = React.useRef(null); // 商品网格容器,供底部「宝贝」tab 滚动定位
   const list = products || [];
   const store = shop || {};
 
@@ -392,7 +393,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const deposit = money(store.deposit);
 
   return (
-    <div style={{ paddingBottom: 64 }}>
+    <div style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
       {/* 平台公告条(banner 之上) */}
       {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
 
@@ -514,9 +515,13 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         </div>
       )}
 
-      {/* 排序 + 分类筛选 */}
+      {/* 排序 + 分类筛选(吸顶,避免滚动时与商品串字) */}
       {!loading && !error && (tabs.length > 1 || true) && (
-        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', marginTop: 12 }}>
+        <div style={{
+          maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', marginTop: 12,
+          position: 'sticky', top: 'var(--topbar-h, 60px)', zIndex: 14,
+          background: 'rgba(255,255,255,.92)', backdropFilter: 'blur(8px)',
+        }}>
           {/* 分类计数方框 */}
           {tabs.length > 1 && (
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10 }}>
@@ -602,7 +607,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
           </StateWrap>
         ) : (
           <>
-            <div style={GRID}>
+            <div ref={gridRef} style={GRID}>
               {shown.map((p) => {
                 const t = Number(p.goods_type ?? 1);
                 const meta = GOODS_TYPE_META[t] || { short: '商品' };
@@ -633,21 +638,22 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         )}
       </div>
 
-      {/* 底部 tab bar(展示型;客服项打开联系弹窗,其余为占位) */}
+      {/* 底部 tab bar(客服项打开联系弹窗,其余 tab 均有真实行为) */}
       <nav style={{
         position: 'sticky', bottom: 0, zIndex: 15, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)',
         borderTop: '1px solid var(--border)', display: 'flex', maxWidth: 'var(--container-page)', margin: '0 auto',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {[
-          { k: 'home', label: '首页', icon: Icons.Star, active: true },
-          { k: 'goods', label: '宝贝', icon: Icons.Package },
-          { k: 'store', label: '门店', icon: Icons.Shield },
-          { k: 'new', label: '新品', icon: Icons.Zap },
+          { k: 'home', label: '首页', icon: Icons.Star, active: true, onTap: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+          { k: 'goods', label: '宝贝', icon: Icons.Package, onTap: () => { if (gridRef.current) gridRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+          { k: 'store', label: '门店', icon: Icons.Shield, onTap: () => setShowContact(true) },
+          { k: 'new', label: '新品', icon: Icons.Zap, onTap: () => setSort('上新') },
           { k: 'service', label: '客服', icon: Icons.Headset, onTap: () => setShowContact(true) },
         ].map((it) => (
           <button key={it.k} type="button" onClick={it.onTap || undefined} style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 10px',
-            border: 'none', background: 'transparent', cursor: it.onTap ? 'pointer' : 'default',
+            border: 'none', background: 'transparent', cursor: 'pointer',
             color: it.active ? 'var(--brand)' : 'var(--text-muted)', fontFamily: 'var(--font-sans)',
             fontWeight: it.active ? 800 : 600, fontSize: 11,
           }}>

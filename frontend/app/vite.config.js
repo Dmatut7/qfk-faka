@@ -30,6 +30,8 @@ export default defineConfig({
       '^/health': BACKEND,
       '^/merchant/': BACKEND,
       '^/admin/': BACKEND,
+      '^/index/': BACKEND,
+      '^/config': BACKEND,
     },
   },
 });

@@ -282,19 +282,19 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         </div>
       )}
 
-      {/* 扫码区:占位二维码 + 过期/可刷新(本地演示无真实二维码图,过期后由后端 4003 兜底) */}
+      {/* 前往支付说明区:实际为跳转聚合收银台(window.open),非本地可扫码,故诚实表述(过期后由后端 4003 兜底) */}
       {phase === PHASE.IDLE && (
         <div style={{ marginTop: 18 }}>
-          <div style={sectionLabel}>扫码支付</div>
+          <div style={sectionLabel}>前往支付</div>
           <div style={{ ...card, padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
             <div style={{ position: 'relative', flex: 'none' }}>
               <div key={qrKey} style={{
                 width: 128, height: 128, borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border)', background: '#fff',
+                border: '1.5px solid var(--border)', background: 'var(--brand-soft)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 filter: expired ? 'grayscale(1)' : 'none', opacity: expired ? 0.45 : 1,
               }}>
-                <Icons.QrCode size={88} color="var(--text-strong)" />
+                <Icons.Lock size={64} color="var(--brand, #FF5000)" />
               </div>
               {expired && (
                 <button
@@ -308,21 +308,21 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
                   }}
                 >
                   <Icons.RefreshCw size={22} color="var(--brand, #FF5000)" />
-                  二维码已过期 · 点击刷新
+                  支付链接已过期 · 点击刷新
                 </button>
               )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-strong)' }}>扫码即时支付</div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-strong)' }}>前往收银台支付</div>
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-                聚合收银台 · 微信 / 支付宝均可扫 · 付款后自动发货。点击下方按钮在新窗口打开收银台。
+                聚合收银台 · 支持微信 / 支付宝 · 付款后自动发货。点击下方按钮前往收银台完成支付,新窗口可能被浏览器拦截,请允许弹窗。
               </div>
               {expired ? (
                 <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={16} />}
-                  onClick={handleRefreshQr} style={{ marginTop: 12 }}>刷新二维码</Button>
+                  onClick={handleRefreshQr} style={{ marginTop: 12 }}>刷新支付链接</Button>
               ) : (
                 <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--secure-fg)' }}>
-                  <Icons.Check size={15} color="var(--secure-solid)" />二维码有效,等待扫码
+                  <Icons.Check size={15} color="var(--secure-solid)" />点击下方按钮前往收银台完成支付
                 </div>
               )}
             </div>
@@ -335,10 +335,10 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         <div style={{ marginTop: 18 }} role="radiogroup" aria-label="支付方式">
           <div style={sectionLabel}>支付方式</div>
           <PaymentOption
-            name="扫码支付"
-            desc="聚合收银台 · 即时到账 · 付款后自动发货"
+            name="聚合收银台"
+            desc="支持微信 / 支付宝 · 即时到账 · 付款后自动发货"
             tag="推荐"
-            icon={<Icons.QrCode size={22} color="var(--brand-active)" />}
+            icon={<Icons.Lock size={22} color="var(--brand-active)" />}
             selected
             onSelect={() => {}}
           />
@@ -349,7 +349,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       <div style={{ marginTop: 18, display: 'flex', gap: 10, padding: '14px 16px', background: 'var(--secure-bg)', border: '1px solid var(--teal-50)', borderRadius: 'var(--radius-md)' }}>
         <Icons.Lock size={18} color="var(--secure-solid)" />
         <span style={{ fontSize: 13, color: 'var(--secure-fg)', lineHeight: 1.5 }}>
-          支付通过持牌第三方加密通道完成,平台不存储您的支付信息。付款成功后卡密<b>即时自动发放</b>。
+          平台担保交易 · 付款后卡密<b>自动发放</b>,平台不存储您的支付信息。
         </span>
       </div>
 

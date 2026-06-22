@@ -37,10 +37,12 @@ function SupportHint({ text }) {
   );
 }
 
-/* 平台查单风险提示(纯文本渲染,保留换行;为空不显示)。橙色商业风的安全提示。 */
+/* 平台查单兜底安全提示:queryTips 为空时也展示这句默认文案,保证总有安全提示。 */
+const DEFAULT_QUERY_TIPS = '官方查单仅需订单号+邮箱/查单密码,切勿向他人透露验证码或额外付款。';
+
+/* 平台查单风险提示(纯文本渲染,保留换行;为空回退到默认兜底文案)。橙色商业风的安全提示。 */
 function OrderQueryTips({ text }) {
-  const t = (text || '').trim();
-  if (!t) return null;
+  const t = (text || '').trim() || DEFAULT_QUERY_TIPS;
   return (
     <div style={{
       marginTop: 16, display: 'flex', gap: 10, padding: '12px 14px',
@@ -121,7 +123,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
   const onSubmit = (e) => { e.preventDefault(); if (!loading) search(); };
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 16px 64px' }}>
+    <div className="ol-shell" style={{ maxWidth: 600, margin: '0 auto', padding: '20px 16px 64px' }}>
       {onBack && (
         <button onClick={onBack} style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent',
@@ -221,6 +223,25 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
         </form>
       )}
 
+      {/* 查单帮助 / 防诈骗提示(仅空查单态展示,填补桌面端留白) */}
+      {!directMode && !result && !loading && !error && (
+        <div style={{ marginTop: 16, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <Icons.ShieldCheck size={17} color="var(--brand)" />
+            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-strong)' }}>查单帮助与安全提示</span>
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <li style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.6 }}>订单号在下单成功页或付款回执中,形如 <span className="ds-mono" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-strong)' }}>MK20260621A8F3</span>。</li>
+            <li style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.6 }}>可用下单邮箱或下单时设置的查单密码核验身份,二选一即可。</li>
+            <li style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.6 }}>付款成功后系统自动发货,卡密/内容会在本页订单详情中展示,请勿向他人透露。</li>
+            <li style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.6 }}>官方不会以「订单异常」为由要求额外转账或索取验证码,谨防诈骗。</li>
+          </ul>
+          <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--text-subtle)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Icons.Headset size={15} color="var(--text-subtle)" />查不到或有疑问?可凭订单号联系客服协助。
+          </div>
+        </div>
+      )}
+
       {/* 加载态(查询进行中,无错无果) */}
       {!directMode && loading && !result && (
         <div style={{ marginTop: 18, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '28px 20px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
@@ -240,7 +261,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
           </div>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>未找到该订单</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-            请核对订单号与邮箱后重试。{error ? `(${error})` : ''}
+            {error || (mode === 'password' ? '请核对订单号与查单密码后重试。' : '请核对订单号与邮箱后重试。')}
           </div>
           <div style={{ fontSize: 12.5, color: 'var(--text-subtle)', marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Icons.Headset size={15} color="var(--text-subtle)" />如有疑问请联系客服协助查询
@@ -264,8 +285,21 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
         )}
       </div>
 
-      {/* 加载圈动画(内联,避免依赖外部 keyframes) */}
-      <style>{`@keyframes ol-spin{to{transform:rotate(360deg)}}.ol-spin{animation:ol-spin .7s linear infinite}`}</style>
+      {/* 加载圈动画 + 桌面放宽 + 投诉多行描述框(内联,全走橙色 token,避免依赖外部 keyframes) */}
+      <style>{`
+        @keyframes ol-spin{to{transform:rotate(360deg)}}
+        .ol-spin{animation:ol-spin .7s linear infinite}
+        @media (min-width:960px){.ol-shell{max-width:900px!important}}
+        .ol-textarea{
+          width:100%; min-height:96px; padding:11px 14px; font-family:var(--font-sans); font-size:var(--text-md);
+          color:var(--text-strong); background:#fff; border:1.5px solid var(--border-strong);
+          border-radius:var(--radius-md); line-height:1.55; resize:vertical; -webkit-appearance:none; appearance:none;
+          transition:border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+        }
+        .ol-textarea::placeholder{ color:var(--text-subtle); }
+        .ol-textarea:hover{ border-color:var(--slate-400); }
+        .ol-textarea:focus{ outline:none; border-color:var(--brand); box-shadow:var(--shadow-focus); }
+      `}</style>
     </div>
   );
 }
@@ -448,7 +482,7 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
         {/* 资源类:限时签名下载链(30 分钟有效期) */}
         {statusNum === STATUS.DELIVERED && r.download_url && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-            <Button as="a" href={BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
+            <Button as="a" href={/^https?:\/\//i.test(r.download_url) ? r.download_url : BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
               下载资源
             </Button>
             <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -633,7 +667,17 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
               ))}
             </div>
           </div>
-          <Input label="问题描述" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="请描述遇到的问题,便于商户和平台处理" />
+          <div className="mk-field">
+            <label className="mk-field__label" htmlFor="ol-complaint-desc">问题描述</label>
+            <textarea
+              id="ol-complaint-desc"
+              className="ol-textarea"
+              rows={4}
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="请描述遇到的问题,便于商户和平台处理(可多行详细说明)"
+            />
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="primary" size="md" onClick={submit} loading={busy}>提交申请</Button>
             <Button variant="ghost" size="md" onClick={() => setOpen(false)} disabled={busy}>取消</Button>
