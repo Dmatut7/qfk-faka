@@ -442,12 +442,14 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       {/* 店招封面:有封面图则全屏照片主导;无则橙色渐变兜底 */}
       <div style={{
         height: 168, position: 'relative', overflow: 'hidden',
-        background: store.cover ? '#1c1c22' : 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
+        background: 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
       }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(255,193,77,.55), transparent 60%)' }} />
         {store.cover && (
-          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={store.cover} alt="" aria-hidden="true"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
-        {!store.cover && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(255,193,77,.55), transparent 60%)' }} />}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,.16) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 70%, rgba(0,0,0,.14) 100%)' }} />
       </div>
 
