@@ -19,6 +19,7 @@ export default function Dashboard({ api, onNavigate }) {
   const cards = data.cards || {};
   const commission = data.commission || {};
   const profit = data.profit || {};
+  const complaints = data.complaints || {};
   const n = (v) => (v == null ? 0 : v);
   const go = (key) => { if (typeof onNavigate === 'function') onNavigate(key); };
 
@@ -109,6 +110,12 @@ export default function Dashboard({ api, onNavigate }) {
               count={n(orders.exception)}
               onClick={() => go('a-orders')}
             />
+            <TodoRow
+              icon="AlertTriangle" tone="danger"
+              label="投诉待仲裁"
+              count={n(complaints.intervene)}
+              onClick={() => go('a-complaints')}
+            />
           </div>
         </Panel>
 
@@ -116,6 +123,7 @@ export default function Dashboard({ api, onNavigate }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(98px, 1fr))', gap: 10 }}>
             <QuickAction icon="Package" tone="brand" label="商户审核" onClick={() => go('a-merchants')} />
             <QuickAction icon="RefreshCw" tone="success" label="提现审核" onClick={() => go('a-withdrawals')} />
+            <QuickAction icon="AlertTriangle" tone="danger" label="投诉仲裁" onClick={() => go('a-complaints')} />
             <QuickAction icon="Search" tone="secure" label="对账报表" onClick={() => go('a-settlement')} />
             <QuickAction icon="QrCode" tone="pending" label="支付渠道" onClick={() => go('a-channels')} />
             <QuickAction icon="Megaphone" tone="brand" label="内容管理" onClick={() => go('a-content')} />

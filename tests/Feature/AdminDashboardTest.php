@@ -192,6 +192,15 @@ class AdminDashboardTest extends TestCase
         $monthDelta = (date('Y-m') === date('Y-m', strtotime('-1 day'))) ? '18.00' : '15.00';
         $this->assertSame(Money::add($base['profit']['month'], $monthDelta), $d['profit']['month']);
 
+        // complaints:新增 1 条平台介入中投诉 → active +1、intervene +1
+        \app\model\Complaint::create([
+            'order_id' => 1, 'order_no' => 'X', 'merchant_id' => $mid, 'buyer_email' => 'b@x.com',
+            'type' => 4, 'description' => 'x', 'status' => \app\model\Complaint::STATUS_INTERVENE,
+        ]);
+        $d2 = (new AdminViewService())->dashboard();
+        $this->assertSame($base['complaints']['active'] + 1, $d2['complaints']['active']);
+        $this->assertSame($base['complaints']['intervene'] + 1, $d2['complaints']['intervene']);
+
         // 防止未使用变量被静态分析误判;同时验证对象确实落库
         $this->assertGreaterThan(0, (int) $w2->id);
         $this->assertGreaterThan(0, (int) $wDone->id);

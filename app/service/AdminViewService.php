@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\service;
 
 use app\model\Card;
+use app\model\Complaint;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
 use app\model\Order;
@@ -27,6 +28,7 @@ class AdminViewService
      *   withdrawals: array{pending_count:int, pending_amount:string},
      *   products: array{total:int, on_sale:int},
      *   cards: array{unsold:int},
+     *   complaints: array{active:int, intervene:int},
      *   commission: array{total:string, today:string},
      *   profit: array{today:string, yesterday:string, month:string, total:string}
      * }
@@ -82,6 +84,10 @@ class AdminViewService
             ],
             'cards' => [
                 'unsold' => Card::where('status', Card::STATUS_UNSOLD)->count(),
+            ],
+            'complaints' => [
+                'active'    => Complaint::whereIn('status', Complaint::ACTIVE)->count(),
+                'intervene' => Complaint::where('status', Complaint::STATUS_INTERVENE)->count(),
             ],
             'commission' => [
                 'total' => $this->commissionTotal('', ''),
