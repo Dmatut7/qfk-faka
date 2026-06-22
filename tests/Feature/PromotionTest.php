@@ -62,6 +62,43 @@ class PromotionTest extends TestCase
         $this->assertSame('满折', $r['label']);
     }
 
+    /** 限时活动:已过期(end_at 在过去)不参与 */
+    public function testExpiredPromotionDoesNotApply(): void
+    {
+        Promotion::create([
+            'merchant_id' => $this->m->id, 'type' => Promotion::TYPE_FULL_REDUCE,
+            'threshold' => '100.00', 'value' => '10.00', 'status' => Promotion::STATUS_ON,
+            'start_at' => date('Y-m-d H:i:s', strtotime('-2 day')),
+            'end_at'   => date('Y-m-d H:i:s', strtotime('-1 day')),
+        ]);
+        $this->assertNull((new PromotionService())->bestPromotion((int) $this->m->id, '150.00'));
+    }
+
+    /** 限时活动:尚未开始(start_at 在未来)不参与 */
+    public function testNotYetActivePromotionDoesNotApply(): void
+    {
+        Promotion::create([
+            'merchant_id' => $this->m->id, 'type' => Promotion::TYPE_FULL_REDUCE,
+            'threshold' => '100.00', 'value' => '10.00', 'status' => Promotion::STATUS_ON,
+            'start_at' => date('Y-m-d H:i:s', strtotime('+1 day')),
+            'end_at'   => null,
+        ]);
+        $this->assertNull((new PromotionService())->bestPromotion((int) $this->m->id, '150.00'));
+    }
+
+    /** 限时活动:在窗口内正常参与;空端不限制 */
+    public function testPromotionWithinWindowApplies(): void
+    {
+        Promotion::create([
+            'merchant_id' => $this->m->id, 'type' => Promotion::TYPE_FULL_REDUCE,
+            'threshold' => '100.00', 'value' => '10.00', 'status' => Promotion::STATUS_ON,
+            'start_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
+            'end_at'   => date('Y-m-d H:i:s', strtotime('+1 day')),
+        ]);
+        $r = (new PromotionService())->bestPromotion((int) $this->m->id, '150.00');
+        $this->assertSame('10.00', $r['discount']);
+    }
+
     public function testOrderAppliesPromotionAutomatically(): void
     {
         $this->promo(Promotion::TYPE_FULL_REDUCE, '150.00', '25.00'); // 满150减25

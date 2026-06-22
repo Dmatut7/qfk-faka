@@ -14,7 +14,7 @@ use app\util\Money;
  */
 class PromotionService
 {
-    private const EDITABLE = ['name', 'type', 'threshold', 'value', 'status'];
+    private const EDITABLE = ['name', 'type', 'threshold', 'value', 'status', 'start_at', 'end_at'];
 
     public function list(int $merchantId): array
     {
@@ -30,6 +30,8 @@ class PromotionService
             'threshold'   => Money::add((string) ($d['threshold'] ?? '0'), '0'),
             'value'       => Money::add((string) ($d['value'] ?? '0'), '0'),
             'status'      => isset($d['status']) ? ((int) $d['status'] === 0 ? 0 : 1) : Promotion::STATUS_ON,
+            'start_at'    => $this->normWindow($d['start_at'] ?? null),
+            'end_at'      => $this->normWindow($d['end_at'] ?? null),
         ]);
     }
 
@@ -47,6 +49,11 @@ class PromotionService
         }
         if (array_key_exists('status', $patch)) {
             $patch['status'] = (int) $patch['status'] === 0 ? 0 : 1;
+        }
+        foreach (['start_at', 'end_at'] as $k) {
+            if (array_key_exists($k, $patch)) {
+                $patch[$k] = $this->normWindow($patch[$k]);
+            }
         }
         if ($patch) {
             $p->save($patch);
@@ -69,8 +76,12 @@ class PromotionService
             ->where('status', Promotion::STATUS_ON)
             ->select();
 
+        $now  = date('Y-m-d H:i:s');
         $best = null;
         foreach ($rows as $p) {
+            if (!$this->withinWindow($p, $now)) {
+                continue; // 不在限时活动窗口内(未开始/已过期)
+            }
             if (Money::cmp($amount, (string) $p->threshold) < 0) {
                 continue; // 未达门槛
             }
@@ -112,6 +123,27 @@ class PromotionService
     {
         $t = (int) $type;
         return in_array($t, Promotion::TYPES, true) ? $t : Promotion::TYPE_FULL_REDUCE;
+    }
+
+    /** 时间窗输入归一:空串/空白 → null(该端不限制) */
+    private function normWindow($v): ?string
+    {
+        $v = trim((string) ($v ?? ''));
+        return $v === '' ? null : $v;
+    }
+
+    /** 当前时刻是否落在促销 [start_at, end_at] 窗口内(任一端为空=该端不限制) */
+    private function withinWindow(Promotion $p, string $now): bool
+    {
+        $start = trim((string) ($p->start_at ?? ''));
+        $end   = trim((string) ($p->end_at ?? ''));
+        if ($start !== '' && $now < $start) {
+            return false;
+        }
+        if ($end !== '' && $now > $end) {
+            return false;
+        }
+        return true;
     }
 
     private function findOwned(int $merchantId, int $id): Promotion

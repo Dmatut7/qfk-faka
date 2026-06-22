@@ -18,7 +18,7 @@ class Promotion extends BaseApiController
 
     public function create(PromotionService $svc)
     {
-        $d = $this->params(['name', 'type', 'threshold', 'value', 'status']);
+        $d = $this->params(['name', 'type', 'threshold', 'value', 'status', 'start_at', 'end_at']);
         $this->validate($d, [
             'threshold' => 'require|float|egt:0',
             'value'     => 'require|float|gt:0',
@@ -28,7 +28,7 @@ class Promotion extends BaseApiController
 
     public function update(PromotionService $svc, $id)
     {
-        $d = $this->params(['name', 'type', 'threshold', 'value', 'status']);
+        $d = $this->params(['name', 'type', 'threshold', 'value', 'status', 'start_at', 'end_at']);
         return $this->success($svc->update($this->authId(), (int) $id, $d)->toArray());
     }
 
