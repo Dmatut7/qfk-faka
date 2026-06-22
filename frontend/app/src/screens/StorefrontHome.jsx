@@ -484,15 +484,15 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       {/* 平台公告条(店招之上) */}
       {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
 
-      {/* 店招封面横幅 */}
+      {/* 店招封面横幅(浅蓝→淡紫渐变,对标鲸商城PRO 轻盈风) */}
       <div style={{
         height: 150, position: 'relative', overflow: 'hidden',
-        background: 'radial-gradient(120% 140% at 80% 0%, #2F6BFF 0%, #1A45BD 45%, #11297A 100%)',
+        background: 'linear-gradient(120deg, #EAF1FF 0%, #E9ECFF 48%, #F1ECFF 100%)',
       }}>
         {store.cover && (
-          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.32 }} />
         )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,.28) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,.55) 100%)' }} />
       </div>
 
       {/* 商家卡片 */}
