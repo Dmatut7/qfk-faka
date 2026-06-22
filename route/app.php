@@ -70,6 +70,7 @@ Route::group('admin', function () {
 
         // 跨商户只读视图 (T8.5)
         Route::get('orders', 'admin.Orders/index');
+        Route::post('orders/:id/refund', 'admin.Orders/refund');
         Route::get('products', 'admin.Products/index');
 
         // 系统日志

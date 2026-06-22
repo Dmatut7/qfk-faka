@@ -1,0 +1,99 @@
+<?php
+declare(strict_types=1);
+
+namespace app\service;
+
+use app\common\BizException;
+use app\common\Code;
+use app\model\Card;
+use app\model\Coupon;
+use app\model\Merchant;
+use app\model\MerchantFundLog;
+use app\model\Order;
+use app\model\Product;
+use app\util\Money;
+use think\facade\Db;
+
+/**
+ * 退款闭环:状态置退款 + 卡密回库 + 反向资金流水(精确依据该订单实际结算流水)+ 优惠券反核销。
+ * 仅对已收款订单(已支付/已发货/异常)可退;事务 + 行锁 + 状态重查保证幂等与并发安全。
+ * 资金口径:已结算商户净额从余额冲回,平台佣金回冲;已提现导致余额转负则商户负欠(默认允许,不可提现)。
+ */
+class RefundService
+{
+    private const REFUNDABLE = [Order::STATUS_PAID, Order::STATUS_DELIVERED, Order::STATUS_EXCEPTION];
+
+    public function refund(int $orderId, string $reason = ''): Order
+    {
+        return Db::transaction(function () use ($orderId, $reason) {
+            $now = date('Y-m-d H:i:s');
+
+            $base = Order::find($orderId);
+            if (!$base) {
+                throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
+            }
+            // 锁顺序与下单/回调一致:先锁商品行(串行化闸门),再锁订单行
+            Product::where('id', $base->product_id)->lock(true)->find();
+            $order = Order::where('id', $orderId)->lock(true)->find();
+
+            if (!in_array((int) $order->status, self::REFUNDABLE, true)) {
+                throw new BizException(Code::STATE_INVALID, '该订单状态不可退款');
+            }
+
+            // 1) 卡密回库:LOCKED/SOLD → UNSOLD,清归属;库存相对恢复
+            $restore = Card::where('order_id', $orderId)
+                ->whereIn('status', [Card::STATUS_LOCKED, Card::STATUS_SOLD])->count();
+            if ($restore > 0) {
+                Db::name('cards')->where('order_id', $orderId)
+                    ->whereIn('status', [Card::STATUS_LOCKED, Card::STATUS_SOLD])
+                    ->update(['status' => Card::STATUS_UNSOLD, 'order_id' => null, 'locked_at' => null, 'sold_at' => null, 'update_time' => $now]);
+                Db::name('products')->where('id', $order->product_id)
+                    ->update(['stock' => Db::raw("stock + {$restore}"), 'update_time' => $now]);
+            }
+
+            // 2) 反向资金:精确依据该订单实际产生的结算流水(兼容未结算的异常单 → 不反向)
+            $incomeSum = Money::add((string) MerchantFundLog::where('order_id', $orderId)->where('type', MerchantFundLog::TYPE_INCOME)->sum('amount'), '0');
+            $commSum   = Money::add((string) MerchantFundLog::where('order_id', $orderId)->where('type', MerchantFundLog::TYPE_COMMISSION)->sum('amount'), '0'); // 负数
+            $wasSettled = Money::cmp($incomeSum, '0') > 0;
+
+            if ($wasSettled) {
+                $merchant = Merchant::where('id', $order->merchant_id)->lock(true)->find();
+                // 冲收入:余额 -= income
+                $afterIncomeReverse = Money::sub((string) $merchant->balance, $incomeSum);
+                // 佣金回冲:余额 -= commSum(commSum 为负 → 实为加回佣金)
+                $afterCommReverse   = Money::sub($afterIncomeReverse, $commSum);
+                Db::name('merchants')->where('id', $merchant->id)->update(['balance' => $afterCommReverse, 'update_time' => $now]);
+
+                MerchantFundLog::create([
+                    'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_REFUND,
+                    'amount' => Money::sub('0', $incomeSum), 'balance_after' => $afterIncomeReverse, 'order_id' => $order->id,
+                    'remark' => '订单退款冲收入 ' . $order->order_no,
+                ]);
+                MerchantFundLog::create([
+                    'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_COMMISSION,
+                    'amount' => Money::sub('0', $commSum), 'balance_after' => $afterCommReverse, 'order_id' => $order->id,
+                    'remark' => '退款佣金回冲 ' . $order->order_no,
+                ]);
+
+                // 3) 优惠券反核销(券在结算时已核销;floor 0)
+                if ($order->coupon_id) {
+                    $coupon = Coupon::where('id', $order->coupon_id)->lock(true)->find();
+                    if ($coupon && (int) $coupon->used > 0) {
+                        Db::name('coupons')->where('id', $order->coupon_id)
+                            ->update(['used' => Db::raw('used - 1'), 'update_time' => $now]);
+                    }
+                }
+            }
+
+            // 4) 订单置退款
+            Db::name('orders')->where('id', $orderId)->update([
+                'status'        => Order::STATUS_REFUNDED,
+                'refund_reason' => $reason !== '' ? $reason : null,
+                'refunded_at'   => $now,
+                'update_time'   => $now,
+            ]);
+
+            return Order::find($orderId);
+        });
+    }
+}

@@ -75,19 +75,24 @@ class PaymentTablesTest extends TestCase
         $this->assertTrue($found->isEnabled());
     }
 
-    public function testFundLogUniqueOrderType(): void
+    public function testFundLogAllowsReversalEntries(): void
     {
+        // 结算两条:订单收入 + 平台佣金
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_INCOME, 'amount' => '4.71', 'balance_after' => '4.71', 'order_id' => $this->o->id]);
-        // 同订单不同类型允许
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_COMMISSION, 'amount' => '-0.29', 'balance_after' => '4.71', 'order_id' => $this->o->id]);
         // 无订单(提现)多条允许
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_WITHDRAW, 'amount' => '-1.00', 'balance_after' => '3.71']);
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_WITHDRAW, 'amount' => '-1.00', 'balance_after' => '2.71']);
-        $this->assertSame(4, MerchantFundLog::where('merchant_id', $this->m->id)->count());
 
-        // 同订单同类型冲突(结算幂等兜底)
-        $this->expectException(\Exception::class);
-        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_INCOME, 'amount' => '4.71', 'balance_after' => '4.71', 'order_id' => $this->o->id]);
+        // 退款反向流水:同订单需再记一条 COMMISSION(佣金回冲)+ 一条 REFUND。
+        // uniq(order_id,type) 已移除(幂等改由订单行锁+状态重查保证),故同订单同类型可再记。
+        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_COMMISSION, 'amount' => '0.29', 'balance_after' => '0.00', 'order_id' => $this->o->id]);
+        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_REFUND, 'amount' => '-4.71', 'balance_after' => '-0.29', 'order_id' => $this->o->id]);
+
+        // 该订单两条 COMMISSION 净额为 0(结算 -0.29 + 退款回冲 +0.29)
+        $commLogs = MerchantFundLog::where('order_id', $this->o->id)->where('type', MerchantFundLog::TYPE_COMMISSION)->count();
+        $this->assertSame(2, $commLogs);
+        $this->assertSame(6, MerchantFundLog::where('merchant_id', $this->m->id)->count());
     }
 
     public function testWithdrawalDefaults(): void
