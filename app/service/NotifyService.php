@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
+use app\model\Coupon;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
 use app\model\Order;
@@ -266,6 +267,11 @@ class NotifyService
             'amount' => '-' . $calc['commission'], 'balance_after' => $afterCommission, 'order_id' => $order->id,
             'remark' => '平台佣金',
         ]);
+
+        // 优惠券核销:订单用券则已用数 +1(仅首次结算执行,幂等由上游状态守卫保证)
+        if ($order->coupon_id) {
+            Coupon::where('id', $order->coupon_id)->inc('used')->update();
+        }
     }
 
     private function ack(string $ack, bool $delivered, int $code): array

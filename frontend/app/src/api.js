@@ -81,7 +81,7 @@ export const api = {
   /** 门户资讯详情(访问自增浏览量):{ id,type,title,summary,category,content,views,create_time } */
   article: (id) => call(`/index/articles/${encodeURIComponent(id)}`),
   /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
-  createOrder: ({ productId, quantity, email, queryPassword }) =>
+  createOrder: ({ productId, quantity, email, queryPassword, couponCode }) =>
     call('/buyer/order', {
       method: 'POST',
       body: {
@@ -89,8 +89,12 @@ export const api = {
         quantity,
         buyer_email: email,
         ...(queryPassword ? { query_password: queryPassword } : {}),
+        ...(couponCode ? { coupon_code: couponCode } : {}),
       },
     }),
+  /** 优惠券试算:{ coupon_id, code, original_amount, discount, final_amount };不可用抛 ApiError */
+  validateCoupon: ({ code, productId, quantity = 1 }) =>
+    call('/buyer/coupon/validate', { method: 'POST', body: { code, product_id: productId, quantity } }),
   /** 发起支付:返回 { payment_no, pay:{ method,url,params{...,sign} } } */
   pay: (orderNo, channel = PAY_CHANNEL) =>
     call(`/buyer/order/${encodeURIComponent(orderNo)}/pay`, { method: 'POST', body: { channel } }),

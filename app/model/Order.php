@@ -18,6 +18,7 @@ class Order extends Model
         'merchant_id' => 'integer',
         'product_id'  => 'integer',
         'goods_type'  => 'integer',
+        'coupon_id'   => 'integer',
         'quantity'    => 'integer',
         'status'      => 'integer',
     ];

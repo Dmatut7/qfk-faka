@@ -107,7 +107,21 @@ class OrderService
 
             // 3) 金额(bcmath,禁止浮点)
             $unitPrice = $product->price;
-            $total     = Money::mul($unitPrice, (string) $quantity);
+            $original  = Money::mul($unitPrice, (string) $quantity);
+
+            // 3.1) 优惠券应用(可选):校验+算优惠,total_amount=应付(original-discount),核销在支付成功时
+            $couponId   = null;
+            $couponCode = '';
+            $discount   = '0.00';
+            $code       = trim((string) ($input['coupon_code'] ?? ''));
+            if ($code !== '') {
+                $coupon     = new CouponService();
+                $c          = $coupon->findUsable((int) $product->merchant_id, $code, $original);
+                $discount   = $coupon->computeDiscount($c, $original);
+                $couponId   = (int) $c->id;
+                $couponCode = $c->code;
+            }
+            $final = Money::sub($original, $discount);
 
             // 4) 建订单
             $order = Order::create([
@@ -121,7 +135,11 @@ class OrderService
                 'query_password' => $this->hashQueryPassword($input['query_password'] ?? ''),
                 'quantity'      => $quantity,
                 'unit_price'    => $unitPrice,
-                'total_amount'  => $total,
+                'original_amount' => $original,
+                'discount_amount' => $discount,
+                'coupon_id'     => $couponId,
+                'coupon_code'   => $couponCode,
+                'total_amount'  => $final,
                 'status'        => Order::STATUS_PENDING,
                 'client_ip'     => $input['client_ip'] ?? null,
                 'expire_at'     => date('Y-m-d H:i:s', time() + self::ORDER_TTL),

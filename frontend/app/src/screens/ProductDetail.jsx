@@ -40,6 +40,10 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const [qty, setQty] = React.useState(1);
   const [email, setEmail] = React.useState('');
   const [queryPassword, setQueryPassword] = React.useState('');
+  const [couponCode, setCouponCode] = React.useState('');
+  const [couponInfo, setCouponInfo] = React.useState(null); // { discount, final_amount, original_amount, qty }
+  const [couponErr, setCouponErr] = React.useState('');
+  const [couponChecking, setCouponChecking] = React.useState(false);
   const [touched, setTouched] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitErr, setSubmitErr] = React.useState('');
@@ -145,6 +149,25 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const priceCents = Math.round(Number(p.price) * 100);
   const totalCents = priceCents * safeQty;
   const total = totalCents / 100;
+  // 优惠券仅当其试算数量与当前数量一致时生效(改数量需重新试算)
+  const couponActive = couponInfo && Number(couponInfo.qty) === safeQty;
+  const payable = couponActive ? Number(couponInfo.final_amount) : total;
+
+  const applyCoupon = async () => {
+    const code = couponCode.trim();
+    setCouponErr('');
+    setCouponInfo(null);
+    if (!code) { setCouponErr('请输入优惠券码'); return; }
+    setCouponChecking(true);
+    try {
+      const r = await api.validateCoupon({ code, productId, quantity: safeQty });
+      setCouponInfo({ ...r, qty: safeQty });
+    } catch (e) {
+      setCouponErr(e instanceof ApiError ? e.message : '优惠券验证失败');
+    } finally {
+      setCouponChecking(false);
+    }
+  };
 
   const submit = async () => {
     setTouched(true);
@@ -153,7 +176,11 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     if (!emailOk) return;
     setSubmitting(true);
     try {
-      const apiOrder = await api.createOrder({ productId, quantity: safeQty, email: email.trim(), queryPassword: queryPassword.trim() || undefined });
+      const apiOrder = await api.createOrder({
+        productId, quantity: safeQty, email: email.trim(),
+        queryPassword: queryPassword.trim() || undefined,
+        couponCode: couponActive ? couponCode.trim() : undefined,
+      });
       onOrderCreated && onOrderCreated(apiOrder, email.trim(), p);
     } catch (e) {
       setSubmitErr(e instanceof ApiError ? e.message : '下单失败,请稍后重试');
@@ -305,14 +332,37 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
           hint="选填:设置后无需邮箱,凭订单号 + 此密码即可查单取卡"
         />
 
+        {/* 优惠券(选填):输入券码后验证,生效则抵扣应付金额 */}
+        <div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <Input
+                label="优惠券(选填)"
+                placeholder="输入券码"
+                icon={<Icons.Star size={18} />}
+                value={couponCode}
+                onChange={(e) => { setCouponCode(e.target.value); setCouponInfo(null); setCouponErr(''); }}
+                error={couponErr}
+              />
+            </div>
+            <Button variant="secondary" size="md" onClick={applyCoupon} loading={couponChecking} disabled={out}>验证</Button>
+          </div>
+          {couponActive && (
+            <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--success-fg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icons.Check size={14} color="var(--success-solid)" />已优惠 ¥{Number(couponInfo.discount).toFixed(2)}
+            </div>
+          )}
+        </div>
+
         <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
           <InfoRow label="单价">¥{p.price.toFixed(2)}</InfoRow>
           <InfoRow label="数量">{out ? '—' : `×${safeQty}`}</InfoRow>
+          {couponActive && <InfoRow label="优惠券抵扣">−¥{Number(couponInfo.discount).toFixed(2)}</InfoRow>}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>预计应付</span>
             {out
               ? <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>—</span>
-              : <PriceTag amount={total} size="md" />}
+              : <PriceTag amount={payable} size="md" />}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, textAlign: 'right' }}>最终金额以提交后订单为准</div>
         </div>
@@ -341,7 +391,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>预计应付</span>
               {out
                 ? <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>—</span>
-                : <PriceTag amount={total} size="md" />}
+                : <PriceTag amount={payable} size="md" />}
             </div>
             <Button
               variant="primary"

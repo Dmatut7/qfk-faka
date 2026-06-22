@@ -15,7 +15,7 @@ class Order extends BaseApiController
 {
     public function create(OrderService $svc)
     {
-        $d = $this->params(['product_id', 'quantity', 'buyer_email', 'buyer_contact', 'query_password']);
+        $d = $this->params(['product_id', 'quantity', 'buyer_email', 'buyer_contact', 'query_password', 'coupon_code']);
         $this->validate($d, [
             'product_id'  => 'require|integer',
             'quantity'    => 'require|integer|egt:1',
@@ -28,11 +28,14 @@ class Order extends BaseApiController
         $order = $svc->create($d);
 
         return $this->success([
-            'order_no'     => $order->order_no,
-            'total_amount' => $order->total_amount,
-            'quantity'     => (int) $order->quantity,
-            'expire_at'    => $order->expire_at,
-            'status'       => (int) $order->status,
+            'order_no'        => $order->order_no,
+            'total_amount'    => $order->total_amount,
+            'original_amount' => $order->original_amount,
+            'discount_amount' => $order->discount_amount,
+            'coupon_code'     => $order->coupon_code,
+            'quantity'        => (int) $order->quantity,
+            'expire_at'       => $order->expire_at,
+            'status'          => (int) $order->status,
         ]);
     }
 
