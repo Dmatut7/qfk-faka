@@ -18,6 +18,7 @@ export default function Dashboard({ api, onNavigate }) {
   const products = data.products || {};
   const cards = data.cards || {};
   const commission = data.commission || {};
+  const profit = data.profit || {};
   const n = (v) => (v == null ? 0 : v);
   const go = (key) => { if (typeof onNavigate === 'function') onNavigate(key); };
 
@@ -59,9 +60,19 @@ export default function Dashboard({ api, onNavigate }) {
           }
         />
         <StatCard
-          label="平台抽佣" icon="Lock" tone="brand"
-          value={<Money amount={n(commission.today)} strong />}
-          sub={<span>累计抽佣 <Money amount={n(commission.total)} /></span>}
+          label="平台利润" icon="Lock" tone="brand"
+          value={<Money amount={n(profit.today ?? commission.today)} strong />}
+          sub={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span>昨日 <Money amount={n(profit.yesterday)} /></span>
+              <Delta today={n(profit.today)} yesterday={n(profit.yesterday)} money />
+            </span>
+          }
+        />
+        <StatCard
+          label="本月利润" icon="Search" tone="success"
+          value={<Money amount={n(profit.month)} strong />}
+          sub={<span>累计利润 <Money amount={n(profit.total ?? commission.total)} /></span>}
         />
         <StatCard
           label="入驻商户" icon="Package" tone="secure"

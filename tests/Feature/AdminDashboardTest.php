@@ -184,6 +184,14 @@ class AdminDashboardTest extends TestCase
         $this->assertSame(Money::add($base['commission']['total'], '18.00'), $d['commission']['total']);
         $this->assertSame(Money::add($base['commission']['today'], '15.00'), $d['commission']['today']);
 
+        // profit(平台利润 = 抽佣收入,四档):今日 +15、昨日 +3、累计 +18
+        $this->assertSame(Money::add($base['profit']['today'], '15.00'), $d['profit']['today']);
+        $this->assertSame(Money::add($base['profit']['yesterday'], '3.00'), $d['profit']['yesterday']);
+        $this->assertSame(Money::add($base['profit']['total'], '18.00'), $d['profit']['total']);
+        // 本月:含今日 15;昨日 3 是否计入取决于昨日是否同月(月初边界)
+        $monthDelta = (date('Y-m') === date('Y-m', strtotime('-1 day'))) ? '18.00' : '15.00';
+        $this->assertSame(Money::add($base['profit']['month'], $monthDelta), $d['profit']['month']);
+
         // 防止未使用变量被静态分析误判;同时验证对象确实落库
         $this->assertGreaterThan(0, (int) $w2->id);
         $this->assertGreaterThan(0, (int) $wDone->id);

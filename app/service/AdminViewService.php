@@ -27,7 +27,8 @@ class AdminViewService
      *   withdrawals: array{pending_count:int, pending_amount:string},
      *   products: array{total:int, on_sale:int},
      *   cards: array{unsold:int},
-     *   commission: array{total:string, today:string}
+     *   commission: array{total:string, today:string},
+     *   profit: array{today:string, yesterday:string, month:string, total:string}
      * }
      */
     public function dashboard(): array
@@ -35,6 +36,7 @@ class AdminViewService
         $todayStart     = date('Y-m-d 00:00:00');
         $tomorrow       = date('Y-m-d 00:00:00', strtotime('+1 day'));
         $yesterdayStart = date('Y-m-d 00:00:00', strtotime('-1 day'));
+        $monthStart     = date('Y-m-01 00:00:00');
 
         $deliveredSalesTotal = (string) Order::where('status', Order::STATUS_DELIVERED)->sum('total_amount');
         $deliveredSalesToday = (string) Order::where('status', Order::STATUS_DELIVERED)
@@ -84,6 +86,13 @@ class AdminViewService
             'commission' => [
                 'total' => $this->commissionTotal('', ''),
                 'today' => $this->commissionTotal($todayStart, $tomorrow),
+            ],
+            // 平台利润 = 平台抽佣收入,按 今日/昨日/本月/累计 四档(对标 manage.Dashboard/information)
+            'profit' => [
+                'today'     => $this->commissionTotal($todayStart, $tomorrow),
+                'yesterday' => $this->commissionTotal($yesterdayStart, $todayStart),
+                'month'     => $this->commissionTotal($monthStart, $tomorrow),
+                'total'     => $this->commissionTotal('', ''),
             ],
         ];
     }
