@@ -20,4 +20,10 @@ class Shop extends BaseApiController
     {
         return $this->success($svc->product((int) $id));
     }
+
+    /** 知识类商品章节目录(购前可见,仅标题) */
+    public function chapters(\app\service\ChapterService $svc, $id)
+    {
+        return $this->success(['items' => $svc->tocForProduct((int) $id)]);
+    }
 }

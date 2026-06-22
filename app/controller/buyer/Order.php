@@ -47,6 +47,17 @@ class Order extends BaseApiController
         return $this->success($result);
     }
 
+    public function chapters(\app\service\ChapterService $svc)
+    {
+        $d = $this->params(['order_no', 'email', 'password']);
+        $this->validate($d, ['order_no' => 'require']);
+        return $this->success(['chapters' => $svc->chaptersForOrder(
+            (string) $d['order_no'],
+            isset($d['email']) ? (string) $d['email'] : null,
+            isset($d['password']) ? (string) $d['password'] : null
+        )]);
+    }
+
     public function query(BuyerOrderService $svc)
     {
         $d = $this->params(['order_no', 'email', 'password']);

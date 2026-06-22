@@ -48,6 +48,19 @@ class BuyerOrderService
     }
 
     /**
+     * 定位并核验订单归属(供查单/投诉/章节阅读等复用)。凭证二选一:邮箱或查单密码。
+     */
+    public function verifiedOrder(string $orderNo, ?string $email = null, ?string $password = null): Order
+    {
+        $order = Order::where('order_no', trim($orderNo))->find();
+        if (!$order) {
+            throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
+        }
+        $this->verifyCredential($order, $email, $password);
+        return $order;
+    }
+
+    /**
      * 凭证核验:优先查单密码,其次邮箱。两者皆缺则参数错误。
      * - password 非空:订单须已设置 query_password 且 bcrypt 校验通过,否则 403。
      * - 否则用 email 大小写不敏感匹配 buyer_email,不符 403。

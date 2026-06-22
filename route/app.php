@@ -27,6 +27,8 @@ Route::group('index', function () {
 // ============ 买家前台 buyer(公开) ============
 Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
+Route::get('buyer/product/:id/chapters', 'buyer.Shop/chapters'); // 知识类目录(购前)
+Route::post('buyer/order/chapters', 'buyer.Order/chapters'); // 购后阅读(验证归属)
 Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\RateLimit::class, 30, 60); // 30 次/分
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
@@ -145,6 +147,12 @@ Route::group('merchant', function () {
         Route::post('products/:id', 'merchant.Product/update');
         Route::post('products/:id/status', 'merchant.Product/setStatus');
         Route::post('products/:id/delete', 'merchant.Product/delete');
+
+        // 知识类商品章节
+        Route::get('products/:productId/chapters', 'merchant.Chapter/index');
+        Route::post('products/:productId/chapters', 'merchant.Chapter/create');
+        Route::post('chapters/:id', 'merchant.Chapter/update');
+        Route::post('chapters/:id/delete', 'merchant.Chapter/delete');
 
         // 卡密管理
         Route::post('cards/import', 'merchant.Card/import');
