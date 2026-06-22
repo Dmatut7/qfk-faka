@@ -5,6 +5,7 @@ import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
 import { THEMES, THEME_KEYS } from '../../themes.js';
+import { ImageUpload } from '../ImageUpload.jsx';
 
 const EMPTY_FORM = {
   logo: '',
@@ -171,8 +172,10 @@ export default function Shop({ api }) {
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Input label="Logo 图片地址" value={form.logo} onChange={set('logo')} placeholder="https://…/logo.png" />
-            <Input label="封面图片地址" value={form.cover} onChange={set('cover')} placeholder="https://…/cover.jpg" />
+            <ImageUpload api={api} value={form.logo} onChange={(url) => { setForm((f) => ({ ...f, logo: url })); setOkMsg(''); }}
+              label="店铺 Logo" hint="点击上传或粘贴 URL;建议正方形" />
+            <ImageUpload api={api} value={form.cover} onChange={(url) => { setForm((f) => ({ ...f, cover: url })); setOkMsg(''); }}
+              label="店铺封面" hint="点击上传或粘贴 URL;建议 16:9 横图" />
           </div>
 
           <Field label="店铺主题" hint="选择店铺前台品牌配色">

@@ -137,6 +137,9 @@ Route::group('merchant', function () {
         Route::get('shop', 'merchant.Shop/show');
         Route::post('shop', 'merchant.Shop/update');
 
+        // 图片上传(商品主图 / 店铺 logo·封面),multipart 字段 file → { url }
+        Route::post('upload', 'merchant.Upload/image');
+
         // 分类管理(全用 POST + 路径 id,便于测试与跨端兼容)
         Route::get('categories', 'merchant.Category/index');
         Route::post('categories', 'merchant.Category/create');

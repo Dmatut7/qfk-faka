@@ -81,7 +81,24 @@ async function call(path, { method = 'GET', body, auth = true } = {}) {
 }
 
 /* ---- 商户后台 ---- */
+/* 图片上传(multipart;不设 Content-Type,让浏览器自带 boundary)。返回 { url } */
+async function uploadImage(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers = {};
+  if (_token) headers['Authorization'] = 'Bearer ' + _token;
+  let res;
+  try {
+    res = await fetch(BASE + '/merchant/upload', { method: 'POST', headers, body: fd });
+  } catch { throw new ApiError(-1, '网络连接失败,请检查网络后重试'); }
+  let json;
+  try { json = await res.json(); } catch { throw new ApiError(-1, '服务器响应异常'); }
+  if (json.code !== 0) throw new ApiError(json.code, json.msg);
+  return json.data;
+}
+
 export const merchantApi = {
+  uploadImage,
   login: (username, password) => call('/merchant/login', { method: 'POST', body: { username, password }, auth: false }),
   register: (d) => call('/merchant/register', { method: 'POST', body: d, auth: false }),
   me: () => call('/merchant/me'),

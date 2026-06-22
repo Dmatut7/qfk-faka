@@ -5,6 +5,7 @@ import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
 import ChaptersModal from './ChaptersModal.jsx';
+import { ImageUpload } from '../ImageUpload.jsx';
 
 const TYPE_AUTO = 1;
 const TYPE_MANUAL = 2;
@@ -404,16 +405,8 @@ export default function Products({ api, session }) {
             </div>
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '76px 1fr', gap: 12, alignItems: 'start' }}>
-            <div style={{
-              width: 76, height: 76, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
-              background: form.image ? `center/cover no-repeat url(${form.image})` : 'var(--surface-sunken)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', marginTop: 24,
-            }}>
-              {!form.image && <Icons.Package size={22} color="var(--text-subtle)" />}
-            </div>
-            <Input label="商品图片地址(可选)" value={form.image} onChange={set('image')} placeholder="https://…/product.jpg" />
-          </div>
+          <ImageUpload api={api} value={form.image} onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+            label="商品主图" hint="点击上传或粘贴 URL;建议正方形,jpg/png/webp ≤2MB" />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Input label="价格 (元)" required type="number" min="0" step="0.01" value={form.price} onChange={set('price')} placeholder="0.00" />

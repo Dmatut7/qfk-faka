@@ -32,6 +32,7 @@ export default defineConfig({
       '^/admin/': BACKEND,
       '^/index/': BACKEND,
       '^/config': BACKEND,
+      '^/uploads/': BACKEND,
     },
   },
 });
