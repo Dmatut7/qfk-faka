@@ -10,7 +10,17 @@ const TYPE_MANUAL = 2;
 const STATUS_ON = 1;
 const STATUS_OFF = 0;
 
+// 商品类型(对标鲸商城PRO 四类),与发货方式 type 正交
+const GOODS_TYPES = [
+  { v: 1, label: '卡密', icon: 'Lock', tone: 'brand' },
+  { v: 2, label: '知识', icon: 'Inbox', tone: 'secure' },
+  { v: 3, label: '资源', icon: 'Package', tone: 'pending' },
+  { v: 4, label: '权益', icon: 'ShieldCheck', tone: 'success' },
+];
+const goodsTypeLabel = (v) => (GOODS_TYPES.find((g) => g.v === Number(v)) || GOODS_TYPES[0]).label;
+
 const EMPTY_FORM = {
+  goods_type: 1,
   category_id: '',
   title: '',
   sku: '',
@@ -63,6 +73,7 @@ export default function Products({ api, session }) {
       price: row.price == null ? '' : String(row.price),
       market_price: row.market_price == null ? '' : String(row.market_price),
       type: Number(row.type) || TYPE_AUTO,
+      goods_type: Number(row.goods_type) || 1,
       min_buy: row.min_buy ?? 1,
       max_buy: row.max_buy ?? 0,
       delivery_message: row.delivery_message || '',
@@ -89,6 +100,7 @@ export default function Products({ api, session }) {
       price: form.price,
       market_price: form.market_price === '' ? '' : form.market_price,
       type: Number(form.type),
+      goods_type: Number(form.goods_type) || 1,
       min_buy: Math.max(1, Number(form.min_buy) || 1),
       max_buy: Number(form.max_buy) || 0,
       delivery_message: form.delivery_message,
@@ -162,7 +174,13 @@ export default function Products({ api, session }) {
       ),
     },
     {
-      key: 'type', title: '类型', render: (r) => (
+      key: 'goods_type', title: '商品类型', render: (r) => {
+        const g = GOODS_TYPES.find((x) => x.v === (Number(r.goods_type) || 1)) || GOODS_TYPES[0];
+        return <Pill tone={g.tone}>{g.label}</Pill>;
+      },
+    },
+    {
+      key: 'type', title: '发货', render: (r) => (
         <Pill tone={Number(r.type) === TYPE_AUTO ? 'brand' : 'neutral'}>
           {Number(r.type) === TYPE_AUTO ? '自动发卡' : '手动发货'}
         </Pill>
@@ -261,6 +279,31 @@ export default function Products({ api, session }) {
           {formError && <ErrorBar message={formError} />}
 
           <Input label="商品标题" required value={form.title} onChange={set('title')} placeholder="例如:Netflix 高级会员月卡" />
+
+          <Field label="商品类型" hint="卡密走一卡一售;知识/资源/权益走对应内容发货">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {GOODS_TYPES.map((g) => {
+                const on = Number(form.goods_type) === g.v;
+                const Icon = Icons[g.icon] || Icons.Package;
+                return (
+                  <button
+                    key={g.v}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, goods_type: g.v }))}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', cursor: 'pointer',
+                      borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 700,
+                      border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                      background: on ? 'var(--brand-soft)' : '#fff',
+                      color: on ? 'var(--brand-active)' : 'var(--text-muted)',
+                    }}
+                  >
+                    <Icon size={15} />{g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '76px 1fr', gap: 12, alignItems: 'start' }}>
             <div style={{

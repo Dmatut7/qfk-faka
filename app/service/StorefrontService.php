@@ -28,7 +28,7 @@ class StorefrontService
         $products = Product::where('merchant_id', $m->id)
             ->where('status', Product::STATUS_ON)
             ->order('sort', 'asc')->order('id', 'desc')
-            ->field(['id', 'title', 'price', 'market_price', 'stock', 'image', 'category_id', 'sales_count', 'min_buy', 'max_buy', 'purchase_notice', 'show_stock_type'])
+            ->field(['id', 'title', 'price', 'market_price', 'stock', 'image', 'category_id', 'goods_type', 'sales_count', 'min_buy', 'max_buy', 'purchase_notice', 'show_stock_type'])
             ->select()
             ->toArray();
 
@@ -41,6 +41,7 @@ class StorefrontService
                 'stock'        => (int) $p['stock'],
                 'image'        => $p['image'],
                 'category_id'  => isset($p['category_id']) ? (int) $p['category_id'] : null,
+                'goods_type'   => (int) ($p['goods_type'] ?? Product::GOODS_TYPE_CARD),
                 'sales_count'  => (int) $p['sales_count'],
                 'min_buy'      => (int) $p['min_buy'],
                 'max_buy'      => (int) $p['max_buy'],
@@ -132,6 +133,7 @@ class StorefrontService
             'price'            => $p->price,
             'market_price'     => $p->market_price,
             'image'            => $p->image,
+            'goods_type'       => (int) ($p->goods_type ?? Product::GOODS_TYPE_CARD),
             'description'      => $p->description,
             'stock'            => (int) $p->stock,
             'sales_count'      => (int) $p->sales_count,

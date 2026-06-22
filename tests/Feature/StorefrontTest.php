@@ -32,6 +32,18 @@ class StorefrontTest extends TestCase
         $this->assertSame(404, $this->call('GET', '/s/no_such_shop_xyz')->getCode());
     }
 
+    public function testGoodsTypeExposedInListAndDetail(): void
+    {
+        $m = $this->makeMerchant(['store_slug' => 'gt_' . uniqid()]);
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '知识商品', 'price' => '9.90', 'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE]);
+
+        $store = $this->callJson('GET', '/s/' . $m->store_slug);
+        $this->assertSame(Product::GOODS_TYPE_KNOWLEDGE, (int) $store['data']['products'][0]['goods_type']);
+
+        $detail = $this->callJson('GET', '/buyer/product/' . $p->id);
+        $this->assertSame(Product::GOODS_TYPE_KNOWLEDGE, (int) $detail['data']['goods_type']);
+    }
+
     public function testFrozenMerchantStoreHidden(): void
     {
         $m = $this->makeMerchant(['store_slug' => 'frozen_' . uniqid(), 'status' => Merchant::STATUS_FROZEN]);

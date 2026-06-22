@@ -34,6 +34,44 @@ class ProductCrudTest extends TestCase
         $this->assertCount(1, $list['data']);
     }
 
+    public function testGoodsTypeDefaultsToCard(): void
+    {
+        $m = $this->makeMerchant();
+        $r = $this->callJson('POST', '/merchant/products', [
+            'title' => '默认卡密', 'price' => '1.00',
+        ], $this->bearer($this->merchantToken((int) $m->id)));
+        $this->assertSame(0, $r['code']);
+        $this->assertSame(Product::GOODS_TYPE_CARD, (int) Product::find($r['data']['id'])->goods_type);
+    }
+
+    public function testCreateWithGoodsTypeAndInvalidFallback(): void
+    {
+        $m = $this->makeMerchant();
+        $token = $this->bearer($this->merchantToken((int) $m->id));
+
+        // 知识类
+        $r = $this->callJson('POST', '/merchant/products', [
+            'title' => '课程', 'price' => '9.90', 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE,
+        ], $token);
+        $this->assertSame(Product::GOODS_TYPE_KNOWLEDGE, (int) Product::find($r['data']['id'])->goods_type);
+
+        // 非法值回退卡密
+        $r2 = $this->callJson('POST', '/merchant/products', [
+            'title' => '乱填', 'price' => '9.90', 'goods_type' => 99,
+        ], $token);
+        $this->assertSame(Product::GOODS_TYPE_CARD, (int) Product::find($r2['data']['id'])->goods_type);
+    }
+
+    public function testUpdateGoodsType(): void
+    {
+        $m = $this->makeMerchant();
+        $p = Product::create(['merchant_id' => $m->id, 'title' => 'p', 'price' => '5.00', 'goods_type' => Product::GOODS_TYPE_CARD]);
+        $this->callJson('POST', '/merchant/products/' . $p->id, [
+            'goods_type' => Product::GOODS_TYPE_RESOURCE,
+        ], $this->bearer($this->merchantToken((int) $m->id)));
+        $this->assertSame(Product::GOODS_TYPE_RESOURCE, (int) Product::find($p->id)->goods_type);
+    }
+
     public function testPriceMustBePositive(): void
     {
         $m = $this->makeMerchant();

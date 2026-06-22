@@ -14,7 +14,7 @@ use app\model\Product;
  */
 class ProductService
 {
-    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'sort'];
+    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'type', 'goods_type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'sort'];
 
     public function list(int $merchantId, array $filter = []): array
     {
@@ -46,6 +46,7 @@ class ProductService
             'price'            => $d['price'],
             'market_price'     => (isset($d['market_price']) && $d['market_price'] !== '') ? $d['market_price'] : null,
             'type'             => isset($d['type']) ? (int) $d['type'] : Product::TYPE_AUTO,
+            'goods_type'       => $this->normalizeGoodsType($d['goods_type'] ?? Product::GOODS_TYPE_CARD),
             'min_buy'          => $minBuy,
             'max_buy'          => $maxBuy,
             'delivery_message' => $d['delivery_message'] ?? null,
@@ -74,6 +75,9 @@ class ProductService
         }
         if (array_key_exists('show_stock_type', $d)) {
             $d['show_stock_type'] = ((int) $d['show_stock_type'] === 1) ? 1 : 0;
+        }
+        if (array_key_exists('goods_type', $d)) {
+            $d['goods_type'] = $this->normalizeGoodsType($d['goods_type']);
         }
         if (array_key_exists('min_buy', $d)) {
             $d['min_buy'] = max(1, (int) $d['min_buy']);
@@ -131,6 +135,13 @@ class ProductService
         if ($maxBuy > 0 && $maxBuy < $minBuy) {
             throw new BizException(Code::PARAM_ERROR, '限购数量不能小于起购数量');
         }
+    }
+
+    /** 商品类型规整:非法值回退卡密(1)。 */
+    private function normalizeGoodsType($goodsType): int
+    {
+        $t = (int) $goodsType;
+        return in_array($t, Product::GOODS_TYPES, true) ? $t : Product::GOODS_TYPE_CARD;
     }
 
     private function assertCategory(int $merchantId, $categoryId): void
