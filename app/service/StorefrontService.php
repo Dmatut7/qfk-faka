@@ -28,27 +28,30 @@ class StorefrontService
         $products = Product::where('merchant_id', $m->id)
             ->where('status', Product::STATUS_ON)
             ->order('sort', 'asc')->order('id', 'desc')
-            ->field(['id', 'title', 'price', 'market_price', 'stock', 'image', 'category_id', 'goods_type', 'sales_count', 'min_buy', 'max_buy', 'purchase_notice', 'show_stock_type'])
-            ->select()
-            ->toArray();
+            ->select();
 
         $products = array_map(static function ($p) {
+            $onSale = $p->discountActive();
             return [
-                'id'           => (int) $p['id'],
-                'title'        => $p['title'],
-                'price'        => $p['price'],
-                'market_price' => $p['market_price'],
-                'stock'        => (int) $p['stock'],
-                'image'        => $p['image'],
-                'category_id'  => isset($p['category_id']) ? (int) $p['category_id'] : null,
-                'goods_type'   => (int) ($p['goods_type'] ?? Product::GOODS_TYPE_CARD),
-                'sales_count'  => (int) $p['sales_count'],
-                'min_buy'      => (int) $p['min_buy'],
-                'max_buy'      => (int) $p['max_buy'],
-                'purchase_notice' => $p['purchase_notice'] ?? null,
-                'show_stock_type' => (int) ($p['show_stock_type'] ?? 0),
+                'id'           => (int) $p->id,
+                'title'        => $p->title,
+                // price 恒为应收单价(限时折扣生效则为折扣价),前端总价口径与下单一致
+                'price'        => $p->effectivePrice(),
+                'original_price' => $p->price, // 原价(限时折扣时划线)
+                'on_sale'      => $onSale,
+                'discount_end' => $onSale ? $p->discount_end : null,
+                'market_price' => $p->market_price,
+                'stock'        => (int) $p->stock,
+                'image'        => $p->image,
+                'category_id'  => $p->category_id !== null ? (int) $p->category_id : null,
+                'goods_type'   => (int) ($p->goods_type ?? Product::GOODS_TYPE_CARD),
+                'sales_count'  => (int) $p->sales_count,
+                'min_buy'      => (int) $p->min_buy,
+                'max_buy'      => (int) $p->max_buy,
+                'purchase_notice' => $p->purchase_notice ?? null,
+                'show_stock_type' => (int) ($p->show_stock_type ?? 0),
             ];
-        }, $products);
+        }, $products->all());
 
         // 在售商品按分类计数(含无分类的归 0,不影响分类列表)
         $countByCat = [];
@@ -126,11 +129,15 @@ class StorefrontService
             throw new BizException(Code::PRODUCT_OFF, '商品不存在或已下架');
         }
 
+        $onSale = $p->discountActive();
         return [
             'id'               => (int) $p->id,
             'merchant_id'      => (int) $p->merchant_id,
             'title'            => $p->title,
-            'price'            => $p->price,
+            'price'            => $p->effectivePrice(),
+            'original_price'   => $p->price,
+            'on_sale'          => $onSale,
+            'discount_end'     => $onSale ? $p->discount_end : null,
             'market_price'     => $p->market_price,
             'image'            => $p->image,
             'goods_type'       => (int) ($p->goods_type ?? Product::GOODS_TYPE_CARD),

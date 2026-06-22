@@ -110,8 +110,8 @@ class OrderService
                 }
             }
 
-            // 3) 金额(bcmath,禁止浮点)
-            $unitPrice = $product->price;
+            // 3) 金额(bcmath,禁止浮点);单价取限时折扣生效价
+            $unitPrice = $product->effectivePrice($now);
             $original  = Money::mul($unitPrice, (string) $quantity);
 
             // 3.1) 优惠券应用(可选):校验+算优惠,total_amount=应付(original-discount),核销在支付成功时

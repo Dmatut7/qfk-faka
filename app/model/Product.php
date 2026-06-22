@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace app\model;
 
+use app\util\Money;
 use think\Model;
 
 /**
@@ -50,6 +51,34 @@ class Product extends Model
     public function isOnSale(): bool
     {
         return (int) $this->status === self::STATUS_ON;
+    }
+
+    /**
+     * 限时折扣是否生效:设置了 discount_price 且 < price,且当前在 [start,end] 窗口内
+     * (start 空=无下限,end 空=无上限)。
+     */
+    public function discountActive(?string $now = null): bool
+    {
+        if ($this->discount_price === null || $this->discount_price === '') {
+            return false;
+        }
+        if (Money::cmp((string) $this->discount_price, (string) $this->price) >= 0) {
+            return false; // 折扣价不低于原价 → 非折扣
+        }
+        $now = $now ?? date('Y-m-d H:i:s');
+        if ($this->discount_start && $now < (string) $this->discount_start) {
+            return false;
+        }
+        if ($this->discount_end && $now > (string) $this->discount_end) {
+            return false;
+        }
+        return true;
+    }
+
+    /** 应收单价:限时折扣生效则取折扣价,否则原价。 */
+    public function effectivePrice(?string $now = null): string
+    {
+        return $this->discountActive($now) ? (string) $this->discount_price : (string) $this->price;
     }
 
     /** 卡密类:走 cards 一卡一售行锁预占;其余类型走内容发货。 */
