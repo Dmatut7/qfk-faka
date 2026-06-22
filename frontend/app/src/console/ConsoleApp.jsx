@@ -64,6 +64,12 @@ const ADMIN_NAV = [
 ];
 
 /* 扁平化所有导航项(用于查标题、取首项 key) */
+/* 图标栏分组图标(对标鲸商城PRO 双层侧栏) */
+const GROUP_ICON = {
+  概览: 'Zap', 商户管理: 'ShieldCheck', 交易: 'Search', 财务: 'Star', 运营: 'Megaphone', 系统: 'Lock',
+  商品: 'Package', 营销: 'Star', 资金: 'RefreshCw', 店铺: 'ShieldCheck',
+};
+
 function flattenNav(nav) {
   return nav.reduce((acc, g) => acc.concat(g.items), []);
 }
@@ -358,6 +364,33 @@ function Dashboard({ session, onLogout }) {
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 35 }}
         />
       )}
+      {/* 图标栏(宽屏双层侧栏的细图标列,对标鲸商城PRO) */}
+      {!isNarrow && (
+        <div style={{
+          width: 60, flex: 'none', background: '#fff', borderRight: '1px solid var(--border)',
+          position: 'sticky', top: 0, height: '100vh', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', paddingTop: 14, gap: 4,
+        }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg, var(--brand), var(--brand-active))', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <Icons.Zap size={18} color="#fff" />
+          </div>
+          {nav.map((g) => {
+            const Icon = Icons[GROUP_ICON[g.group] || g.items[0].icon] || Icons.Package;
+            const groupActive = g.items.some((it) => it.key === active);
+            return (
+              <button key={g.group} type="button" title={g.group} onClick={() => selectNav(g.items[0].key)} style={{
+                width: 46, height: 46, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                background: groupActive ? 'var(--brand-soft)' : 'transparent', fontFamily: 'var(--font-sans)',
+              }}>
+                <Icon size={18} color={groupActive ? 'var(--brand)' : 'var(--text-muted)'} />
+                <span style={{ fontSize: 9, fontWeight: 700, color: groupActive ? 'var(--brand-active)' : 'var(--text-subtle)' }}>{g.group.slice(0, 2)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* 侧栏(宽屏 sticky / 窄屏 fixed 抽屉) */}
       <aside style={asideStyle}>
         <div style={{ padding: '18px 18px 14px', borderBottom: '1px solid var(--border)' }}>

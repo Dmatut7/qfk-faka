@@ -41,14 +41,10 @@ export default function Dashboard({ api, onNavigate }) {
       {/* 今日 / 概览 数据卡 */}
       <Section title="今日 · 概览">
         <StatCard
-          label="今日成交额" icon="Zap" tone="success"
-          value={<Money amount={n(sales.today)} strong />}
-          sub={
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span>昨日 <Money amount={n(sales.yesterday)} /></span>
-              <Delta today={n(sales.today)} yesterday={n(sales.yesterday)} money />
-            </span>
-          }
+          filled
+          label="今日成交额" icon="Zap"
+          value={`¥${Number(n(sales.today)).toFixed(2)}`}
+          sub={`昨日 ¥${Number(n(sales.yesterday)).toFixed(2)} · 累计 ¥${Number(n(sales.total)).toFixed(2)}`}
         />
         <StatCard
           label="今日订单" icon="Search" tone="brand"
