@@ -28,6 +28,7 @@ Route::get('buyer/product/:id', 'buyer.Shop/product');
 Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\RateLimit::class, 30, 60); // 30 次/分
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');
+Route::post('buyer/coupon/validate', 'buyer.Coupon/validateCode')->middleware(\app\middleware\RateLimit::class, 60, 60); // 券码试算(防爆破 60次/分)
 
 // ============ 支付异步回调(公开,靠验签)============
 Route::rule('pay/notify/:channel', 'pay.Notify/index')->middleware(\app\middleware\RateLimit::class, 120, 60);
@@ -139,6 +140,12 @@ Route::group('merchant', function () {
         Route::get('wallet/fund-logs', 'merchant.Wallet/fundLogs');
         Route::get('wallet/withdrawals', 'merchant.Wallet/withdrawals');
         Route::post('wallet/withdrawals', 'merchant.Wallet/applyWithdrawal');
+
+        // 优惠券管理(营销)
+        Route::get('coupons', 'merchant.Coupon/index');
+        Route::post('coupons', 'merchant.Coupon/create');
+        Route::post('coupons/:id', 'merchant.Coupon/update');
+        Route::post('coupons/:id/delete', 'merchant.Coupon/delete');
 
         // 统计
         Route::get('stats/summary', 'merchant.Stats/summary');
