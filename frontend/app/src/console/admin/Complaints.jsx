@@ -23,12 +23,13 @@ export default function Complaints({ api }) {
   const [target, setTarget] = React.useState(null); // 当前裁决的投诉
   const [mode, setMode] = React.useState('resolve'); // resolve | reject
   const [remark, setRemark] = React.useState('');
-  const [refund, setRefund] = React.useState(true);
+  const [refund, setRefund] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState('');
 
-  const open = (row, m) => { setTarget(row); setMode(m); setRemark(''); setRefund(true); setErr(''); };
+  const open = (row, m) => { setTarget(row); setMode(m); setRemark(''); setRefund(false); setErr(''); };
   const submit = async () => {
+    if (mode === 'reject' && !remark.trim()) { setErr('驳回必须填写备注'); return; }
     setBusy(true); setErr('');
     try {
       if (mode === 'resolve') await api.resolveComplaint(target.id, remark.trim(), refund);
@@ -105,7 +106,28 @@ export default function Complaints({ api }) {
         </>}
       >
         {err ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{err}</Pill></div> : null}
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>订单 {target?.order_no} · {TYPE[target?.type] || '其他'}</div>
+        {target ? (
+          <div style={{ marginBottom: 16, padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', border: '1px solid var(--border-strong)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--brand-active)', marginBottom: 8 }}>证据上下文(请据此裁决)</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 10 }}>
+              <span>订单 <span style={{ fontFamily: 'var(--font-mono)' }}>{target.order_no}</span></span>
+              <span>类型 {TYPE[target.type] || '其他'}</span>
+              {target.buyer_email ? <span>买家 {target.buyer_email}</span> : null}
+              {Number(target.refunded) === 1 ? <span style={{ color: 'var(--success-fg)' }}>已退款</span> : null}
+            </div>
+            <div style={{ fontSize: 13, marginBottom: target.merchant_reply ? 8 : 0 }}>
+              <span style={{ color: 'var(--text-subtle)' }}>买家描述:</span> {target.description || '—'}
+            </div>
+            {target.merchant_reply ? (
+              <div style={{ fontSize: 13, color: 'var(--brand-active)' }}>
+                <span style={{ color: 'var(--text-subtle)' }}>商户回复:</span> {target.merchant_reply}
+              </div>
+            ) : <div style={{ fontSize: 12.5, color: 'var(--text-subtle)' }}>商户尚未回复</div>}
+            {target.admin_remark ? (
+              <div style={{ fontSize: 12.5, color: 'var(--text-subtle)', marginTop: 6 }}>历史裁决备注:{target.admin_remark}</div>
+            ) : null}
+          </div>
+        ) : null}
         {mode === 'resolve' && (
           <Field label="是否联动退款">
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
@@ -114,8 +136,8 @@ export default function Complaints({ api }) {
             </label>
           </Field>
         )}
-        <Field label="裁决备注">
-          <Input value={remark} placeholder={mode === 'resolve' ? '如:卡密确有问题,予以退款' : '如:证据不足,驳回'} onChange={(e) => setRemark(e.target.value)} />
+        <Field label={mode === 'reject' ? '裁决备注(驳回必填)' : '裁决备注'}>
+          <Input value={remark} placeholder={mode === 'resolve' ? '如:卡密确有问题,予以退款' : '如:证据不足,驳回(必填)'} onChange={(e) => setRemark(e.target.value)} />
         </Field>
       </Modal>
     </div>

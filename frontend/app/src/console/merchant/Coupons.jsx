@@ -27,6 +27,45 @@ function describe(c) {
   return `${min}减¥${Number(c.value).toFixed(2)}`;
 }
 
+/* 有效期文案:展示 valid_from~valid_to,缺省端记为「不限」 */
+function periodText(c) {
+  const fmt = (s) => (s ? String(s).slice(0, 16).replace('T', ' ') : '不限');
+  if (!c.valid_from && !c.valid_to) return '长期有效';
+  return `${fmt(c.valid_from)} ~ ${fmt(c.valid_to)}`;
+}
+
+/* 解析时间字符串为时间戳(失败返回 NaN,不参与过期判断) */
+function ts(s) {
+  if (!s) return NaN;
+  const t = Date.parse(String(s).replace(' ', 'T'));
+  return Number.isNaN(t) ? NaN : t;
+}
+
+/* 派生状态:expired(已过期)/ pending(未开始)/ on(启用)/ off(停用) */
+function deriveStatus(c) {
+  const now = Date.now();
+  const from = ts(c.valid_from);
+  const to = ts(c.valid_to);
+  if (Number(c.status) === STATUS_OFF) return 'off';
+  if (!Number.isNaN(to) && now > to) return 'expired';
+  if (!Number.isNaN(from) && now < from) return 'pending';
+  return 'on';
+}
+
+const STATUS_META = {
+  on: { tone: 'success', label: '启用' },
+  off: { tone: 'neutral', label: '停用' },
+  expired: { tone: 'neutral', label: '已过期' },
+  pending: { tone: 'pending', label: '未开始' },
+};
+
+/* 工具条内紧凑筛选控件(搜索框 / 下拉) */
+const filterControlStyle = {
+  height: 34, padding: '0 10px', fontSize: 13, fontFamily: 'var(--font-sans)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+  background: '#fff', color: 'var(--text-strong)', cursor: 'pointer',
+};
+
 export default function Coupons({ api }) {
   const list = useAsync(() => api.coupons(), []);
   const [open, setOpen] = React.useState(false);
@@ -37,7 +76,23 @@ export default function Coupons({ api }) {
   const [removing, setRemoving] = React.useState(null);
   const [delBusy, setDelBusy] = React.useState(false);
 
+  const [search, setSearch] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState(''); // '' = 全部状态
+  const [typeFilter, setTypeFilter] = React.useState('');     // '' = 全部类型
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  // 前端过滤现有 rows(后端 coupons 接口不带筛选参数,故纯前端 filter)
+  const rows = list.data || [];
+  const filteredRows = React.useMemo(() => {
+    const kw = search.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (typeFilter !== '' && Number(r.type) !== Number(typeFilter)) return false;
+      if (statusFilter !== '' && deriveStatus(r) !== statusFilter) return false;
+      if (kw && !String(r.code || '').toLowerCase().includes(kw)) return false;
+      return true;
+    });
+  }, [rows, search, statusFilter, typeFilter]);
 
   function openCreate() { setEditing(null); setForm(emptyForm); setFormErr(''); setOpen(true); }
   function openEdit(row) {
@@ -86,8 +141,9 @@ export default function Coupons({ api }) {
     { key: 'name', title: '名称', render: (r) => r.name || '—' },
     { key: 'type', title: '类型', width: 80, render: (r) => <Pill tone={Number(r.type) === TYPE_PERCENT ? 'secure' : 'brand'}>{Number(r.type) === TYPE_PERCENT ? '折扣' : '满减'}</Pill> },
     { key: 'rule', title: '规则', render: (r) => describe(r) },
-    { key: 'total', title: '库存', align: 'right', render: (r) => Number(r.total) > 0 ? `${r.used}/${r.total}` : `${r.used}/不限` },
-    { key: 'status', title: '状态', width: 80, render: (r) => Number(r.status) === STATUS_ON ? <Pill tone="success">启用</Pill> : <Pill tone="neutral">停用</Pill> },
+    { key: 'period', title: '有效期', nowrap: true, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{periodText(r)}</span> },
+    { key: 'total', title: '库存', align: 'right', render: (r) => Number(r.total) > 0 ? `${Number(r.used) || 0}/${r.total}` : `${Number(r.used) || 0}/不限` },
+    { key: 'status', title: '状态', width: 90, render: (r) => { const m = STATUS_META[deriveStatus(r)]; return <Pill tone={m.tone}>{m.label}</Pill>; } },
     {
       key: 'actions', title: '操作', width: 150, align: 'right',
       render: (r) => (
@@ -106,10 +162,33 @@ export default function Coupons({ api }) {
       actions={<Button onClick={openCreate} iconLeft={<Icons.Star />}>新建优惠券</Button>}
     >
       <Toolbar right={<Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={list.reload}>刷新</Button>}>
-        共 {(list.data || []).length} 张券
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>共 {filteredRows.length} / {rows.length} 张券</span>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <span style={{ position: 'absolute', left: 10, display: 'flex', color: 'var(--text-subtle)', pointerEvents: 'none' }}>
+            <Icons.Search size={15} />
+          </span>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="搜索券码"
+            aria-label="搜索券码"
+            style={{ ...filterControlStyle, width: 180, paddingLeft: 32 }}
+          />
+        </div>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="按状态筛选" style={filterControlStyle}>
+          <option value="">全部状态</option>
+          <option value="on">启用</option>
+          <option value="off">停用</option>
+          <option value="expired">已过期</option>
+        </select>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="按类型筛选" style={filterControlStyle}>
+          <option value="">全部类型</option>
+          <option value={TYPE_AMOUNT}>满减</option>
+          <option value={TYPE_PERCENT}>折扣</option>
+        </select>
       </Toolbar>
 
-      <DataTable columns={columns} rows={list.data || []} loading={list.loading} error={list.error} onReload={list.reload} empty="暂无优惠券,点击右上角新建" />
+      <DataTable columns={columns} rows={filteredRows} loading={list.loading} error={list.error} onReload={list.reload} empty="暂无优惠券,点击右上角新建" />
 
       <Modal
         open={open}

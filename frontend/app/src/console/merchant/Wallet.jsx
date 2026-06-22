@@ -26,7 +26,22 @@ function isNegative(amount) {
   return Number(amount || 0) < 0;
 }
 
-const emptyForm = { amount: '', account_info: '' };
+// 收款方式(仅前端用于结构化录入,提交仍拼成单一 account_info 字符串)
+const PAY_METHODS = [
+  { value: 'alipay', label: '支付宝', bank: false },
+  { value: 'bank', label: '银行卡', bank: true },
+  { value: 'wechat', label: '微信', bank: false },
+];
+
+const emptyForm = { amount: '', method: 'alipay', account: '', name: '', bank: '' };
+
+// 把结构化收款字段拼成后端约定的 account_info 单字符串
+function composeAccountInfo(form) {
+  const m = PAY_METHODS.find((x) => x.value === form.method) || PAY_METHODS[0];
+  const parts = [m.label, `账号:${form.account.trim()}`, `户名:${form.name.trim()}`];
+  if (m.bank && form.bank.trim()) parts.push(`开户行:${form.bank.trim()}`);
+  return parts.join(' / ');
+}
 
 const PAGE_SIZE = 20;
 
@@ -39,20 +54,37 @@ export default function Wallet({ api, session }) {
   const withdrawals = useAsync(() => api.withdrawals({ page: wdPage }), [wdPage]);
 
   const [open, setOpen] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false); // true = 进入二次确认步骤
   const [form, setForm] = React.useState(emptyForm);
   const [saving, setSaving] = React.useState(false);
   const [formErr, setFormErr] = React.useState('');
 
+  // 资金流水「类型」前端筛选('' = 全部,否则为 FUND_TYPE 的 key)
+  const [logType, setLogType] = React.useState('');
+  // 提现记录「状态」前端筛选('' = 全部,否则为 WD_STATUS 的 key)
+  const [wdStatus, setWdStatus] = React.useState('');
+
   // 可用余额(用于前端校验上限,后端仍是权威)
   const available = wallet.data ? String(wallet.data.balance ?? '0') : '0';
+
+  // 当前选中的收款方式定义
+  const curMethod = PAY_METHODS.find((m) => m.value === form.method) || PAY_METHODS[0];
 
   function openApply() {
     setForm(emptyForm);
     setFormErr('');
+    setConfirming(false);
     setOpen(true);
   }
 
-  async function submitWithdrawal() {
+  function closeApply() {
+    if (saving) return;
+    setOpen(false);
+    setConfirming(false);
+  }
+
+  // 第一步:校验金额与结构化收款字段,通过后进入二次确认
+  function reviewWithdrawal() {
     const raw = form.amount.trim();
     const num = Number(raw);
     if (!raw || !Number.isFinite(num) || num <= 0) {
@@ -67,28 +99,48 @@ export default function Wallet({ api, session }) {
       setFormErr('提现金额不能超过可用余额');
       return;
     }
-    if (!form.account_info.trim()) {
-      setFormErr('请填写收款信息');
+    if (!form.account.trim()) {
+      setFormErr(`请填写${curMethod.label}账号`);
       return;
     }
+    if (!form.name.trim()) {
+      setFormErr('请填写收款户名');
+      return;
+    }
+    if (curMethod.bank && !form.bank.trim()) {
+      setFormErr('请填写开户行');
+      return;
+    }
+    setFormErr('');
+    setConfirming(true);
+  }
+
+  // 第二步:二次确认后真正提交(金额/请求逻辑不变,account_info 由结构化字段拼成)
+  async function submitWithdrawal() {
+    const raw = form.amount.trim();
     setSaving(true);
     setFormErr('');
     try {
-      await api.applyWithdrawal({ amount: raw, account_info: form.account_info.trim() });
+      await api.applyWithdrawal({ amount: raw, account_info: composeAccountInfo(form) });
       setOpen(false);
+      setConfirming(false);
       // 提现冻结余额、生成流水与提现单,三处一并刷新;回到第 1 页以便看到最新记录
       wallet.reload();
       if (logPage === 1) logs.reload(); else setLogPage(1);
       if (wdPage === 1) withdrawals.reload(); else setWdPage(1);
     } catch (e) {
       setFormErr(e instanceof ApiError ? e.message : '申请失败,请重试');
+      setConfirming(false); // 回到表单步以便修改后重试
     } finally {
       setSaving(false);
     }
   }
 
-  const logRows = (logs.data && logs.data.items) || [];
-  const wdRows = (withdrawals.data && withdrawals.data.items) || [];
+  const allLogRows = (logs.data && logs.data.items) || [];
+  const allWdRows = (withdrawals.data && withdrawals.data.items) || [];
+  // 前端按类型/状态过滤当前页数据(后端分页仍是权威,这里只过滤已加载行)
+  const logRows = logType === '' ? allLogRows : allLogRows.filter((r) => String(r.type) === String(logType));
+  const wdRows = wdStatus === '' ? allWdRows : allWdRows.filter((r) => String(r.status) === String(wdStatus));
   const logTotal = Number((logs.data && logs.data.total) || 0);
   const wdTotal = Number((withdrawals.data && withdrawals.data.total) || 0);
   const logTotalPages = Math.max(1, Math.ceil(logTotal / PAGE_SIZE));
@@ -227,13 +279,18 @@ export default function Wallet({ api, session }) {
           </Button>
         }
       >
+        <FilterTabs
+          value={logType}
+          onChange={setLogType}
+          options={[{ value: '', label: '全部' }, ...Object.entries(FUND_TYPE).map(([k, v]) => ({ value: k, label: v.label }))]}
+        />
         <DataTable
           columns={logColumns}
           rows={logRows}
           loading={logs.loading}
           error={logs.error}
           onReload={logs.reload}
-          empty="暂无资金流水"
+          empty={logType === '' ? '暂无资金流水' : '当前类型暂无记录'}
           emptyIcon="Inbox"
         />
         <Pager total={logTotal} page={logPage} totalPages={logTotalPages} loading={logs.loading} onGo={goLogPage} />
@@ -251,32 +308,48 @@ export default function Wallet({ api, session }) {
         <Toolbar right={<Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={withdrawals.reload}>刷新</Button>}>
           可用余额 <Money amount={available} strong />
         </Toolbar>
+        <FilterTabs
+          value={wdStatus}
+          onChange={setWdStatus}
+          options={[{ value: '', label: '全部' }, ...Object.entries(WD_STATUS).map(([k, v]) => ({ value: k, label: v.label }))]}
+        />
         <DataTable
           columns={wdColumns}
           rows={wdRows}
           loading={withdrawals.loading}
           error={withdrawals.error}
           onReload={withdrawals.reload}
-          empty="暂无提现记录"
+          empty={wdStatus === '' ? '暂无提现记录' : '当前状态暂无记录'}
           emptyIcon="Inbox"
         />
         <Pager total={wdTotal} page={wdPage} totalPages={wdTotalPages} loading={withdrawals.loading} onGo={goWdPage} />
       </Panel>
 
-      {/* 申请提现弹窗 */}
+      {/* 申请提现弹窗:第一步填表,第二步二次确认 */}
       <Modal
         open={open}
-        title="申请提现"
-        onClose={() => (saving ? null : setOpen(false))}
+        title={confirming ? '确认提现申请' : '申请提现'}
+        onClose={closeApply}
         footer={
-          <>
-            <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
-              取消
-            </Button>
-            <Button onClick={submitWithdrawal} loading={saving}>
-              提交申请
-            </Button>
-          </>
+          confirming ? (
+            <>
+              <Button variant="ghost" onClick={() => setConfirming(false)} disabled={saving}>
+                返回修改
+              </Button>
+              <Button onClick={submitWithdrawal} loading={saving}>
+                确认提交
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={closeApply} disabled={saving}>
+                取消
+              </Button>
+              <Button onClick={reviewWithdrawal}>
+                下一步
+              </Button>
+            </>
+          )
         }
       >
         {formErr ? (
@@ -284,28 +357,105 @@ export default function Wallet({ api, session }) {
             <Pill tone="danger">{formErr}</Pill>
           </div>
         ) : null}
-        <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
-          当前可用余额 <Money amount={available} strong />
-        </div>
-        <Field label="提现金额" hint="必须大于 0 且不超过可用余额,最多两位小数">
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            placeholder="0.00"
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-          />
-        </Field>
-        <Field label="收款信息" hint="如:支付宝账号 / 银行卡号及户名(最多 255 字)">
-          <Input
-            value={form.account_info}
-            maxLength={255}
-            placeholder="收款账户信息"
-            onChange={(e) => setForm((f) => ({ ...f, account_info: e.target.value }))}
-          />
-        </Field>
+
+        {confirming ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>请核对以下信息后提交,提交后将冻结相应余额:</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-subtle, #fafafa)', borderRadius: 'var(--radius-md)' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>提现金额</span>
+              <Money amount={form.amount} strong />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-subtle, #fafafa)', borderRadius: 'var(--radius-md)' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>收款方式</span>
+              <span style={{ color: 'var(--text-strong)', fontWeight: 700 }}>{curMethod.label}</span>
+            </div>
+            <div style={{ padding: '10px 14px', background: 'var(--surface-subtle, #fafafa)', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 4 }}>收款信息</div>
+              <div style={{ color: 'var(--text-body)', wordBreak: 'break-all' }}>{composeAccountInfo(form)}</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+              当前可用余额 <Money amount={available} strong />
+            </div>
+            <Field label="提现金额" hint="必须大于 0 且不超过可用余额,最多两位小数">
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                placeholder="0.00"
+                onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              />
+            </Field>
+            <Field label="收款方式">
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {PAY_METHODS.map((m) => (
+                  <Button
+                    key={m.value}
+                    size="sm"
+                    variant={form.method === m.value ? 'primary' : 'ghost'}
+                    onClick={() => setForm((f) => ({ ...f, method: m.value }))}
+                  >
+                    {m.label}
+                  </Button>
+                ))}
+              </div>
+            </Field>
+            <div style={{ marginTop: 12 }}>
+              <Field label={`${curMethod.label}账号`} hint={curMethod.bank ? '请填写银行卡号' : '请填写收款账号'}>
+                <Input
+                  value={form.account}
+                  maxLength={255}
+                  placeholder={curMethod.bank ? '银行卡号' : `${curMethod.label}账号`}
+                  onChange={(e) => setForm((f) => ({ ...f, account: e.target.value }))}
+                />
+              </Field>
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <Field label="收款户名">
+                <Input
+                  value={form.name}
+                  maxLength={64}
+                  placeholder="收款人姓名"
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                />
+              </Field>
+            </div>
+            {curMethod.bank ? (
+              <div style={{ marginTop: 12 }}>
+                <Field label="开户行" hint="如:招商银行深圳分行">
+                  <Input
+                    value={form.bank}
+                    maxLength={128}
+                    placeholder="开户银行及支行"
+                    onChange={(e) => setForm((f) => ({ ...f, bank: e.target.value }))}
+                  />
+                </Field>
+              </div>
+            ) : null}
+          </>
+        )}
       </Modal>
+    </div>
+  );
+}
+
+/* 类型/状态前端筛选标签组(复用 Orders 的按钮组写法,选中走 primary 橙色) */
+function FilterTabs({ options, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '0 16px 14px' }}>
+      {options.map((o) => (
+        <Button
+          key={o.value === '' ? 'all' : o.value}
+          size="sm"
+          variant={String(value) === String(o.value) ? 'primary' : 'ghost'}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </Button>
+      ))}
     </div>
   );
 }

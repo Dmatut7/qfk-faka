@@ -18,8 +18,26 @@ const KNOWN_KEYS = [
   'withdraw_fee_rate',
 ];
 
+// 费率字段(金融高危):0~1 之间的小数。展示换算百分比、保存前严格校验。
+// 返回 { pct } 用于「当前 5%」展示;非法值返回 { error } 阻止提交。
+function validateRate(raw) {
+  const s = (raw == null ? '' : String(raw)).trim();
+  if (s === '') return { error: '请填写费率(0~1 之间的小数,如 0.05 表示 5%)' };
+  if (!/^\d*\.?\d+$/.test(s) || !Number.isFinite(Number(s))) {
+    return { error: '费率必须是数字(0~1 之间的小数,如 0.05 表示 5%)' };
+  }
+  const n = Number(s);
+  if (n < 0 || n > 1) {
+    return { error: '费率必须在 0~1 之间(如 0.05 表示 5%,不要填 5)' };
+  }
+  // 保留两位百分比展示,去掉多余的尾随 0
+  const pct = parseFloat((n * 100).toFixed(2));
+  return { pct };
+}
+
 // 单项「保存」行:回填现值,变更后调 api.setSetting(key,value)。
-function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api }) {
+// rate=true 时为费率字段:展示换算百分比并在保存前做 0~1 范围校验。
+function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api, rate }) {
   const [value, setValue] = React.useState(initial != null ? String(initial) : '');
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState('');
@@ -34,7 +52,19 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api 
 
   const dirty = value !== (initial != null ? String(initial) : '');
 
+  // 费率换算展示:仅当 rate 且当前值能解析为合法 0~1 小数时显示「当前 N%」
+  const rateInfo = rate ? validateRate(value) : null;
+
   async function save() {
+    // 费率字段:保存前严格校验,非法直接 setErr 阻止提交(杜绝误填 5 当 500%)
+    if (rate) {
+      const v = validateRate(value);
+      if (v.error) {
+        setErr(v.error);
+        setOk(false);
+        return;
+      }
+    }
     setSaving(true);
     setErr('');
     setOk(false);
@@ -85,6 +115,15 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api 
                 setOk(false);
               }}
             />
+            {rate ? (
+              <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600 }}>
+                {rateInfo && rateInfo.error == null ? (
+                  <span style={{ color: 'var(--brand)' }}>当前 {rateInfo.pct}%</span>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>请输入 0~1 之间的小数(如 0.05 = 5%)</span>
+                )}
+              </div>
+            ) : null}
           </div>
         )}
         <Button
@@ -287,6 +326,7 @@ export default function Settings({ api }) {
                 label="默认抽佣率(default_commission_rate)"
                 hint="平台对商户订单的默认抽佣比例,0~1 之间的小数(如 0.05 表示 5%)"
                 initial={get('default_commission_rate')}
+                rate
                 onSaved={reload}
               />
               <SettingRow
@@ -295,6 +335,7 @@ export default function Settings({ api }) {
                 label="提现手续费率(withdraw_fee_rate)"
                 hint="商户提现时扣取的手续费比例,0~1 之间的小数(如 0.01 表示 1%)"
                 initial={get('withdraw_fee_rate')}
+                rate
                 onSaved={reload}
               />
             </section>

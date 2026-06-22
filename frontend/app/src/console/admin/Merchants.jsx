@@ -140,8 +140,12 @@ export default function Merchants({ api }) {
             </div>
           ) : null}
           <Toolbar right={
-            <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
-              onClick={list.reload}>刷新</Button>
+            <>
+              <Button variant="primary" size="sm" iconLeft={<Icons.Plus size={15} />}
+                onClick={() => setDlg({ type: 'create' })}>新建商户</Button>
+              <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
+                onClick={list.reload}>刷新</Button>
+            </>
           }>
             <div style={{ width: 240 }}>
               <Input value={keyword} icon={<Icons.Search />} placeholder="店铺名 / 账号 / 邮箱"
@@ -185,6 +189,13 @@ export default function Merchants({ api }) {
         </div>
       </Panel>
 
+      {dlg?.type === 'create' && (
+        <NewMerchantModal
+          api={api}
+          onClose={() => setDlg(null)}
+          onSaved={() => { setDlg(null); list.reload(); }}
+        />
+      )}
       {dlg?.type === 'commission' && (
         <CommissionModal
           row={dlg.row}
@@ -202,6 +213,77 @@ export default function Merchants({ api }) {
         />
       )}
     </div>
+  );
+}
+
+/* 新建商户弹窗:后端 create 校验 username(3~64)/password(min:6)/store_name/store_slug(alphaDash);commission_rate 可选(0~1) */
+function NewMerchantModal({ api, onClose, onSaved }) {
+  const [form, setForm] = React.useState({
+    username: '', password: '', store_name: '', store_slug: '', commission_rate: '',
+  });
+  const [err, setErr] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+
+  const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setErr(''); };
+
+  const save = async () => {
+    const username = form.username.trim();
+    const store_name = form.store_name.trim();
+    const store_slug = form.store_slug.trim();
+    const rate = form.commission_rate.trim();
+    if (username.length < 3 || username.length > 64) { setErr('用户名须为 3~64 个字符'); return; }
+    if (form.password.length < 6) { setErr('密码至少 6 位'); return; }
+    if (!store_name) { setErr('请填写店名'); return; }
+    if (!/^[A-Za-z0-9_-]+$/.test(store_slug)) { setErr('店铺标识只能是字母/数字/下划线/破折号'); return; }
+    if (rate && (!/^\d(\.\d{1,4})?$/.test(rate) || Number(rate) < 0 || Number(rate) > 1)) {
+      setErr('抽佣比例须为 0~1 之间的小数(最多 4 位)'); return;
+    }
+    const payload = { username, password: form.password, store_name, store_slug };
+    if (rate) payload.commission_rate = rate;
+    setSaving(true); setErr('');
+    try {
+      await api.createMerchant(payload);
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : '创建失败,请重试');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open title="新建商户" onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" size="sm" onClick={onClose} disabled={saving}>取消</Button>
+          <Button variant="primary" size="sm" loading={saving} onClick={save}>创建</Button>
+        </>
+      }>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Field label="用户名" hint="3~64 个字符,商户登录账号">
+          <Input value={form.username} placeholder="商户登录账号"
+            onChange={set('username')} />
+        </Field>
+        <Field label="密码" hint="至少 6 位">
+          <Input type="password" value={form.password} placeholder="至少 6 位"
+            onChange={set('password')} />
+        </Field>
+        <Field label="店名">
+          <Input value={form.store_name} placeholder="对外展示的店铺名称"
+            onChange={set('store_name')} />
+        </Field>
+        <Field label="店铺标识(slug)" hint="字母/数字/下划线/破折号,用于店铺访问路径">
+          <Input value={form.store_slug} placeholder="例:my-shop"
+            onChange={set('store_slug')} />
+        </Field>
+        <Field label="初始抽佣率(0~1,可选)" hint="例:0.05 表示抽佣 5%;留空则用平台默认值">
+          <Input value={form.commission_rate} placeholder="0.0500" inputMode="decimal"
+            error={err || undefined}
+            onChange={set('commission_rate')}
+            onKeyDown={(e) => { if (e.key === 'Enter') save(); }} />
+        </Field>
+      </div>
+    </Modal>
   );
 }
 

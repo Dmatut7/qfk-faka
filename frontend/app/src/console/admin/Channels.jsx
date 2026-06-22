@@ -330,11 +330,89 @@ export default function Channels({ api, session }) {
         ) : signErr ? (
           <Pill tone="danger">{signErr}</Pill>
         ) : signResult ? (
-          signResult.valid ? (
-            <Pill tone="success">验签通过(valid)</Pill>
-          ) : (
-            <Pill tone="danger">验签未通过(invalid)</Pill>
-          )
+          (() => {
+            // 后端当前 testSign 仅返回 { valid: bool };以下排障字段为「若存在则展示」的增强,
+            // 不存在时(失败)退化为 Pill 旁的可读错误文案,不臆造接口。
+            const r = signResult;
+            const signString = r.sign ?? r.signature ?? r.expected_sign ?? null;
+            const pendingString =
+              r.sign_string ?? r.sign_source ?? r.signing_string ?? r['待签名串'] ?? null;
+            const errorDetail = r.error ?? r.reason ?? r.message ?? r.detail ?? null;
+            const hasDetail = signString != null || pendingString != null || errorDetail != null;
+            const monoStyle = {
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+              fontSize: 12,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              margin: '4px 0 0',
+              padding: '8px 10px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--surface-sunken)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-body)',
+            };
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {r.valid ? (
+                  <Pill tone="success">验签通过(valid)</Pill>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <Pill tone="danger">验签未通过(invalid)</Pill>
+                    {/* 无详情字段时,失败 Pill 旁补一句可读错误文案 */}
+                    {!hasDetail ? (
+                      <span style={{ fontSize: 12.5, color: 'var(--danger-fg)' }}>
+                        签名校验失败:请检查渠道密钥(config.key)、商户 PID 与网关配置是否与支付平台一致。
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+
+                {hasDetail ? (
+                  <details open={!r.valid} style={{ marginTop: 2 }}>
+                    <summary
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        color: 'var(--brand-active)',
+                        userSelect: 'none',
+                      }}
+                    >
+                      排障详情
+                    </summary>
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {errorDetail != null ? (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            错误详情
+                          </div>
+                          <pre style={{ ...monoStyle, color: 'var(--danger-fg)' }}>
+                            {String(errorDetail)}
+                          </pre>
+                        </div>
+                      ) : null}
+                      {pendingString != null ? (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            待签名串
+                          </div>
+                          <pre style={monoStyle}>{String(pendingString)}</pre>
+                        </div>
+                      ) : null}
+                      {signString != null ? (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            签名串
+                          </div>
+                          <pre style={monoStyle}>{String(signString)}</pre>
+                        </div>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            );
+          })()
         ) : null}
       </Modal>
     </Panel>

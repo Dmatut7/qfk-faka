@@ -1,11 +1,24 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Money, Pill } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Money, Pill, StatCard } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
 
 const PAGE_SIZE = 20;
+
+// 商品类型(goods_type):1卡密 / 2知识 / 3资源 / 4权益
+const GOODS_TYPE = {
+  1: { label: '卡密', tone: 'brand' },
+  2: { label: '知识', tone: 'secure' },
+  3: { label: '资源', tone: 'pending' },
+  4: { label: '权益', tone: 'success' },
+};
+
+// 缺货红色角标:在售(status=1)但库存为 0
+function isOutOfStock(r) {
+  return Number(r.status) === 1 && Number(r.stock) <= 0;
+}
 
 export default function Products({ api, session }) {
   const [merchantId, setMerchantId] = React.useState('');
@@ -37,6 +50,11 @@ export default function Products({ api, session }) {
   const curPage = x.data?.page || page;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
+  // 统计:商品总数取后端 total;在售/下架/缺货按当前页列表计数(仅本页)
+  const onSaleCount = rows.filter((r) => Number(r.status) === 1).length;
+  const offShelfCount = rows.filter((r) => Number(r.status) !== 1).length;
+  const outOfStockCount = rows.filter((r) => isOutOfStock(r)).length;
+
   const columns = [
     { key: 'id', title: 'ID', width: 72, render: (r) => <span style={{ color: 'var(--text-muted)' }}>#{r.id}</span> },
     {
@@ -44,7 +62,10 @@ export default function Products({ api, session }) {
       title: '商品',
       render: (r) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{r.title}</div>
+          <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>{r.title}</span>
+            {isOutOfStock(r) ? <Pill tone="danger">缺货</Pill> : null}
+          </div>
           {r.sku ? <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.sku}</div> : null}
         </div>
       ),
@@ -56,8 +77,17 @@ export default function Products({ api, session }) {
       render: (r) => <Pill tone="neutral">商户 #{r.merchant_id}</Pill>,
     },
     {
-      key: 'type',
+      key: 'goods_type',
       title: '类型',
+      width: 96,
+      render: (r) => {
+        const t = GOODS_TYPE[Number(r.goods_type)];
+        return t ? <Pill tone={t.tone}>{t.label}</Pill> : <Pill tone="neutral">未知</Pill>;
+      },
+    },
+    {
+      key: 'type',
+      title: '发货方式',
       width: 110,
       render: (r) =>
         Number(r.type) === 1 ? (
@@ -73,7 +103,12 @@ export default function Products({ api, session }) {
       align: 'right',
       width: 90,
       render: (r) => (
-        <span style={{ color: Number(r.stock) <= 0 ? 'var(--danger-fg)' : 'inherit', fontWeight: Number(r.stock) <= 0 ? 700 : 400 }}>{r.stock}</span>
+        <span
+          title={isOutOfStock(r) ? '在售但库存为 0,已缺货' : undefined}
+          style={{ color: Number(r.stock) <= 0 ? 'var(--danger-fg)' : 'inherit', fontWeight: Number(r.stock) <= 0 ? 700 : 400 }}
+        >
+          {r.stock}{isOutOfStock(r) ? ' ⚠' : ''}
+        </span>
       ),
     },
     { key: 'sales_count', title: '销量', align: 'right', width: 90, render: (r) => <span>{r.sales_count}</span> },
@@ -100,6 +135,13 @@ export default function Products({ api, session }) {
         </Button>
       }
     >
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <StatCard label="商品总数" value={total} icon="Package" tone="brand" />
+        <StatCard label="在售(本页)" value={onSaleCount} icon="Check" tone="success" />
+        <StatCard label="下架(本页)" value={offShelfCount} icon="Inbox" tone="neutral" />
+        <StatCard label="缺货(本页)" value={outOfStockCount} icon="AlertTriangle" tone="danger" />
+      </div>
+
       <Toolbar
         right={
           <>
