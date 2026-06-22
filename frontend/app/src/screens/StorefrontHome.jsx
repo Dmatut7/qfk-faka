@@ -337,6 +337,54 @@ function PlatformNoticeBar({ notices }) {
 
 const GRID = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 };
 
+/* 商品类型分组陈列(对标鲸商城PRO 店铺首页按销售类型分组)。emoji 与演示站一致。 */
+const GOODS_TYPE_META = {
+  1: { name: '数字卡密', emoji: '⚡️' },
+  2: { name: '知识文章', emoji: '☘️' },
+  3: { name: '资源下载', emoji: '💎' },
+  4: { name: '数字权益', emoji: '👑' },
+};
+const GOODS_TYPE_ORDER = [1, 2, 3, 4];
+
+/* 把商品按 goods_type 分组,返回有序非空分组 [{type, meta, items}] */
+function groupByGoodsType(products) {
+  const buckets = new Map();
+  for (const p of products) {
+    const t = Number(p.goods_type ?? 1);
+    if (!buckets.has(t)) buckets.set(t, []);
+    buckets.get(t).push(p);
+  }
+  // 已知类型按固定顺序在前,未知类型(理论上无)兜底排后
+  const types = [...buckets.keys()].sort((a, b) => {
+    const ia = GOODS_TYPE_ORDER.indexOf(a), ib = GOODS_TYPE_ORDER.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+  return types.map((t) => ({
+    type: t,
+    meta: GOODS_TYPE_META[t] || { name: '其他商品', emoji: '📦' },
+    items: buckets.get(t),
+  }));
+}
+
+/* 类型分组小节:标题(emoji + 名称 + 计数)+ 2 列网格 */
+function GoodsTypeSection({ group, onSelect }) {
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 2px 12px' }}>
+        <span style={{ fontSize: 18 }} aria-hidden="true">{group.meta.emoji}</span>
+        <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>{group.meta.name}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-subtle)' }}>{group.items.length} 件</span>
+        <span style={{ flex: 1, height: 1, background: 'var(--border)', marginLeft: 6 }} />
+      </div>
+      <div style={GRID}>
+        {group.items.map((p) => (
+          <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StateWrap({ children }) {
   return (
     <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
@@ -563,11 +611,22 @@ export default function StorefrontHome({ shop, categories, products, loading, er
           </StateWrap>
         ) : (
           <>
-            <div style={GRID}>
-              {shown.map((p) => (
-                <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
-              ))}
-            </div>
+            {(() => {
+              const groups = groupByGoodsType(shown);
+              // 仅单一类型(如纯卡密店)→ 维持扁平网格,不加分组标题;多类型 → 按类型分组陈列
+              if (groups.length <= 1) {
+                return (
+                  <div style={GRID}>
+                    {shown.map((p) => (
+                      <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
+                    ))}
+                  </div>
+                );
+              }
+              return groups.map((g) => (
+                <GoodsTypeSection key={g.type} group={g} onSelect={onSelect} />
+              ));
+            })()}
             <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 28 }}>— 没有更多了 —</div>
           </>
         )}
