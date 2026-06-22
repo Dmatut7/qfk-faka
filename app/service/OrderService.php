@@ -33,8 +33,13 @@ class OrderService
         if ($productId <= 0 || $quantity <= 0) {
             throw new BizException(Code::PARAM_ERROR, '商品或数量参数错误');
         }
-        if (trim((string) ($input['buyer_email'] ?? '')) === '') {
+        $buyerEmail = trim((string) ($input['buyer_email'] ?? ''));
+        if ($buyerEmail === '') {
             throw new BizException(Code::PARAM_ERROR, '收货邮箱必填');
+        }
+        // 买家黑名单拦截(平台级,下单前 fail-fast)
+        if ((new BuyerBlacklistService())->isBlocked($buyerEmail)) {
+            throw new BizException(Code::FORBIDDEN, '该账号已被限制下单,如有疑问请联系客服');
         }
 
         $attempt = 0;

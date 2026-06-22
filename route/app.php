@@ -80,6 +80,11 @@ Route::group('admin', function () {
         Route::get('complaints', 'admin.Complaints/index');
         Route::post('complaints/:id/resolve', 'admin.Complaints/resolve');
         Route::post('complaints/:id/reject', 'admin.Complaints/reject');
+
+        // 买家黑名单
+        Route::get('blacklist', 'admin.Blacklist/index');
+        Route::post('blacklist', 'admin.Blacklist/add');
+        Route::post('blacklist/:id/remove', 'admin.Blacklist/remove');
         Route::get('products', 'admin.Products/index');
 
         // 系统日志

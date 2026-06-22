@@ -166,6 +166,9 @@ export const adminApi = {
   complaints: (params) => call('/admin/complaints' + qs(params)),
   resolveComplaint: (id, remark, refund) => call(`/admin/complaints/${id}/resolve`, { method: 'POST', body: { remark: remark || '', refund: refund ? 1 : 0 } }),
   rejectComplaint: (id, remark) => call(`/admin/complaints/${id}/reject`, { method: 'POST', body: { remark: remark || '' } }),
+  blacklist: (params) => call('/admin/blacklist' + qs(params)),
+  addBlacklist: (email, reason) => call('/admin/blacklist', { method: 'POST', body: { email, reason: reason || '' } }),
+  removeBlacklist: (id) => call(`/admin/blacklist/${id}/remove`, { method: 'POST' }),
   products: (params) => call('/admin/products' + qs(params)),
 
   logs: (params) => call('/admin/logs' + qs(params)),

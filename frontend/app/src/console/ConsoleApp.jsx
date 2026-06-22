@@ -42,6 +42,7 @@ const ADMIN_NAV = [
     { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
     { key: 'a-products', label: '商品(跨商户)', icon: 'Package' },
     { key: 'a-complaints', label: '投诉仲裁', icon: 'AlertTriangle' },
+    { key: 'a-blacklist', label: '买家黑名单', icon: 'Lock' },
   ] },
   { group: '财务', items: [
     { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },
