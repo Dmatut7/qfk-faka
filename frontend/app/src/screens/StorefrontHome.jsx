@@ -325,14 +325,40 @@ function StateWrap({ children }) {
 }
 
 /* 商品网格(2 列移动 / auto-fill ≥176 桌面) */
-const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(176px, 1fr))', gap: 10 };
+const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 };
 
 /* 排序项:综合 / 销量 / 上新 / 价格 */
 const SORTS = ['综合', '销量', '上新', '价格'];
 
+/* 知识/资源/权益:单列列表行(左缩略图 + 右标题/价/分类·已售) */
+function ProductListRow({ p, catName, onSelect }) {
+  const price = Number(p.price);
+  return (
+    <button type="button" onClick={() => onSelect && onSelect(p)}
+      style={{ display: 'flex', gap: 14, width: '100%', textAlign: 'left', padding: '14px 0', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+      <div style={{
+        width: 112, height: 112, flex: 'none', borderRadius: 'var(--radius-md)', overflow: 'hidden',
+        backgroundColor: 'var(--surface-sunken)', backgroundImage: p.image ? `url("${p.image}")` : 'none',
+        backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40,
+      }}>{!p.image && (p.thumb || '📦')}</div>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '2px 0' }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
+        <div style={{ marginTop: 8, color: 'var(--price-accent)', fontWeight: 800, fontSize: 19 }}>
+          {price <= 0 ? '免费' : <><span style={{ fontSize: 13 }}>¥</span>{price}</>}
+        </div>
+        <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12.5, color: 'var(--text-subtle)' }}>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{catName || ''}</span>
+          {p.sold != null && <span style={{ flex: 'none' }}>已售 {p.sold}</span>}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 export default function StorefrontHome({ shop, categories, products, loading, error, onReload, onSelect }) {
   const [cat, setCat] = React.useState('all');
-  const [typeFilter, setTypeFilter] = React.useState(null); // null=全部类型;否则 goods_type
+  const [typeFilter, setTypeFilter] = React.useState(1); // 默认卡密;按 goods_type 切换(下划线 Tab)
   const [query, setQuery] = React.useState('');
   const [sort, setSort] = React.useState('综合'); // 综合 / 销量 / 上新 / 价格
   const [priceDir, setPriceDir] = React.useState('desc'); // 价格排序方向
@@ -359,6 +385,8 @@ export default function StorefrontHome({ shop, categories, products, loading, er
     }
     return Array.from(seen, ([id, name]) => ({ id, name }));
   }, [categories, list]);
+
+  const catNameById = React.useMemo(() => Object.fromEntries(cats.map((c) => [String(c.id), c.name])), [cats]);
 
   const allCount = list.length;
   const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
@@ -397,16 +425,16 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       {/* 平台公告条(banner 之上) */}
       {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
 
-      {/* 店招封面横幅(淘宝橙 radial 渐变) */}
+      {/* 店招封面:有封面图则全屏照片主导;无则橙色渐变兜底 */}
       <div style={{
-        height: 150, position: 'relative', overflow: 'hidden',
-        background: 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
+        height: 200, position: 'relative', overflow: 'hidden',
+        background: store.cover ? '#1c1c22' : 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
       }}>
         {store.cover && (
-          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.34 }} />
+          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(255,193,77,.55), transparent 60%)' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,.10) 100%)' }} />
+        {!store.cover && <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(255,193,77,.55), transparent 60%)' }} />}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,.16) 0%, rgba(0,0,0,0) 28%, rgba(0,0,0,0) 70%, rgba(0,0,0,.14) 100%)' }} />
       </div>
 
       {/* 商家卡片 */}
@@ -476,8 +504,28 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         )}
       </div>
 
-      {/* 顶部销售类型卡 */}
-      {!loading && !error && <TypeSummaryCards counts={typeCounts} active={typeFilter} onPick={setTypeFilter} />}
+      {/* 销售类型下划线 Tab(卡密/知识/资源/权益)— 切换类型即切布局 */}
+      {!loading && !error && (
+        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', marginTop: 16 }}>
+          <div style={{ display: 'flex', gap: 28, borderBottom: '1px solid var(--border)' }}>
+            {[1, 2, 3, 4].map((t) => {
+              const m = GOODS_TYPE_META[t] || { short: '商品' };
+              const on = typeFilter === t;
+              return (
+                <button key={t} type="button" onClick={() => { setTypeFilter(t); setCat('all'); }} style={{
+                  position: 'relative', border: 'none', background: 'transparent', cursor: 'pointer',
+                  padding: '8px 2px 12px', fontFamily: 'var(--font-sans)',
+                  fontWeight: on ? 800 : 600, fontSize: 16,
+                  color: on ? 'var(--brand)' : 'var(--text-body)', transition: 'color .15s',
+                }}>
+                  {m.short}
+                  {on && <span style={{ position: 'absolute', left: '50%', bottom: 4, transform: 'translateX(-50%)', width: 24, height: 3, borderRadius: 2, background: 'var(--brand)' }} />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* 商品搜索框 */}
       {!loading && !error && (
@@ -602,18 +650,16 @@ export default function StorefrontHome({ shop, categories, products, loading, er
           <StateWrap>
             <Icons.Inbox size={44} color="var(--text-subtle)" />
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
-              {q ? '没有找到相关商品' : (cat === 'all' && !typeFilter ? '该店铺暂无在售商品' : '当前筛选下暂无商品')}
+              {q ? '没有找到相关商品' : (allCount === 0 ? '该店铺暂无在售商品' : '当前类型下暂无商品')}
             </div>
           </StateWrap>
-        ) : (
+        ) : typeFilter === 1 ? (
+          /* 卡密:2 列 image-led 网格 */
           <>
             <div ref={gridRef} style={GRID}>
               {shown.map((p) => {
-                const t = Number(p.goods_type ?? 1);
-                const meta = GOODS_TYPE_META[t] || { short: '商品' };
-                const isCard = t === 1;
-                // 卡密类用真实库存;非卡密(知识/资源/权益)恒有货,给一个正库存避免误判已售罄
-                const stock = isCard ? Number(p.stock ?? 0) : 999;
+                const meta = GOODS_TYPE_META[1] || { short: '卡密' };
+                const stock = Number(p.stock ?? 0);
                 const soldVal = p.sold != null ? p.sold : (p.sales_count != null ? p.sales_count : undefined);
                 return (
                   <ProductCard
@@ -634,6 +680,18 @@ export default function StorefrontHome({ shop, categories, products, loading, er
               })}
             </div>
             <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 24 }}>— 没有更多了 —</div>
+          </>
+        ) : (
+          /* 知识 / 资源 / 权益:单列列表(左缩略图 + 右标题/价/分类) */
+          <>
+            <div ref={gridRef}>
+              {shown.map((p) => (
+                <ProductListRow key={p.id} p={p}
+                  catName={p.category_id != null ? (catNameById[String(normId(p.category_id))] || '') : ''}
+                  onSelect={onSelect} />
+              ))}
+            </div>
+            <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 18 }}>— 没有更多了 —</div>
           </>
         )}
       </div>
