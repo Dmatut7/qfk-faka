@@ -37,8 +37,13 @@ class OrderService
         if ($buyerEmail === '') {
             throw new BizException(Code::PARAM_ERROR, '收货邮箱必填');
         }
-        // 买家黑名单拦截(平台级,下单前 fail-fast)
+        // 买家黑名单拦截(平台级,下单前 fail-fast)+ 风控留痕
         if ((new BuyerBlacklistService())->isBlocked($buyerEmail)) {
+            (new SystemLogService())->risk('blacklist_block', '黑名单买家下单被拦截 ' . $buyerEmail, [
+                'email'      => $buyerEmail,
+                'product_id' => $productId,
+                'ip'         => $input['client_ip'] ?? null,
+            ]);
             throw new BizException(Code::FORBIDDEN, '该账号已被限制下单,如有疑问请联系客服');
         }
 

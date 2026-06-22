@@ -101,6 +101,7 @@ Route::group('admin', function () {
 
         // 系统日志
         Route::get('logs', 'admin.Logs/index');
+        Route::get('risk-records', 'admin.Logs/risk');
 
         // 平台公告管理
         Route::get('announcements', 'admin.Announcements/index');

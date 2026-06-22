@@ -186,6 +186,7 @@ export const adminApi = {
   products: (params) => call('/admin/products' + qs(params)),
 
   logs: (params) => call('/admin/logs' + qs(params)),
+  riskRecords: (params) => call('/admin/risk-records' + qs(params)),
 
   announcements: () => call('/admin/announcements'),
   createAnnouncement: (d) => call('/admin/announcements', { method: 'POST', body: d }),

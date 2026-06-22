@@ -17,4 +17,10 @@ class Logs extends BaseApiController
         $filter = $this->params(['type', 'level']);
         return $this->success($svc->list($filter, (int) $this->input('page', 1)));
     }
+
+    /** 风控记录:黑名单拦截 + 支付异常聚合 */
+    public function risk(SystemLogService $svc)
+    {
+        return $this->success($svc->riskList((int) $this->input('page', 1)));
+    }
 }

@@ -58,6 +58,25 @@ class SystemLogService
     }
 
     /**
+     * 记录一条风控事件(type=risk_event)。risk 为风险子类型(如 blacklist_block)。
+     * 旁路设施,失败绝不影响主流程。
+     */
+    public function risk(string $risk, string $message, array $context = []): void
+    {
+        $this->record('risk_event', SystemLog::LEVEL_WARNING, $message, array_merge(['risk' => $risk], $context));
+    }
+
+    /** 风控记录:聚合黑名单拦截(risk_event)与支付异常(settle_exception),按时间倒序分页。 */
+    public function riskList(int $page = 1, int $size = 20): array
+    {
+        $page = $page > 0 ? $page : 1;
+        $q = SystemLog::whereIn('type', ['risk_event', 'settle_exception'])->order('id', 'desc');
+        $total = $q->count();
+        $items = $q->page($page, $size)->select()->toArray();
+        return ['total' => $total, 'page' => $page, 'items' => $items];
+    }
+
+    /**
      * 分页查询(可按 type / level 筛选),按时间倒序。
      * 返回 {total, page, items}。
      */
