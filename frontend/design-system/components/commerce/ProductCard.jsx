@@ -36,6 +36,13 @@ const CSS = `
 .mk-pc__cart{ flex:none; width:30px; height:30px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; background:var(--brand-gradient); color:#fff; cursor:pointer; box-shadow:0 3px 8px rgba(255,80,0,.3); }
 .mk-pc__cart:active{ transform:scale(.92); }
 .mk-pc__cart svg{ width:16px; height:16px; }
+
+/* 紧凑卡(无图):用小标签行替代大图,适配发卡纯文字商品(如卡密码) */
+.mk-pc--compact .mk-pc__body{ padding:12px; gap:9px; min-height:104px; }
+.mk-pc--compact .mk-pc__title{ font-size:15.5px; }
+.mk-pc__tagrow{ display:flex; align-items:center; gap:6px; padding:12px 12px 0; }
+.mk-pc__type--inline{ position:static; height:20px; background:var(--brand-soft); color:var(--brand-active); backdrop-filter:none; }
+.mk-pc__corner--inline{ position:static; }
 `;
 if (typeof document !== 'undefined' && !document.getElementById('mk-pc-css')) {
   const s = document.createElement('style'); s.id = 'mk-pc-css'; s.textContent = CSS; document.head.appendChild(s);
@@ -47,21 +54,30 @@ export function ProductCard({
 }) {
   const out = stock <= 0;
   const low = !out && stock > 0 && stock <= 5;
+  const compact = !image; // 无图 → 紧凑文字卡(发卡:卡密/权益类多为纯文字商品)
+  const corner = out
+    ? <span className={'mk-pc__corner mk-pc__corner--out' + (compact ? ' mk-pc__corner--inline' : '')}>已售罄</span>
+    : promo
+      ? <span className={'mk-pc__corner mk-pc__corner--promo' + (compact ? ' mk-pc__corner--inline' : '')}>限时</span>
+      : low ? <span className={'mk-pc__corner mk-pc__corner--low' + (compact ? ' mk-pc__corner--inline' : '')}>仅剩 {stock}</span> : null;
   return (
     <div
-      className={['mk-pc', out ? 'mk-pc--out' : '', className].filter(Boolean).join(' ')}
+      className={['mk-pc', out ? 'mk-pc--out' : '', compact ? 'mk-pc--compact' : '', className].filter(Boolean).join(' ')}
       onClick={out ? undefined : onClick} {...rest}
     >
-      <div className="mk-pc__media">
-        {image ? <img src={image} alt="" /> : <span className="mk-pc__emoji">{thumb}</span>}
-        {typeLabel && <span className="mk-pc__type">{typeLabel}</span>}
-        {out
-          ? <span className="mk-pc__corner mk-pc__corner--out">已售罄</span>
-          : promo
-            ? <span className="mk-pc__corner mk-pc__corner--promo">限时</span>
-            : low ? <span className="mk-pc__corner mk-pc__corner--low">仅剩 {stock}</span> : null}
-        {!image && category && <span className="mk-pc__cat">{category}</span>}
-      </div>
+      {compact ? (
+        <div className="mk-pc__tagrow">
+          {typeLabel && <span className="mk-pc__type mk-pc__type--inline">{typeLabel}</span>}
+          {corner}
+          {category && <span className="mk-pc__sold" style={{ marginLeft: 'auto' }}>{category}</span>}
+        </div>
+      ) : (
+        <div className="mk-pc__media">
+          <img src={image} alt="" />
+          {typeLabel && <span className="mk-pc__type">{typeLabel}</span>}
+          {corner}
+        </div>
+      )}
       <div className="mk-pc__body">
         <div className="mk-pc__title">
           {promo && <span className="mk-pc__promo">{promo}</span>}{name}
