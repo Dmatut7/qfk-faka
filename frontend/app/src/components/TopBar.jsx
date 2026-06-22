@@ -16,7 +16,7 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
       {/* 顶栏高度抽成全局 CSS 变量,供 sticky 分类 tab 等用 top:var(--topbar-h) 对齐,避免硬编码 60。 */}
       <style>{`
         :root{ --topbar-h:60px; }
-        @media(max-width:380px){ .mk-topbar-navlabel{ display:none; } }
+        @media(max-width:480px){ .mk-topbar-navlabel{ display:none; } .mk-topbar-intro{ display:none; } .mk-cta-full{ display:none; } }
         .mk-topbar-navbtn{ height:44px; padding:0 10px; }
         .mk-topbar-navbtn span{ font-size:13px; }
         .mk-topbar-logo{
@@ -76,7 +76,7 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
                 {title || shopName || '极客发卡'}
               </span>
               {!title && shopIntro && (
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                <span className="mk-topbar-intro" style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {shopIntro}
                 </span>
               )}
@@ -128,7 +128,7 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
               style={{ borderRadius: 'var(--radius-pill)' }}
               iconLeft={<Icons.Package size={16} color="var(--brand)" />}
             >
-              取卡 / 查单
+              取卡<span className="mk-cta-full"> / 查单</span>
             </Button>
           </div>
         </div>
