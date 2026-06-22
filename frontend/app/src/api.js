@@ -82,6 +82,8 @@ export const api = {
   article: (id) => call(`/index/articles/${encodeURIComponent(id)}`),
   /** 门户平台统计(公开,非敏感计数):{ merchants, products, orders } */
   platformStats: () => call('/index/platformStats'),
+  /** 门户禁售目录(公开,按类目分组):{ groups:[{category, items:[{title,description}]}] } */
+  forbiddenCatalog: () => call('/index/forbidden'),
   /** 下单:返回 { order_no,total_amount,quantity,expire_at,status };queryPassword 选填(设置后可凭密码查单) */
   createOrder: ({ productId, quantity, email, queryPassword, couponCode }) =>
     call('/buyer/order', {

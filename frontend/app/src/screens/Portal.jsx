@@ -6,7 +6,7 @@ import { Button } from '../../../design-system/components/core/Button.jsx';
 /* 门户首页(平台 SaaS 落地页,对标鲸商城PRO 网站首页)。
    Hero + 平台数据 + 最新资讯 + 入口(进入商城/订单查询/常见问题/开通小店)。
    纯前端,数据来自已就绪的门户公开 API。 */
-export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq }) {
+export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq, onForbidden }) {
   const siteName = config?.site?.name || '秒卡发卡';
   const [stats, setStats] = React.useState(null);
   const [news, setNews] = React.useState([]);
@@ -30,6 +30,7 @@ export default function Portal({ config, onEnterShop, onLookup, onNews, onFaq })
     { label: '订单查询', icon: 'Search', tone: 'success', onClick: onLookup },
     { label: '常见问题', icon: 'Headset', tone: 'secure', onClick: onFaq },
     { label: '最新资讯', icon: 'Megaphone', tone: 'pending', onClick: onNews },
+    { label: '禁售目录', icon: 'Lock', tone: 'danger', onClick: onForbidden },
     { label: '开通小店', icon: 'ShieldCheck', tone: 'brand', onClick: openConsole },
     { label: '商家中心', icon: 'Lock', tone: 'neutral', onClick: openConsole },
   ];

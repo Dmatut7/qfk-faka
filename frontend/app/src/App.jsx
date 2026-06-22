@@ -6,6 +6,7 @@ import PaymentScreen from './screens/PaymentScreen.jsx';
 import OrderLookup from './screens/OrderLookup.jsx';
 import Articles from './screens/Articles.jsx';
 import Portal from './screens/Portal.jsx';
+import Forbidden from './screens/Forbidden.jsx';
 import PlatformKefu from './components/PlatformKefu.jsx';
 import { api, normalizeProduct } from './api.js';
 
@@ -82,6 +83,7 @@ export default function App() {
     screen === 'news' ? { back: true, onBack: () => go('home'), title: '最新资讯' } :
     screen === 'faq' ? { back: true, onBack: () => go('home'), title: '常见问题' } :
     screen === 'portal' ? { back: true, onBack: () => go('home'), title: '平台首页' } :
+    screen === 'forbidden' ? { back: true, onBack: () => go('home'), title: '禁售目录' } :
     {};
 
   return (
@@ -139,8 +141,11 @@ export default function App() {
           onLookup={() => { setResult(null); go('lookup'); }}
           onNews={() => go('news')}
           onFaq={() => go('faq')}
+          onForbidden={() => go('forbidden')}
         />
       )}
+
+      {screen === 'forbidden' && <Forbidden onBack={() => go('home')} />}
 
       {/* 全局平台客服悬浮按钮(买家所有页面共用,区别于店铺商户客服) */}
       <PlatformKefu kefu={config?.kefu} />

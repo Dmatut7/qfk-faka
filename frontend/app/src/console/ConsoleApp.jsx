@@ -51,6 +51,7 @@ const ADMIN_NAV = [
   ] },
   { group: '运营', items: [
     { key: 'a-content', label: '内容管理', icon: 'Megaphone' },
+    { key: 'a-forbidden', label: '禁售目录', icon: 'Lock' },
     { key: 'a-channels', label: '支付渠道', icon: 'Zap' },
   ] },
   { group: '系统', items: [

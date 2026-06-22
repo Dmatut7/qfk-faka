@@ -21,6 +21,7 @@ Route::group('index', function () {
     Route::get('articles', 'index.Articles/list');
     Route::get('articles/:id', 'index.Articles/detail');
     Route::get('platformStats', 'index.Platform/stats');
+    Route::get('forbidden', 'index.Forbidden/index');
 });
 
 // ============ 买家前台 buyer(公开) ============
@@ -87,6 +88,12 @@ Route::group('admin', function () {
         Route::get('blacklist', 'admin.Blacklist/index');
         Route::post('blacklist', 'admin.Blacklist/add');
         Route::post('blacklist/:id/remove', 'admin.Blacklist/remove');
+
+        // 禁售目录
+        Route::get('forbidden', 'admin.Forbidden/index');
+        Route::post('forbidden', 'admin.Forbidden/create');
+        Route::post('forbidden/:id', 'admin.Forbidden/update');
+        Route::post('forbidden/:id/delete', 'admin.Forbidden/delete');
         Route::get('products', 'admin.Products/index');
 
         // 系统日志

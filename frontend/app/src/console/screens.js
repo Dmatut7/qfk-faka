@@ -26,6 +26,7 @@ import AdminCronJobs from './admin/CronJobs.jsx';
 import AdminComplaints from './admin/Complaints.jsx';
 import AdminBlacklist from './admin/Blacklist.jsx';
 import AdminOperationLogs from './admin/OperationLogs.jsx';
+import AdminForbidden from './admin/Forbidden.jsx';
 
 export const SCREENS = {
   // 商户后台
@@ -56,4 +57,5 @@ export const SCREENS = {
   'a-complaints': AdminComplaints,
   'a-blacklist': AdminBlacklist,
   'a-oplog': AdminOperationLogs,
+  'a-forbidden': AdminForbidden,
 };

@@ -174,6 +174,10 @@ export const adminApi = {
   blacklist: (params) => call('/admin/blacklist' + qs(params)),
   addBlacklist: (email, reason) => call('/admin/blacklist', { method: 'POST', body: { email, reason: reason || '' } }),
   removeBlacklist: (id) => call(`/admin/blacklist/${id}/remove`, { method: 'POST' }),
+  forbidden: () => call('/admin/forbidden'),
+  createForbidden: (d) => call('/admin/forbidden', { method: 'POST', body: d }),
+  updateForbidden: (id, d) => call(`/admin/forbidden/${id}`, { method: 'POST', body: d }),
+  deleteForbidden: (id) => call(`/admin/forbidden/${id}/delete`, { method: 'POST' }),
   products: (params) => call('/admin/products' + qs(params)),
 
   logs: (params) => call('/admin/logs' + qs(params)),
