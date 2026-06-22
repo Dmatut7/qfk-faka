@@ -74,6 +74,12 @@ Route::group('admin', function () {
         Route::post('announcements/:id', 'admin.Announcements/update');
         Route::post('announcements/:id/delete', 'admin.Announcements/delete');
 
+        // 门户内容管理(资讯/常见问题/单页)
+        Route::get('articles', 'admin.Articles/index');
+        Route::post('articles', 'admin.Articles/create');
+        Route::post('articles/:id', 'admin.Articles/update');
+        Route::post('articles/:id/delete', 'admin.Articles/delete');
+
         // 注册邀请码管理
         Route::get('invite-codes', 'admin.InviteCodes/index');
         Route::post('invite-codes', 'admin.InviteCodes/create');
