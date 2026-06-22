@@ -17,6 +17,7 @@ const MERCHANT_NAV = [
   ] },
   { group: '交易', items: [
     { key: 'm-orders', label: '订单管理', icon: 'Search' },
+    { key: 'm-complaints', label: '投诉处理', icon: 'AlertTriangle' },
   ] },
   { group: '营销', items: [
     { key: 'm-coupons', label: '优惠券', icon: 'Star' },
@@ -40,6 +41,7 @@ const ADMIN_NAV = [
   { group: '交易', items: [
     { key: 'a-orders', label: '订单(跨商户)', icon: 'Search' },
     { key: 'a-products', label: '商品(跨商户)', icon: 'Package' },
+    { key: 'a-complaints', label: '投诉仲裁', icon: 'AlertTriangle' },
   ] },
   { group: '财务', items: [
     { key: 'a-withdrawals', label: '提现审核', icon: 'RefreshCw' },

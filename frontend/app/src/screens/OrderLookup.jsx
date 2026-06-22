@@ -211,7 +211,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       )}
 
       {/* 结果区 */}
-      {result && <OrderResult result={result} flashToast={flashToast} />}
+      {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} />}
 
       {/* toast */}
       <div role="status" aria-live="polite" aria-atomic="true">
@@ -233,12 +233,14 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
 const DELIVER_NOUN = { 1: '卡密', 2: '内容', 3: '资源', 4: '权益' };
 const deliverNoun = (gt) => DELIVER_NOUN[Number(gt) || 1] || '卡密';
 
-function OrderResult({ result, flashToast }) {
+function OrderResult({ result, flashToast, contactEmail = '' }) {
   const r = result;
   const statusNum = Number(r.status);
   const key = statusKey(statusNum);
   const cards = Array.isArray(r.cards) ? r.cards : [];
   const noun = deliverNoun(r.goods_type);
+  // 已收款订单(已发货/异常/已退款)可申请售后
+  const canComplain = [STATUS.DELIVERED, STATUS.EXCEPTION, 4].includes(statusNum);
 
   // 商品信息:订单里可能没有完整商品对象,做优雅缺省
   const prod = r.product ? normalizeProduct(r.product) : null;
@@ -374,7 +376,86 @@ function OrderResult({ result, flashToast }) {
             <SupportHint text="请联系客服并提供本订单号,我们会优先为您处理。" />
           </div>
         )}
+
+        {/* 申请售后 / 投诉(已收款订单) */}
+        {canComplain && <ComplaintBox orderNo={r.order_no} defaultEmail={contactEmail} flashToast={flashToast} />}
       </div>
+    </div>
+  );
+}
+
+const COMPLAINT_TYPES = [
+  { v: 1, label: '未收到货' },
+  { v: 2, label: '卡密/内容无效' },
+  { v: 3, label: '与描述不符' },
+  { v: 4, label: '其他问题' },
+];
+
+/* 售后投诉:填写邮箱(预填查单邮箱)+ 类型 + 描述,提交后展示进度 */
+function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
+  const [open, setOpen] = React.useState(false);
+  const [email, setEmail] = React.useState(defaultEmail || '');
+  const [type, setType] = React.useState(2);
+  const [desc, setDesc] = React.useState('');
+  const [busy, setBusy] = React.useState(false);
+  const [err, setErr] = React.useState('');
+  const [done, setDone] = React.useState(false);
+
+  const submit = async () => {
+    setErr('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setErr('请填写下单时的邮箱以核验身份'); return; }
+    if (!desc.trim()) { setErr('请描述遇到的问题'); return; }
+    setBusy(true);
+    try {
+      await api.fileComplaint({ orderNo, email: email.trim(), type, description: desc.trim() });
+      setDone(true);
+      flashToast && flashToast('已提交售后申请');
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : '提交失败,请稍后重试');
+    } finally { setBusy(false); }
+  };
+
+  if (done) {
+    return (
+      <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', fontSize: 12.5, color: 'var(--success-fg)', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Icons.Check size={16} color="var(--success-solid)" />售后申请已提交,商户会尽快处理;若未解决可在此页再次申请平台介入。
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+      {!open ? (
+        <button onClick={() => setOpen(true)} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border-strong)',
+          background: '#fff', borderRadius: 'var(--radius-pill)', padding: '8px 14px', cursor: 'pointer',
+          fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 700, color: 'var(--text-strong)',
+        }}><Icons.AlertTriangle size={15} color="var(--pending-solid)" />遇到问题?申请售后</button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {err ? <div style={{ fontSize: 12.5, color: 'var(--danger-fg)' }}>{err}</div> : null}
+          <Input label="下单邮箱(核验身份)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          <div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>问题类型</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {COMPLAINT_TYPES.map((t) => (
+                <button key={t.v} onClick={() => setType(t.v)} style={{
+                  padding: '6px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                  fontFamily: 'var(--font-sans)',
+                  border: type === t.v ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                  background: type === t.v ? 'var(--brand-soft)' : '#fff',
+                  color: type === t.v ? 'var(--brand-active)' : 'var(--text-muted)',
+                }}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+          <Input label="问题描述" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="请描述遇到的问题,便于商户和平台处理" />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="primary" size="md" onClick={submit} loading={busy}>提交申请</Button>
+            <Button variant="ghost" size="md" onClick={() => setOpen(false)} disabled={busy}>取消</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

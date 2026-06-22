@@ -95,6 +95,15 @@ export const api = {
   /** 优惠券试算:{ coupon_id, code, original_amount, discount, final_amount };不可用抛 ApiError */
   validateCoupon: ({ code, productId, quantity = 1 }) =>
     call('/buyer/coupon/validate', { method: 'POST', body: { code, product_id: productId, quantity } }),
+  /** 发起投诉(order_no+邮箱核验) */
+  fileComplaint: ({ orderNo, email, type, description }) =>
+    call('/buyer/complaint', { method: 'POST', body: { order_no: orderNo, email, type, description } }),
+  /** 查订单投诉列表 */
+  queryComplaints: ({ orderNo, email }) =>
+    call('/buyer/complaint/query', { method: 'POST', body: { order_no: orderNo, email } }),
+  /** 申请平台介入 */
+  escalateComplaint: ({ id, orderNo, email }) =>
+    call(`/buyer/complaint/${encodeURIComponent(id)}/escalate`, { method: 'POST', body: { order_no: orderNo, email } }),
   /** 发起支付:返回 { payment_no, pay:{ method,url,params{...,sign} } } */
   pay: (orderNo, channel = PAY_CHANNEL) =>
     call(`/buyer/order/${encodeURIComponent(orderNo)}/pay`, { method: 'POST', body: { channel } }),

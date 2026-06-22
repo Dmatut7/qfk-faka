@@ -101,6 +101,9 @@ export const merchantApi = {
   updateCoupon: (id, d) => call(`/merchant/coupons/${id}`, { method: 'POST', body: d }),
   deleteCoupon: (id) => call(`/merchant/coupons/${id}/delete`, { method: 'POST' }),
 
+  complaints: (params) => call('/merchant/complaints' + qs(params)),
+  replyComplaint: (id, reply) => call(`/merchant/complaints/${id}/reply`, { method: 'POST', body: { reply } }),
+
   products: (params) => call('/merchant/products' + qs(params)),
   createProduct: (d) => call('/merchant/products', { method: 'POST', body: d }),
   updateProduct: (id, d) => call(`/merchant/products/${id}`, { method: 'POST', body: d }),
@@ -160,6 +163,9 @@ export const adminApi = {
 
   orders: (params) => call('/admin/orders' + qs(params)),
   refundOrder: (id, reason) => call(`/admin/orders/${id}/refund`, { method: 'POST', body: { reason: reason || '' } }),
+  complaints: (params) => call('/admin/complaints' + qs(params)),
+  resolveComplaint: (id, remark, refund) => call(`/admin/complaints/${id}/resolve`, { method: 'POST', body: { remark: remark || '', refund: refund ? 1 : 0 } }),
+  rejectComplaint: (id, remark) => call(`/admin/complaints/${id}/reject`, { method: 'POST', body: { remark: remark || '' } }),
   products: (params) => call('/admin/products' + qs(params)),
 
   logs: (params) => call('/admin/logs' + qs(params)),

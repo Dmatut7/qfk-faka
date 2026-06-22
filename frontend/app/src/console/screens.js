@@ -6,6 +6,7 @@ import MerchantCategories from './merchant/Categories.jsx';
 import MerchantCards from './merchant/Cards.jsx';
 import MerchantOrders from './merchant/Orders.jsx';
 import MerchantCoupons from './merchant/Coupons.jsx';
+import MerchantComplaints from './merchant/Complaints.jsx';
 import MerchantWallet from './merchant/Wallet.jsx';
 
 import AdminDashboard from './admin/Dashboard.jsx';
@@ -21,6 +22,7 @@ import AdminSettings from './admin/Settings.jsx';
 import AdminLogs from './admin/Logs.jsx';
 import AdminBigScreen from './admin/BigScreen.jsx';
 import AdminCronJobs from './admin/CronJobs.jsx';
+import AdminComplaints from './admin/Complaints.jsx';
 
 export const SCREENS = {
   // 商户后台
@@ -30,6 +32,7 @@ export const SCREENS = {
   'm-categories': MerchantCategories,
   'm-cards': MerchantCards,
   'm-orders': MerchantOrders,
+  'm-complaints': MerchantComplaints,
   'm-coupons': MerchantCoupons,
   'm-wallet': MerchantWallet,
   // 平台后台
@@ -46,4 +49,5 @@ export const SCREENS = {
   'a-settings': AdminSettings,
   'a-logs': AdminLogs,
   'a-cron': AdminCronJobs,
+  'a-complaints': AdminComplaints,
 };
