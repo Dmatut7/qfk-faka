@@ -93,7 +93,8 @@ class CouponService
             throw new BizException(Code::NOT_FOUND, '商品不存在');
         }
         $qty         = max(1, $quantity);
-        $orderAmount = Money::mul((string) $product->price, (string) $qty);
+        // 用应收单价(含限时折扣),与 PricingService/OrderService 口径一致
+        $orderAmount = Money::mul($product->effectivePrice(), (string) $qty);
 
         $coupon   = $this->findUsable((int) $product->merchant_id, $code, $orderAmount);
         $discount = $this->computeDiscount($coupon, $orderAmount);

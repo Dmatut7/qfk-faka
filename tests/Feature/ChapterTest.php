@@ -56,6 +56,17 @@ class ChapterTest extends TestCase
         $this->assertNull(ProductChapter::find($cid));
     }
 
+    public function testChapterContentSanitizedOnSave(): void
+    {
+        $r = $this->callJson('POST', '/merchant/products/' . $this->p->id . '/chapters', [
+            'title' => '注入', 'content' => '<p>正文</p><script>steal()</script><img src=x onerror=alert(1)>',
+        ], $this->mtok());
+        $c = ProductChapter::find($r['data']['id']);
+        $this->assertStringNotContainsString('<script', (string) $c->content);
+        $this->assertStringNotContainsString('onerror', (string) $c->content);
+        $this->assertStringContainsString('<p>正文</p>', (string) $c->content);
+    }
+
     public function testCannotManageOthersChapters(): void
     {
         $other = $this->makeMerchant();

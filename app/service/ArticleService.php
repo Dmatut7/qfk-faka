@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Article;
+use app\util\Html;
 
 /**
  * 门户内容(资讯/FAQ/单页)管理:后台 CRUD + 门户公开查询(列表/详情)。
@@ -72,7 +73,7 @@ class ArticleService
             'title'    => $title,
             'summary'  => trim((string) ($d['summary'] ?? '')),
             'category' => trim((string) ($d['category'] ?? '')),
-            'content'  => $content,
+            'content'  => Html::sanitize($content),
             'status'   => $this->normalizeStatus($d['status'] ?? Article::STATUS_PUBLISHED),
             'sort'     => (int) ($d['sort'] ?? 0),
         ]);
@@ -100,7 +101,7 @@ class ArticleService
             $update['category'] = trim((string) $d['category']);
         }
         if (array_key_exists('content', $d)) {
-            $content = (string) $d['content'];
+            $content = Html::sanitize((string) $d['content']);
             if ($content === '') {
                 throw new BizException(Code::PARAM_ERROR, '内容不能为空');
             }

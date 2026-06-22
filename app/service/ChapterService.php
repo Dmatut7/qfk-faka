@@ -8,6 +8,7 @@ use app\common\Code;
 use app\model\Order;
 use app\model\Product;
 use app\model\ProductChapter;
+use app\util\Html;
 
 /**
  * 知识类商品章节:商户 CRUD + 购前目录(仅标题)+ 购后阅读(验证订单归属、已发货)。
@@ -36,7 +37,7 @@ class ChapterService
             'product_id'  => $productId,
             'merchant_id' => $merchantId,
             'title'       => $title,
-            'content'     => (string) ($d['content'] ?? ''),
+            'content'     => Html::sanitize((string) ($d['content'] ?? '')),
             'sort'        => (int) ($d['sort'] ?? 0),
             'status'      => isset($d['status']) ? ((int) $d['status'] === 0 ? 0 : 1) : ProductChapter::STATUS_ON,
         ]);
@@ -46,6 +47,9 @@ class ChapterService
     {
         $c = $this->ownedChapter($merchantId, $id);
         $patch = array_intersect_key($d, array_flip(self::EDITABLE));
+        if (array_key_exists('content', $patch)) {
+            $patch['content'] = Html::sanitize((string) $patch['content']);
+        }
         if (array_key_exists('title', $patch)) {
             $title = trim((string) $patch['title']);
             if ($title === '') {

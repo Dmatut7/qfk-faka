@@ -119,6 +119,21 @@ class CouponTest extends TestCase
         $this->assertSame('0.01', $r['data']['final_amount']);
     }
 
+    public function testValidateUsesTimedDiscountPrice(): void
+    {
+        // 商品 100,限时折扣价 60 生效 → 券试算原价应按 60(与下单/preview 同口径)
+        $m = $this->makeMerchant();
+        $p = Product::create([
+            'merchant_id' => $m->id, 'title' => 'p', 'price' => '100.00', 'status' => Product::STATUS_ON,
+            'discount_price' => '60.00', 'discount_start' => date('Y-m-d H:i:s', strtotime('-1 hour')), 'discount_end' => date('Y-m-d H:i:s', strtotime('+1 hour')),
+        ]);
+        $c = $this->coupon((int) $m->id, ['type' => Coupon::TYPE_AMOUNT, 'value' => '10.00', 'min_amount' => '0.00']);
+        $r = $this->validate((int) $p->id, $c->code, 1);
+        $this->assertSame(0, $r['code']);
+        $this->assertSame('60.00', $r['data']['original_amount']); // 折后价,非 100
+        $this->assertSame('50.00', $r['data']['final_amount']);    // 60 - 10
+    }
+
     // ===== 不可用情形 =====
     public function testExpiredCouponRejected(): void
     {

@@ -356,7 +356,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
                 placeholder="输入券码"
                 icon={<Icons.Star size={18} />}
                 value={couponCode}
-                onChange={(e) => { setCouponCode(e.target.value); setCouponInfo(null); setCouponErr(''); }}
+                onChange={(e) => { setCouponCode(e.target.value); setAppliedCoupon(''); setCouponErr(''); }}
                 error={couponErr}
               />
             </div>
