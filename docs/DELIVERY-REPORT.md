@@ -2,6 +2,17 @@
 
 > 一夜自驱迭代成果。每轮都 `composer test` + `vite build` + 无头浏览器 e2e 守绿才提交。
 
+## 🟠 UI 落地:淘宝商业橙(2026-06-22 全面接入新设计)
+
+业主在 Claude Design 定稿淘宝商业橙设计系统后,**全面接入真实四端**(不再是设计稿),要求"整个前端用新设计、包括后台、不要老的"。成果:
+
+- **设计系统**:`frontend/design-system/` 整体换为淘宝橙(主色 `#FF5000` / 价格红 `#FA2C19`);store 默认主题→橙;详见 [DESIGN-SYSTEM-CHANGELOG.md](./DESIGN-SYSTEM-CHANGELOG.md)。
+- **买家前台 6 屏接入新淘宝布局**:`StorefrontHome / ProductDetail / OrderLookup / PaymentScreen / TopBar / Portal`——image-led 商品卡、大红价、促销角标、店招三联统计、底部 sticky 购买条、橙 Hero。**全部保留原业务逻辑/API/状态机,仅重写渲染与配色。**
+- **后台对齐新设计**:双层侧栏 + `StatCard` 橙实底 hero(今日成交额)+ 仪表盘问候卡橙渐变 + 大屏 accent 橙+语义;全后台共用 `console/ui.jsx` 原语 → 一致新风。
+- **零残留旧色**:全 `frontend/app/src` 已无蓝/靛/紫硬编码(语义色除外)。
+- **验证**:`npm run build` 绿;买家端到端(下单→验签回调→取卡,卡密成功展示)通过;`composer test` 430 测试全绿(后端未改)。四端截图:`frontend/app/e2e/newui/`。
+- 工作记录:`docs/ui-relaunch/{spec,tasks}.md`;实现分支 `ui-orange-relaunch`。
+
 ## 怎么访问
 - 后端:`php think run -p 8765`(已在跑)
 - 前端:`cd frontend/app && npm run dev` →
