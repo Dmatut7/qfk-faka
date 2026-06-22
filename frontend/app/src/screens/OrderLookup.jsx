@@ -3,7 +3,7 @@ import { Button } from '../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../design-system/components/core/Input.jsx';
 import { CardKey } from '../../../design-system/components/commerce/CardKey.jsx';
 import { OrderStatusBadge } from '../../../design-system/components/commerce/OrderStatusBadge.jsx';
-import { api, normalizeProduct, statusKey, STATUS, ApiError } from '../api.js';
+import { api, normalizeProduct, statusKey, STATUS, ApiError, BASE } from '../api.js';
 import { Icons } from '../Icons.jsx';
 
 /* status → 中文 label(OrderStatusBadge 的 MAP 没有 exception,统一在这里自传 label) */
@@ -381,6 +381,18 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
 
         {/* 知识类:站内阅读章节 */}
         {canRead && <ChapterReader orderNo={r.order_no} email={contactEmail} password={contactPassword} />}
+
+        {/* 资源类:限时签名下载链 */}
+        {statusNum === STATUS.DELIVERED && r.download_url && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+            <a href={BASE + r.download_url} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, border: 'none', textDecoration: 'none',
+              background: 'var(--brand)', color: '#fff', borderRadius: 'var(--radius-pill)', padding: '11px 20px',
+              fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 800,
+            }}><Icons.Package size={17} color="#fff" />下载资源</a>
+            <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 8 }}>链接有效期 30 分钟,过期请重新查单获取。</div>
+          </div>
+        )}
 
         {/* 申请售后 / 投诉(已收款订单) */}
         {canComplain && <ComplaintBox orderNo={r.order_no} defaultEmail={contactEmail} flashToast={flashToast} />}

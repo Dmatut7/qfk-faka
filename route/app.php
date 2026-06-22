@@ -29,6 +29,7 @@ Route::get('s/:slug', 'buyer.Shop/store');
 Route::get('buyer/product/:id', 'buyer.Shop/product');
 Route::get('buyer/product/:id/chapters', 'buyer.Shop/chapters'); // 知识类目录(购前)
 Route::post('buyer/order/chapters', 'buyer.Order/chapters'); // 购后阅读(验证归属)
+Route::get('buyer/download/:orderNo', 'buyer.Download/go')->middleware(\app\middleware\RateLimit::class, 60, 60); // 资源防盗链(限时签名)
 Route::post('buyer/order', 'buyer.Order/create')->middleware(\app\middleware\RateLimit::class, 30, 60); // 30 次/分
 Route::post('buyer/order/query', 'buyer.Order/query');
 Route::post('buyer/order/:no/pay', 'buyer.Order/pay');

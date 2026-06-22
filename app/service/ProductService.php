@@ -15,7 +15,7 @@ use app\util\Money;
  */
 class ProductService
 {
-    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'discount_price', 'discount_start', 'discount_end', 'type', 'goods_type', 'min_buy', 'max_buy', 'delivery_message', 'purchase_notice', 'show_stock_type', 'sort'];
+    private const EDITABLE = ['category_id', 'title', 'sku', 'description', 'image', 'price', 'market_price', 'discount_price', 'discount_start', 'discount_end', 'type', 'goods_type', 'min_buy', 'max_buy', 'delivery_message', 'resource_url', 'purchase_notice', 'show_stock_type', 'sort'];
 
     public function list(int $merchantId, array $filter = []): array
     {
@@ -55,6 +55,7 @@ class ProductService
             'min_buy'          => $minBuy,
             'max_buy'          => $maxBuy,
             'delivery_message' => $d['delivery_message'] ?? null,
+            'resource_url'     => (isset($d['resource_url']) && $d['resource_url'] !== '') ? $d['resource_url'] : null,
             'purchase_notice'  => (isset($d['purchase_notice']) && $d['purchase_notice'] !== '') ? $d['purchase_notice'] : null,
             'show_stock_type'  => (isset($d['show_stock_type']) && (int) $d['show_stock_type'] === 1) ? 1 : 0,
             'status'           => isset($d['status']) ? (int) $d['status'] : Product::STATUS_ON,

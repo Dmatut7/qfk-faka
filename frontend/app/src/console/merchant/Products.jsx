@@ -22,6 +22,7 @@ const goodsTypeLabel = (v) => (GOODS_TYPES.find((g) => g.v === Number(v)) || GOO
 
 const EMPTY_FORM = {
   goods_type: 1,
+  resource_url: '',
   category_id: '',
   title: '',
   sku: '',
@@ -82,6 +83,7 @@ export default function Products({ api, session }) {
       discount_end: (row.discount_end || '').slice(0, 16).replace(' ', 'T'),
       type: Number(row.type) || TYPE_AUTO,
       goods_type: Number(row.goods_type) || 1,
+      resource_url: row.resource_url || '',
       min_buy: row.min_buy ?? 1,
       max_buy: row.max_buy ?? 0,
       delivery_message: row.delivery_message || '',
@@ -112,6 +114,7 @@ export default function Products({ api, session }) {
       discount_end: form.discount_end ? form.discount_end.replace('T', ' ') + ':00' : '',
       type: Number(form.type),
       goods_type: Number(form.goods_type) || 1,
+      resource_url: form.resource_url.trim(),
       min_buy: Math.max(1, Number(form.min_buy) || 1),
       max_buy: Number(form.max_buy) || 0,
       delivery_message: form.delivery_message,
@@ -372,6 +375,11 @@ export default function Products({ api, session }) {
             <textarea value={form.description} onChange={set('description')} rows={3} style={textareaStyle} placeholder="商品介绍、使用须知等" />
           </Field>
 
+          {Number(form.goods_type) === 3 && (
+            <Field label="资源下载地址" hint="资源类:买家付款后获限时签名下载链(真实地址不直接暴露)">
+              <Input value={form.resource_url} onChange={set('resource_url')} placeholder="https://…/file.zip(OSS/网盘直链)" />
+            </Field>
+          )}
           <Field label="发货留言" hint="下单成功后随卡密展示给买家(可选)">
             <textarea value={form.delivery_message} onChange={set('delivery_message')} rows={2} style={textareaStyle} placeholder="例如:请在 24 小时内激活" />
           </Field>

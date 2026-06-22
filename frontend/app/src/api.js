@@ -5,7 +5,7 @@
    dev 环境走 Vite proxy(相对路径),生产用 VITE_API_BASE 覆盖。
    ============================================================ */
 
-const BASE = import.meta.env.VITE_API_BASE || '';
+export const BASE = import.meta.env.VITE_API_BASE || '';
 // 店铺标识(后端 /s/{slug});默认演示店铺 demo,生产用 VITE_SHOP_SLUG 覆盖。
 export const SHOP_SLUG = import.meta.env.VITE_SHOP_SLUG || 'demo';
 // 支付渠道(本期仅易支付)。

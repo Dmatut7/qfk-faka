@@ -42,6 +42,11 @@ class BuyerOrderService
                 ? []
                 : array_values(array_filter(array_map('trim', explode("\n", $content)), static fn($l) => $l !== ''));
             $data['delivered_content'] = $order->delivered_content;
+            // 资源类:签发限时防盗链下载地址(真实地址不直接暴露)
+            $link = (new DownloadService())->issueLink($order);
+            if ($link !== null) {
+                $data['download_url'] = $link;
+            }
         }
 
         return $data;
