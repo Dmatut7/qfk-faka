@@ -167,6 +167,12 @@ Route::group('merchant', function () {
         Route::post('coupons/:id', 'merchant.Coupon/update');
         Route::post('coupons/:id/delete', 'merchant.Coupon/delete');
 
+        // 订单级促销(满减/满折)
+        Route::get('promotions', 'merchant.Promotion/index');
+        Route::post('promotions', 'merchant.Promotion/create');
+        Route::post('promotions/:id', 'merchant.Promotion/update');
+        Route::post('promotions/:id/delete', 'merchant.Promotion/delete');
+
         // 统计
         Route::get('stats/summary', 'merchant.Stats/summary');
         Route::get('stats/top-products', 'merchant.Stats/topProducts');

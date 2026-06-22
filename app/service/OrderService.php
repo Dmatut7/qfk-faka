@@ -114,17 +114,33 @@ class OrderService
             $unitPrice = $product->effectivePrice($now);
             $original  = Money::mul($unitPrice, (string) $quantity);
 
-            // 3.1) 优惠券应用(可选):校验+算优惠,total_amount=应付(original-discount),核销在支付成功时
-            $couponId   = null;
-            $couponCode = '';
-            $discount   = '0.00';
-            $code       = trim((string) ($input['coupon_code'] ?? ''));
+            // 3.1) 优惠应用:优惠券(买家填码)与订单级促销(满减/满折,自动)「互斥取最优」。
+            //      券优惠 ≥ 促销优惠时用券(买家显式选择优先);核销在支付成功时。
+            $couponId      = null;
+            $couponCode    = '';
+            $discount      = '0.00';
+            $discountLabel = '';
+            $merchantId    = (int) $product->merchant_id;
+
+            $couponDiscount = '0.00';
+            $couponObj      = null;
+            $code           = trim((string) ($input['coupon_code'] ?? ''));
             if ($code !== '') {
-                $coupon     = new CouponService();
-                $c          = $coupon->findUsable((int) $product->merchant_id, $code, $original);
-                $discount   = $coupon->computeDiscount($c, $original);
-                $couponId   = (int) $c->id;
-                $couponCode = $c->code;
+                $cs             = new CouponService();
+                $couponObj      = $cs->findUsable($merchantId, $code, $original);
+                $couponDiscount = $cs->computeDiscount($couponObj, $original);
+            }
+            $promo         = (new PromotionService())->bestPromotion($merchantId, $original);
+            $promoDiscount = $promo ? $promo['discount'] : '0.00';
+
+            if (Money::cmp($couponDiscount, '0') > 0 && Money::cmp($couponDiscount, $promoDiscount) >= 0) {
+                $discount      = $couponDiscount;
+                $couponId      = (int) $couponObj->id;
+                $couponCode    = $couponObj->code;
+                $discountLabel = '券:' . $couponObj->code;
+            } elseif (Money::cmp($promoDiscount, '0') > 0) {
+                $discount      = $promoDiscount;
+                $discountLabel = $promo['label'];
             }
             $final = Money::sub($original, $discount);
 
@@ -142,6 +158,7 @@ class OrderService
                 'unit_price'    => $unitPrice,
                 'original_amount' => $original,
                 'discount_amount' => $discount,
+                'discount_label' => $discountLabel,
                 'coupon_id'     => $couponId,
                 'coupon_code'   => $couponCode,
                 'total_amount'  => $final,
