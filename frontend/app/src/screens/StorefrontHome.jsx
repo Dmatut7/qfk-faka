@@ -428,6 +428,14 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
   return (
     <div style={{ paddingBottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}>
+      <style>{`
+        .mk-pgrid{ display:grid; gap:10px; grid-template-columns:repeat(2,1fr); }
+        @media(min-width:560px){ .mk-pgrid{ grid-template-columns:repeat(3,1fr); } }
+        @media(min-width:768px){ .mk-pgrid{ grid-template-columns:repeat(4,1fr); } }
+        @media(min-width:1024px){ .mk-pgrid{ grid-template-columns:repeat(5,1fr); } }
+        .mk-prows{ max-width:780px; }
+        @media(min-width:768px){ .mk-bottomnav{ display:none !important; } }
+      `}</style>
       {/* 平台公告条(banner 之上) */}
       {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
 
@@ -629,7 +637,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       {/* 商品区 */}
       <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '12px 16px 24px' }}>
         {loading ? (
-          <div style={GRID}>
+          <div className="mk-pgrid">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} style={{
                 height: 230, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
@@ -662,7 +670,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         ) : typeFilter === 1 ? (
           /* 卡密:2 列 image-led 网格 */
           <>
-            <div ref={gridRef} style={GRID}>
+            <div ref={gridRef} className="mk-pgrid">
               {shown.map((p) => {
                 const meta = GOODS_TYPE_META[1] || { short: '卡密' };
                 const stock = Number(p.stock ?? 0);
@@ -690,7 +698,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         ) : (
           /* 知识 / 资源 / 权益:单列列表(左缩略图 + 右标题/价/分类) */
           <>
-            <div ref={gridRef}>
+            <div ref={gridRef} className="mk-prows" style={{ margin: '0 auto' }}>
               {shown.map((p) => (
                 <ProductListRow key={p.id} p={p}
                   catName={p.category_id != null ? (catNameById[String(normId(p.category_id))] || '') : ''}
@@ -703,7 +711,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       </div>
 
       {/* 底部 tab bar(客服项打开联系弹窗,其余 tab 均有真实行为) */}
-      <nav style={{
+      <nav className="mk-bottomnav" style={{
         position: 'sticky', bottom: 0, zIndex: 15, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)',
         borderTop: '1px solid var(--border)', display: 'flex', maxWidth: 'var(--container-page)', margin: '0 auto',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
