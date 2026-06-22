@@ -110,6 +110,13 @@ export default function Coupons({ api }) {
   async function submit() {
     if (!editing && !form.code.trim()) { setFormErr('券码必填'); return; }
     if (!(Number(form.value) >= 0) || form.value === '') { setFormErr('请填写有效的面值'); return; }
+    const v = Number(form.value);
+    if (Number(form.type) === TYPE_PERCENT) {
+      if (!(v >= 1 && v <= 99)) { setFormErr('折扣值需在 1~99 之间(如 90 表示 9 折)'); return; }
+    } else {
+      const min = Number(form.min_amount) || 0;
+      if (min > 0 && v > min) { setFormErr('满减券的减免金额不能超过使用门槛'); return; }
+    }
     setSaving(true); setFormErr('');
     const payload = {
       name: form.name.trim(), type: Number(form.type),
