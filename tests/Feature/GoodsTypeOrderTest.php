@@ -113,6 +113,49 @@ class GoodsTypeOrderTest extends TestCase
         $this->assertSame($content, $q['data']['delivered_content']);
     }
 
+    public function testRightsProductUsesCodePool(): void
+    {
+        // 权益类走码池(一权一售):导入 2 个权益码
+        $p = Product::create([
+            'merchant_id' => $this->m->id, 'title' => '会员权益', 'price' => '30.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_RIGHTS, 'stock' => 0,
+        ]);
+        $codes = [];
+        for ($i = 0; $i < 2; $i++) {
+            $s = 'RIGHT-' . $i . '-' . uniqid();
+            $codes[] = $s;
+            Card::create(['merchant_id' => $this->m->id, 'product_id' => $p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);
+        }
+        Product::where('id', $p->id)->update(['stock' => 2]);
+
+        $order = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        // 权益类占码:1 个码被锁定
+        $this->assertSame(1, Card::where('order_id', $order->id)->where('status', Card::STATUS_LOCKED)->count());
+
+        $ack = $this->payAndNotify($order, (string) $order->total_amount);
+        $this->assertSame('success', $ack);
+        $fresh = Order::find($order->id);
+        $this->assertSame(Order::STATUS_DELIVERED, (int) $fresh->status);
+        // 发货内容 = 唯一权益码(来自码池,非 delivery_message)
+        $this->assertContains($fresh->delivered_content, $codes);
+        $this->assertSame(1, Card::where('order_id', $order->id)->where('status', Card::STATUS_SOLD)->count());
+    }
+
+    public function testRightsProductWithoutCodesRejected(): void
+    {
+        // 权益类无码 → 一权一售库存不足
+        $p = Product::create([
+            'merchant_id' => $this->m->id, 'title' => '权益', 'price' => '5.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_RIGHTS, 'stock' => 0,
+        ]);
+        try {
+            (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+            $this->fail('权益无码应库存不足');
+        } catch (BizException $e) {
+            $this->assertSame(Code::STOCK_NOT_ENOUGH, $e->getBizCode());
+        }
+    }
+
     public function testCardProductStillRequiresCards(): void
     {
         // 卡密类(默认),无卡 → 下单库存不足(一卡一售不变)

@@ -171,9 +171,9 @@ class NotifyService
             // ====== status == 待支付:正常发货 ======
             $this->markPaymentSuccess($paymentId, $channelTradeNo, $paidAmount, $payload, $now);
 
-            // 非卡密类(知识/资源/权益):无卡发货,内容 = 商品 delivery_message;结算照常。
-            // 类型以订单快照 goods_type 为准(不依赖商品仍存在/未改)。
-            if ((int) $order->goods_type !== Product::GOODS_TYPE_CARD) {
+            // 非码池类(知识/资源):无码发货,内容 = 商品 delivery_message;结算照常。
+            // 类型以订单快照 goods_type 为准(不依赖商品仍存在/未改);码池类(卡密/权益)走下方发码路径。
+            if (!Product::goodsTypeUsesPool((int) $order->goods_type)) {
                 $content = $product ? (string) $product->delivery_message : '';
                 Db::name('orders')->where('id', $order->id)->update([
                     'status'            => Order::STATUS_DELIVERED,

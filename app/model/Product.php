@@ -86,4 +86,19 @@ class Product extends Model
     {
         return (int) $this->goods_type === self::GOODS_TYPE_CARD;
     }
+
+    /**
+     * 是否走「码池」一物一售(行锁预占 + 唯一码发放):卡密(卡密)与权益(权益码)。
+     * 知识/资源走内容发货(delivery_message),不占码池。
+     */
+    public function usesCardPool(): bool
+    {
+        return in_array((int) $this->goods_type, [self::GOODS_TYPE_CARD, self::GOODS_TYPE_RIGHTS], true);
+    }
+
+    /** 给定 goods_type 是否走码池(供订单按快照判定) */
+    public static function goodsTypeUsesPool(int $goodsType): bool
+    {
+        return in_array($goodsType, [self::GOODS_TYPE_CARD, self::GOODS_TYPE_RIGHTS], true);
+    }
 }

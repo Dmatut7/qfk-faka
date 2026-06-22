@@ -41,6 +41,8 @@ export default function Cards({ api, session }) {
   }, [productList, selectedId]);
 
   const selectedProduct = productList.find((p) => p.id === selectedId) || null;
+  // 码池称谓:权益类商品的「卡密」即权益码,标签自适应
+  const codeNoun = selectedProduct && Number(selectedProduct.goods_type) === 4 ? '权益码' : '卡密';
 
   // 库存统计 + 卡密列表(依赖所选商品 / 状态筛选)
   const stats = useAsync(
@@ -135,12 +137,12 @@ export default function Cards({ api, session }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Panel
-        title="卡密管理"
-        subtitle="选择商品后查看库存统计、导入与维护卡密"
+        title={`${codeNoun}管理`}
+        subtitle={`选择商品后查看库存统计、导入与维护${codeNoun}(卡密/权益类一物一售)`}
         actions={
           <Button variant="primary" size="sm" iconLeft={<Icons.Package size={15} />}
             onClick={() => setImportOpen(true)} disabled={selectedId == null}>
-            导入卡密
+            导入{codeNoun}
           </Button>
         }
       >

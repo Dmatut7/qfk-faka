@@ -91,10 +91,10 @@ class OrderService
                 throw new BizException(Code::BUY_LIMIT, "超过单笔限购({$product->max_buy})");
             }
 
-            // 商品类型路由:卡密类走 cards 一卡一售预占;非卡密类(知识/资源/权益)不占卡、无卡库存约束。
-            $isCard = $product->isCardType();
+            // 商品类型路由:走码池的类型(卡密/权益)行锁预占一物一售;知识/资源不占码、无库存约束。
+            $isCard = $product->usesCardPool();
 
-            // 2) 卡密类:取可售卡 FOR UPDATE SKIP LOCKED(各并发请求拿到不同的卡)
+            // 2) 码池类型:取可售码 FOR UPDATE SKIP LOCKED(各并发请求拿到不同的码)
             $cardIds = [];
             if ($isCard) {
                 $cardIds = Db::name('cards')
