@@ -23,6 +23,9 @@ class Merchant extends Model
     public const STATUS_ACTIVE  = 1; // 正常
     public const STATUS_FROZEN  = 2; // 冻结
 
+    /** 店铺主题配色 key(平台预设;前台据此渲染配色)。 */
+    public const THEMES = ['default', 'emerald', 'rose', 'amber', 'sky', 'violet'];
+
     public function isActive(): bool
     {
         return (int) $this->status === self::STATUS_ACTIVE;

@@ -168,7 +168,7 @@ class MerchantService
     }
 
     /** 店铺装修可由商户编辑的字段(deposit/verified 平台控,不在此列) */
-    private const SHOP_EDITABLE = ['logo', 'cover', 'intro', 'announcement', 'contact_qq', 'contact_wechat', 'contact_mobile'];
+    private const SHOP_EDITABLE = ['logo', 'cover', 'intro', 'announcement', 'contact_qq', 'contact_wechat', 'contact_mobile', 'theme'];
 
     /**
      * 读取当前商户的店铺装修信息。
@@ -184,6 +184,7 @@ class MerchantService
             'store_slug'     => $m->store_slug,
             'logo'           => $m->logo,
             'cover'          => $m->cover,
+            'theme'          => $m->theme ?: 'default',
             'intro'          => $m->intro,
             'announcement'   => $m->announcement,
             'contact_qq'     => $m->contact_qq,
@@ -205,6 +206,10 @@ class MerchantService
             throw new BizException(Code::NOT_FOUND, '商户不存在');
         }
         $patch = array_intersect_key($d, array_flip(self::SHOP_EDITABLE));
+        // 主题须为平台预设 key,非法回退 default
+        if (array_key_exists('theme', $patch) && !in_array((string) $patch['theme'], Merchant::THEMES, true)) {
+            $patch['theme'] = 'default';
+        }
         if ($patch) {
             $m->save($patch);
         }

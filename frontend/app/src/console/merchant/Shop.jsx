@@ -4,10 +4,12 @@ import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
+import { THEMES, THEME_KEYS } from '../../themes.js';
 
 const EMPTY_FORM = {
   logo: '',
   cover: '',
+  theme: 'default',
   intro: '',
   announcement: '',
   contact_qq: '',
@@ -31,6 +33,7 @@ export default function Shop({ api }) {
     setForm({
       logo: data.logo || '',
       cover: data.cover || '',
+      theme: data.theme || 'default',
       intro: data.intro || '',
       announcement: data.announcement || '',
       contact_qq: data.contact_qq || '',
@@ -49,6 +52,7 @@ export default function Shop({ api }) {
       await api.updateShop({
         logo: form.logo.trim(),
         cover: form.cover.trim(),
+        theme: form.theme,
         intro: form.intro,
         announcement: form.announcement,
         contact_qq: form.contact_qq.trim(),
@@ -148,6 +152,28 @@ export default function Shop({ api }) {
             <Input label="Logo 图片地址" value={form.logo} onChange={set('logo')} placeholder="https://…/logo.png" />
             <Input label="封面图片地址" value={form.cover} onChange={set('cover')} placeholder="https://…/cover.jpg" />
           </div>
+
+          <Field label="店铺主题" hint="选择店铺前台品牌配色">
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {THEME_KEYS.map((k) => {
+                const t = THEMES[k];
+                const on = form.theme === k;
+                return (
+                  <button key={k} type="button" onClick={() => { setForm((f) => ({ ...f, theme: k })); setOkMsg(''); }}
+                    title={t.label}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer',
+                      borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-sans)', fontSize: 12.5, fontWeight: 700,
+                      border: on ? `2px solid ${t.swatch}` : '1px solid var(--border)', background: '#fff',
+                      color: on ? t.swatch : 'var(--text-muted)',
+                    }}>
+                    <span style={{ width: 16, height: 16, borderRadius: '50%', background: t.swatch, flex: 'none' }} />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
 
           <Field label="店铺简介" hint="一句话介绍你的店铺(可选)">
             <textarea value={form.intro} onChange={set('intro')} rows={3} style={textareaStyle} placeholder="例如:专业可靠的会员账号供应商,7×24 自动发货" />

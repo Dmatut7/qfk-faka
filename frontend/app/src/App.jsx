@@ -9,6 +9,7 @@ import Portal from './screens/Portal.jsx';
 import Forbidden from './screens/Forbidden.jsx';
 import PlatformKefu from './components/PlatformKefu.jsx';
 import { api, normalizeProduct } from './api.js';
+import { themeCss } from './themes.js';
 
 /* App 外壳:浏览 → 下单 → 付款 → 取卡。状态在此集中,各屏只收 props。 */
 export default function App() {
@@ -88,6 +89,8 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
+      {/* 店铺主题:按商户选择覆盖品牌色 CSS 变量(整店前台统一配色) */}
+      {shop?.theme && shop.theme !== 'default' && <style>{themeCss(shop.theme)}</style>}
       <TopBar
         shopName={shop?.name}
         shopIntro={shop?.intro}

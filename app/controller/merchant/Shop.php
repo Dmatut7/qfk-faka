@@ -20,7 +20,7 @@ class Shop extends BaseApiController
 
     public function update(MerchantService $svc)
     {
-        $d = $this->params(['logo', 'cover', 'intro', 'announcement', 'contact_qq', 'contact_wechat', 'contact_mobile']);
+        $d = $this->params(['logo', 'cover', 'theme', 'intro', 'announcement', 'contact_qq', 'contact_wechat', 'contact_mobile']);
         return $this->success($svc->updateShop($this->authId(), $d));
     }
 }

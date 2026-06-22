@@ -102,6 +102,7 @@ class StorefrontService
                 'slug'         => $m->store_slug,
                 'logo'         => $m->logo,
                 'cover'        => $m->cover,
+                'theme'        => $m->theme ?: 'default',
                 'intro'        => $m->intro,
                 'announcement' => $m->announcement,
                 'verified'     => (int) $m->verified,
