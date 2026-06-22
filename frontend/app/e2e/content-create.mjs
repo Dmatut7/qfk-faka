@@ -1,0 +1,26 @@
+import { chromium } from 'playwright-core';
+const b = await chromium.launch({ channel: 'chrome', headless: true });
+const c = await b.newContext({ viewport: { width: 1440, height: 1000 } });
+await c.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+const p = await c.newPage();
+const errs = []; p.on('pageerror', e => errs.push(String(e)));
+await p.goto('http://127.0.0.1:5173/console.html', { waitUntil: 'domcontentloaded' });
+await p.waitForTimeout(900);
+await p.getByText('平台登录').click(); await p.waitForTimeout(300);
+const ins = p.locator('input'); await ins.nth(0).fill('admin'); await ins.nth(1).fill('admin123');
+await p.getByRole('button', { name: /登录/ }).first().click(); await p.waitForTimeout(1800);
+await p.getByRole('button', { name: '内容管理' }).first().click(); await p.waitForTimeout(1000);
+await p.getByRole('button', { name: '资讯' }).first().click(); await p.waitForTimeout(900);
+await p.getByRole('button', { name: /新建资讯/ }).first().click(); await p.waitForTimeout(600);
+// 弹窗里:标题(第一个 input)、正文(最后一个 textarea)
+await p.locator('[role=dialog] input').first().fill('平台上线公告(自动化测试)');
+const tas = p.locator('[role=dialog] textarea');
+await tas.last().fill('这是一条通过内容管理后台创建的资讯正文,用于验证 CRUD 链路。');
+await p.getByRole('button', { name: '保存' }).click();
+await p.waitForTimeout(1500);
+const bodyTxt = await p.locator('body').innerText();
+const ok = bodyTxt.includes('平台上线公告(自动化测试)');
+console.log('创建后列表含新资讯:', ok ? '✓ 是(写入成功)' : '✗ 否');
+console.log('页面错误:', errs.length ? errs : '无');
+await p.screenshot({ path: 'e2e/audit/content-04-created.png', fullPage: true });
+await b.close();

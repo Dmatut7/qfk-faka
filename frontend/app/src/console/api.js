@@ -193,6 +193,12 @@ export const adminApi = {
   updateAnnouncement: (id, d) => call('/admin/announcements/' + id, { method: 'POST', body: d }),
   deleteAnnouncement: (id) => call('/admin/announcements/' + id + '/delete', { method: 'POST' }),
 
+  // 门户内容(资讯1/常见问题2/单页3),后端 admin.Articles
+  articles: (type) => call('/admin/articles' + (type != null && type !== '' ? '?type=' + type : '')),
+  createArticle: (d) => call('/admin/articles', { method: 'POST', body: d }),
+  updateArticle: (id, d) => call('/admin/articles/' + id, { method: 'POST', body: d }),
+  deleteArticle: (id) => call('/admin/articles/' + id + '/delete', { method: 'POST' }),
+
   inviteCodes: () => call('/admin/invite-codes'),
   createInviteCodes: (d) => call('/admin/invite-codes', { method: 'POST', body: d }),
   disableInviteCode: (id) => call('/admin/invite-codes/' + id + '/disable', { method: 'POST' }),
