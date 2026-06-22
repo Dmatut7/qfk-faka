@@ -1,8 +1,11 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Money, Pill, StatCard } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Money, Pill, StatCard, Modal } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
+import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../../design-system/components/core/Input.jsx';
+
+const REFUNDABLE = [1, 2, 5]; // 已支付/已发货/异常待人工 可退款
 
 /* 订单状态(对齐 orders 迁移 status 注释):
    0 待支付 / 1 已支付 / 2 已发货 / 3 已关闭 / 4 已退款 / 5 异常待人工 */
@@ -46,6 +49,24 @@ export default function Orders({ api }) {
   const submitSearch = () => {
     setPage(1);
     setQuery({ merchant_id: merchantId.trim(), status, order_no: orderNo.trim() });
+  };
+
+  // 退款
+  const [refundTarget, setRefundTarget] = React.useState(null);
+  const [refundReason, setRefundReason] = React.useState('');
+  const [refundBusy, setRefundBusy] = React.useState(false);
+  const [refundErr, setRefundErr] = React.useState('');
+  const openRefund = (row) => { setRefundTarget(row); setRefundReason(''); setRefundErr(''); };
+  const confirmRefund = async () => {
+    if (!refundTarget) return;
+    setRefundBusy(true); setRefundErr('');
+    try {
+      await api.refundOrder(refundTarget.id, refundReason.trim());
+      setRefundTarget(null);
+      list.reload();
+    } catch (e) {
+      setRefundErr(e instanceof ApiError ? e.message : '退款失败,请重试');
+    } finally { setRefundBusy(false); }
   };
 
   const columns = [
@@ -104,6 +125,13 @@ export default function Orders({ api }) {
         </div>
       ),
     },
+    {
+      key: 'actions', title: '操作', align: 'right', render: (r) => (
+        REFUNDABLE.includes(Number(r.status))
+          ? <Button size="sm" variant="danger" onClick={() => openRefund(r)}>退款</Button>
+          : <span style={{ color: 'var(--text-subtle)', fontSize: 12 }}>—</span>
+      ),
+    },
   ];
 
   // 本页内按状态计数(只读视图,统计当前页可见数据)
@@ -118,7 +146,7 @@ export default function Orders({ api }) {
         <StatCard label="异常待人工" value={counts[5] || 0} icon="AlertTriangle" tone="danger" />
       </div>
 
-      <Panel title="跨商户订单" subtitle="平台只读视图:按商户 / 状态 / 订单号筛选,不可修改订单状态" padded={false}>
+      <Panel title="跨商户订单" subtitle="按商户 / 状态 / 订单号筛选;已收款订单可发起退款(卡密回库 + 资金原路冲回)" padded={false}>
         <div style={{ padding: 18 }}>
           <Toolbar right={
             <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={15} />}
@@ -173,6 +201,24 @@ export default function Orders({ api }) {
           )}
         </div>
       </Panel>
+
+      <Modal
+        open={!!refundTarget}
+        title="订单退款"
+        onClose={() => (refundBusy ? null : setRefundTarget(null))}
+        footer={<>
+          <Button variant="ghost" onClick={() => setRefundTarget(null)} disabled={refundBusy}>取消</Button>
+          <Button variant="danger" onClick={confirmRefund} loading={refundBusy}>确认退款</Button>
+        </>}
+      >
+        {refundErr ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{refundErr}</Pill></div> : null}
+        <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 12 }}>
+          确认对订单 <b>{refundTarget?.order_no}</b>(应付 <Money amount={refundTarget?.total_amount} />)发起退款?
+          <br />将:卡密回库重新可售、商户结算金额原路冲回、用券则反核销。此操作不可撤销。
+        </div>
+        <Input label="退款原因(可选)" value={refundReason} placeholder="如:买家协商退款 / 商品质量问题"
+          onChange={(e) => setRefundReason(e.target.value)} />
+      </Modal>
     </div>
   );
 }

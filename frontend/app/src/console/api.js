@@ -159,6 +159,7 @@ export const adminApi = {
   settlementReport: (params) => call('/admin/reports/settlement' + qs(params)),
 
   orders: (params) => call('/admin/orders' + qs(params)),
+  refundOrder: (id, reason) => call(`/admin/orders/${id}/refund`, { method: 'POST', body: { reason: reason || '' } }),
   products: (params) => call('/admin/products' + qs(params)),
 
   logs: (params) => call('/admin/logs' + qs(params)),
