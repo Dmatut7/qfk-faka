@@ -7,7 +7,9 @@ import { Input } from '../../../../design-system/components/core/Input.jsx';
 
 const TYPE_REDUCE = 1;
 const TYPE_DISCOUNT = 2;
-const emptyForm = { name: '', type: TYPE_REDUCE, threshold: '', value: '', status: 1 };
+const STATUS_ON = 1;
+const STATUS_OFF = 0;
+const emptyForm = { name: '', type: TYPE_REDUCE, threshold: '', value: '', start_at: '', end_at: '', status: 1 };
 
 function describe(p) {
   const thr = Number(p.threshold).toFixed(2);
@@ -17,6 +19,42 @@ function describe(p) {
   }
   return `满¥${thr} 减¥${Number(p.value).toFixed(2)}`;
 }
+
+/* 有效期文案:展示 start_at~end_at,缺省端记为「不限」 */
+function periodText(p) {
+  const fmt = (s) => (s ? String(s).slice(0, 16).replace('T', ' ') : '不限');
+  if (!p.start_at && !p.end_at) return '长期有效';
+  return `${fmt(p.start_at)} ~ ${fmt(p.end_at)}`;
+}
+
+/* 解析时间字符串为时间戳(失败返回 NaN,不参与过期判断) */
+function ts(s) {
+  if (!s) return NaN;
+  const t = Date.parse(String(s).replace(' ', 'T'));
+  return Number.isNaN(t) ? NaN : t;
+}
+
+/* 派生状态:expired(已过期 now>end_at)/ on(启用)/ off(停用) */
+function deriveStatus(p) {
+  const now = Date.now();
+  const to = ts(p.end_at);
+  if (Number(p.status) === STATUS_OFF) return 'off';
+  if (!Number.isNaN(to) && now > to) return 'expired';
+  return 'on';
+}
+
+const STATUS_META = {
+  on: { tone: 'success', label: '启用' },
+  off: { tone: 'neutral', label: '停用' },
+  expired: { tone: 'neutral', label: '已过期' },
+};
+
+/* 工具条内紧凑筛选控件(下拉) */
+const filterControlStyle = {
+  height: 34, padding: '0 10px', fontSize: 13, fontFamily: 'var(--font-sans)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+  background: '#fff', color: 'var(--text-strong)', cursor: 'pointer',
+};
 
 export default function Promotions({ api }) {
   const list = useAsync(() => api.promotions(), []);
@@ -28,11 +66,21 @@ export default function Promotions({ api }) {
   const [err, setErr] = React.useState('');
   const [removing, setRemoving] = React.useState(null);
 
+  const [statusFilter, setStatusFilter] = React.useState(''); // '' = 全部状态
+  const [typeFilter, setTypeFilter] = React.useState('');     // '' = 全部类型
+
+  // 前端过滤现有 items(后端 promotions 接口不带筛选参数,故纯前端 filter)
+  const filteredItems = React.useMemo(() => items.filter((r) => {
+    if (typeFilter !== '' && Number(r.type) !== Number(typeFilter)) return false;
+    if (statusFilter !== '' && deriveStatus(r) !== statusFilter) return false;
+    return true;
+  }), [items, statusFilter, typeFilter]);
+
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const openCreate = () => { setEditing(null); setForm(emptyForm); setErr(''); setOpen(true); };
   const openEdit = (r) => {
     setEditing(r);
-    setForm({ name: r.name ?? '', type: Number(r.type) || TYPE_REDUCE, threshold: String(r.threshold ?? ''), value: String(r.value ?? ''), status: Number(r.status) });
+    setForm({ name: r.name ?? '', type: Number(r.type) || TYPE_REDUCE, threshold: String(r.threshold ?? ''), value: String(r.value ?? ''), start_at: (r.start_at || '').slice(0, 16), end_at: (r.end_at || '').slice(0, 16), status: Number(r.status) });
     setErr(''); setOpen(true);
   };
 
@@ -40,7 +88,12 @@ export default function Promotions({ api }) {
     if (!(Number(form.threshold) >= 0)) { setErr('请填写门槛金额'); return; }
     if (!(Number(form.value) > 0)) { setErr('请填写优惠值'); return; }
     setSaving(true); setErr('');
-    const payload = { name: form.name.trim(), type: Number(form.type), threshold: form.threshold, value: form.value, status: Number(form.status) };
+    const payload = {
+      name: form.name.trim(), type: Number(form.type), threshold: form.threshold, value: form.value,
+      start_at: form.start_at ? form.start_at.replace('T', ' ') + ':00' : '',
+      end_at: form.end_at ? form.end_at.replace('T', ' ') + ':00' : '',
+      status: Number(form.status),
+    };
     try {
       if (editing) await api.updatePromotion(editing.id, payload);
       else await api.createPromotion(payload);
@@ -58,7 +111,8 @@ export default function Promotions({ api }) {
     { key: 'name', title: '活动', render: (r) => r.name || '—' },
     { key: 'type', title: '类型', width: 80, render: (r) => <Pill tone={Number(r.type) === TYPE_DISCOUNT ? 'secure' : 'brand'}>{Number(r.type) === TYPE_DISCOUNT ? '满折' : '满减'}</Pill> },
     { key: 'rule', title: '规则', render: (r) => describe(r) },
-    { key: 'status', title: '状态', width: 80, render: (r) => Number(r.status) === 1 ? <Pill tone="success">启用</Pill> : <Pill tone="neutral">停用</Pill> },
+    { key: 'period', title: '有效期', nowrap: true, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{periodText(r)}</span> },
+    { key: 'status', title: '状态', width: 90, render: (r) => { const m = STATUS_META[deriveStatus(r)]; return <Pill tone={m.tone}>{m.label}</Pill>; } },
     { key: 'actions', title: '操作', width: 150, align: 'right', render: (r) => (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>编辑</Button>
@@ -74,9 +128,20 @@ export default function Promotions({ api }) {
       actions={<Button onClick={openCreate} iconLeft={<Icons.Star />}>新建活动</Button>}
     >
       <Toolbar right={<Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={list.reload}>刷新</Button>}>
-        共 {items.length} 个活动
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>共 {filteredItems.length} / {items.length} 个活动</span>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="按状态筛选" style={filterControlStyle}>
+          <option value="">全部状态</option>
+          <option value="on">启用</option>
+          <option value="off">停用</option>
+          <option value="expired">已过期</option>
+        </select>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} aria-label="按类型筛选" style={filterControlStyle}>
+          <option value="">全部类型</option>
+          <option value={TYPE_REDUCE}>满减</option>
+          <option value={TYPE_DISCOUNT}>满折</option>
+        </select>
       </Toolbar>
-      <DataTable columns={columns} rows={items} loading={list.loading} error={list.error} onReload={list.reload} empty="暂无活动,点击右上角新建" />
+      <DataTable columns={columns} rows={filteredItems} loading={list.loading} error={list.error} onReload={list.reload} empty="暂无活动,点击右上角新建" />
 
       <Modal
         open={open}
@@ -109,6 +174,14 @@ export default function Promotions({ api }) {
             <Button variant={Number(form.status) === 0 ? 'primary' : 'ghost'} onClick={() => setForm((f) => ({ ...f, status: 0 }))}>停用</Button>
           </div>
         </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="生效时间(可选)">
+            <Input type="datetime-local" value={form.start_at} onChange={set('start_at')} />
+          </Field>
+          <Field label="失效时间(可选)">
+            <Input type="datetime-local" value={form.end_at} onChange={set('end_at')} />
+          </Field>
+        </div>
       </Modal>
 
       <Modal open={!!removing} title="删除活动" onClose={() => setRemoving(null)}

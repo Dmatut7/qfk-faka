@@ -20,6 +20,44 @@ function maskSecret(s) {
   return `${v.slice(0, 3)}••••${v.slice(-3)}`;
 }
 
+/* CSV 单元格转义:含逗号 / 引号 / 换行时用双引号包裹并转义内部引号 */
+function csvCell(v) {
+  const s = v == null ? '' : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/* 文件名时间戳:yyyymmdd-hhmmss */
+function exportStamp(d = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+/* 将当前已加载卡密行导出为 CSV(仅前端,脱敏字段,与列表展示一致) */
+function exportRowsCsv(rows, productTitle, codeNoun) {
+  const header = [`${codeNoun}(脱敏)`, '批次', '状态', '导入时间'];
+  const body = (rows || []).map((row) => {
+    const m = STATUS_META[row.status];
+    return [
+      maskSecret(row.secret),
+      row.batch_no || '',
+      m ? m.text : String(row.status),
+      row.create_time || '',
+    ].map(csvCell).join(',');
+  });
+  // 加 BOM 以便 Excel 正确识别 UTF-8
+  const content = '﻿' + [header.map(csvCell).join(','), ...body].join('\r\n');
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeTitle = String(productTitle || codeNoun).replace(/[\\/:*?"<>|]/g, '_');
+  a.download = `${safeTitle}-${codeNoun}-${exportStamp()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function Cards({ api, session }) {
   const [selectedId, setSelectedId] = React.useState(null);
   const [statusFilter, setStatusFilter] = React.useState('');
@@ -42,7 +80,10 @@ export default function Cards({ api, session }) {
 
   const selectedProduct = productList.find((p) => p.id === selectedId) || null;
   // 码池称谓:权益类商品的「卡密」即权益码,标签自适应
-  const codeNoun = selectedProduct && Number(selectedProduct.goods_type) === 4 ? '权益码' : '卡密';
+  const isRights = !!selectedProduct && Number(selectedProduct.goods_type) === 4;
+  const codeNoun = isRights ? '权益码' : '卡密';
+  // 统计卡 label:权益类追加「权益码」后缀(未售权益码/已售权益码…),卡密类沿用「未售/已售」
+  const statLabel = (base) => (isRights ? `${base}${codeNoun}` : base);
 
   // 库存统计 + 卡密列表(依赖所选商品 / 状态筛选)
   const stats = useAsync(
@@ -159,10 +200,10 @@ export default function Cards({ api, session }) {
           {!stats.loading && stats.error && <ErrorBar message={stats.error} onRetry={stats.reload} />}
           {!stats.loading && !stats.error && stats.data && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-              <StatCard label="未售" value={stats.data.unsold} icon="Package" tone="success" />
-              <StatCard label="锁定" value={stats.data.locked} icon="Lock" tone="pending" />
-              <StatCard label="已售" value={stats.data.sold} icon="Check" tone="brand" />
-              <StatCard label="作废" value={stats.data.disabled} icon="AlertTriangle" tone="danger" />
+              <StatCard label={statLabel('未售')} value={stats.data.unsold} icon="Package" tone="success" />
+              <StatCard label={statLabel('锁定')} value={stats.data.locked} icon="Lock" tone="pending" />
+              <StatCard label={statLabel('已售')} value={stats.data.sold} icon="Check" tone="brand" />
+              <StatCard label={statLabel('作废')} value={stats.data.disabled} icon="AlertTriangle" tone="danger" />
               <StatCard label="库存(缓存)" value={stats.data.stock} icon="Zap" tone="brand" sub="product.stock" />
             </div>
           )}
@@ -172,9 +213,19 @@ export default function Cards({ api, session }) {
       {selectedId != null && (
         <Panel title="卡密列表" subtitle="脱敏展示,仅未售卡可作废 / 删除" padded={false}>
           <Toolbar right={
-            <Button variant="neutral" size="sm" iconLeft={<Icons.RefreshCw size={15} />} onClick={reloadAll}>
-              刷新
-            </Button>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <Button
+                variant="neutral" size="sm"
+                iconLeft={<Icons.Copy size={15} />}
+                disabled={rows.length === 0}
+                onClick={() => exportRowsCsv(rows, selectedProduct ? selectedProduct.title : codeNoun, codeNoun)}
+              >
+                导出
+              </Button>
+              <Button variant="neutral" size="sm" iconLeft={<Icons.RefreshCw size={15} />} onClick={reloadAll}>
+                刷新
+              </Button>
+            </div>
           }>
             <StatusTabs value={statusFilter} onChange={setStatusFilter} />
           </Toolbar>

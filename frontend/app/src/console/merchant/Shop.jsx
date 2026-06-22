@@ -24,6 +24,7 @@ export default function Shop({ api }) {
   const [saving, setSaving] = React.useState(false);
   const [formError, setFormError] = React.useState('');
   const [okMsg, setOkMsg] = React.useState('');
+  const [fieldErrors, setFieldErrors] = React.useState({});
 
   const data = shop.data || null;
 
@@ -42,11 +43,31 @@ export default function Shop({ api }) {
     });
   }, [data]);
 
-  const set = (k) => (e) => { setForm((f) => ({ ...f, [k]: e.target.value })); setOkMsg(''); };
+  const set = (k) => (e) => {
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+    setOkMsg('');
+    setFieldErrors((fe) => (fe[k] ? { ...fe, [k]: '' } : fe));
+  };
+
+  // 联系方式校验:手机 11 位数字;QQ 纯数字。返回错误映射(空对象=通过)。
+  function validateContacts() {
+    const errs = {};
+    const mobile = form.contact_mobile.trim();
+    if (mobile && !/^\d{11}$/.test(mobile)) errs.contact_mobile = '请输入 11 位数字手机号';
+    const qq = form.contact_qq.trim();
+    if (qq && !/^\d+$/.test(qq)) errs.contact_qq = 'QQ 号须为纯数字';
+    return errs;
+  }
 
   async function submit() {
     setFormError('');
     setOkMsg('');
+    const errs = validateContacts();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setFormError('请修正联系方式后再保存');
+      return;
+    }
     setSaving(true);
     try {
       await api.updateShop({
@@ -81,9 +102,10 @@ export default function Shop({ api }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* 预览:封面 + logo */}
+      {/* 预览:封面 + logo —— 注入当前所选主题的 CSS 变量覆盖,切主题即时预览(附录D) */}
       <Panel title="店铺预览" subtitle="买家访问店铺首页时看到的头图与标识" padded={false}>
-        <div style={{ position: 'relative' }}>
+        {/* 主题 CSS 变量(--brand 等)作用域内联在预览容器,切主题即时生效,且不污染 :root */}
+        <div style={{ position: 'relative', ...(THEMES[form.theme] || THEMES.default).vars }}>
           <div style={{
             height: 160, background: form.cover ? `center/cover no-repeat url(${form.cover})` : 'var(--surface-sunken)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', fontSize: 13,
@@ -184,9 +206,17 @@ export default function Shop({ api }) {
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <Input label="客服 QQ" value={form.contact_qq} onChange={set('contact_qq')} placeholder="QQ 号" />
-            <Input label="客服微信" value={form.contact_wechat} onChange={set('contact_wechat')} placeholder="微信号" />
-            <Input label="客服手机" value={form.contact_mobile} onChange={set('contact_mobile')} placeholder="手机号" />
+            <div>
+              <Input label="客服 QQ" value={form.contact_qq} onChange={set('contact_qq')} placeholder="QQ 号" />
+              {fieldErrors.contact_qq && <div style={fieldErrorStyle}>{fieldErrors.contact_qq}</div>}
+            </div>
+            <div>
+              <Input label="客服微信" value={form.contact_wechat} onChange={set('contact_wechat')} placeholder="微信号" />
+            </div>
+            <div>
+              <Input label="客服手机" value={form.contact_mobile} onChange={set('contact_mobile')} placeholder="手机号" />
+              {fieldErrors.contact_mobile && <div style={fieldErrorStyle}>{fieldErrors.contact_mobile}</div>}
+            </div>
           </div>
         </div>
       </Panel>
@@ -207,4 +237,8 @@ const textareaStyle = {
   width: '100%', padding: '10px 12px', fontSize: 'var(--text-base)', fontFamily: 'inherit',
   border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
   background: '#fff', color: 'var(--text-strong)', resize: 'vertical',
+};
+
+const fieldErrorStyle = {
+  marginTop: 6, fontSize: 12, fontWeight: 600, color: 'var(--danger-fg)',
 };

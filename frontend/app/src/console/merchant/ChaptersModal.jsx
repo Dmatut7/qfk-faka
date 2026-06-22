@@ -9,14 +9,21 @@ import { Input } from '../../../../design-system/components/core/Input.jsx';
 export default function ChaptersModal({ api, product, onClose }) {
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadErr, setLoadErr] = React.useState(''); // 章节加载失败态(区别于真正的空态)
   const [editing, setEditing] = React.useState(null); // 当前编辑/新建中的章节
   const [form, setForm] = React.useState({ title: '', content: '', sort: '0', status: 1 });
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState('');
+  const [delRow, setDelRow] = React.useState(null); // 待删除章节(二次确认)
+  const [delBusy, setDelBusy] = React.useState(false);
+  const [delErr, setDelErr] = React.useState('');
 
   const load = React.useCallback(() => {
-    setLoading(true);
-    api.chapters(product.id).then((d) => setItems(d.items || [])).catch(() => setItems([])).finally(() => setLoading(false));
+    setLoading(true); setLoadErr('');
+    api.chapters(product.id)
+      .then((d) => { setItems(d.items || []); })
+      .catch((e) => { setItems([]); setLoadErr(e instanceof ApiError ? e.message : '加载失败,请重试'); })
+      .finally(() => setLoading(false));
   }, [api, product.id]);
   React.useEffect(() => { load(); }, [load]);
 
@@ -35,12 +42,16 @@ export default function ChaptersModal({ api, product, onClose }) {
     finally { setBusy(false); }
   }
 
-  async function remove(c) {
-    if (typeof window !== 'undefined' && !window.confirm(`删除章节「${c.title}」?`)) return;
-    try { await api.deleteChapter(c.id); load(); } catch { /* 静默 */ }
+  async function confirmDelete() {
+    if (!delRow) return;
+    setDelBusy(true); setDelErr('');
+    try { await api.deleteChapter(delRow.id); setDelRow(null); load(); }
+    catch (e) { setDelErr(e instanceof ApiError ? e.message : '删除失败,请重试'); }
+    finally { setDelBusy(false); }
   }
 
   return (
+    <>
     <Modal open title={`章节管理 · ${product.title}`} onClose={onClose}
       footer={<Button variant="ghost" onClick={onClose}>关闭</Button>}>
       {editing ? (
@@ -48,7 +59,7 @@ export default function ChaptersModal({ api, product, onClose }) {
           {err ? <Pill tone="danger">{err}</Pill> : null}
           <Input label="章节标题" value={form.title} maxLength={200} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="如 第一章 入门" />
           <div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>章节正文(支持 HTML)</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>章节正文(支持 HTML / Markdown)</div>
             <textarea value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} rows={8}
               style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontFamily: 'var(--font-sans)', fontSize: 13.5, resize: 'vertical' }}
               placeholder="章节内容…(购买后买家可在订单页阅读)" />
@@ -76,6 +87,11 @@ export default function ChaptersModal({ api, product, onClose }) {
           </div>
           {loading ? (
             <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-subtle)' }}>加载中…</div>
+          ) : loadErr ? (
+            <div style={{ padding: '30px 0', textAlign: 'center', fontSize: 13 }}>
+              <div style={{ color: 'var(--danger-fg)', marginBottom: 10 }}>{loadErr}</div>
+              <Button size="sm" variant="ghost" onClick={load}>加载失败,点此重试</Button>
+            </div>
           ) : items.length === 0 ? (
             <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13 }}>暂无章节,点击「新增章节」</div>
           ) : (
@@ -86,7 +102,7 @@ export default function ChaptersModal({ api, product, onClose }) {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
                   {Number(c.status) === 0 ? <Pill tone="neutral">下架</Pill> : <Pill tone="success">上架</Pill>}
                   <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>编辑</Button>
-                  <Button size="sm" variant="danger" onClick={() => remove(c)}>删</Button>
+                  <Button size="sm" variant="danger" onClick={() => { setDelErr(''); setDelRow(c); }}>删</Button>
                 </div>
               ))}
             </div>
@@ -94,5 +110,13 @@ export default function ChaptersModal({ api, product, onClose }) {
         </div>
       )}
     </Modal>
+    {delRow && (
+      <Modal open title="删除章节" onClose={() => !delBusy && setDelRow(null)}
+        footer={<><Button variant="ghost" size="sm" onClick={() => setDelRow(null)} disabled={delBusy}>取消</Button><Button variant="danger" size="sm" loading={delBusy} onClick={confirmDelete}>确认删除</Button></>}>
+        {delErr ? <Pill tone="danger">{delErr}</Pill> : null}
+        <div style={{ fontSize: 14, color: 'var(--text-body)', lineHeight: 1.6, marginTop: delErr ? 10 : 0 }}>确认删除章节「<strong style={{ color: 'var(--text-strong)' }}>{delRow.title}</strong>」?此操作不可撤销。</div>
+      </Modal>
+    )}
+    </>
   );
 }
