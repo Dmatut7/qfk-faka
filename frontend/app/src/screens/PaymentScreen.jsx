@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '../../../design-system/components/core/Button.jsx';
 import { PriceTag } from '../../../design-system/components/core/PriceTag.jsx';
 import { CheckoutSteps } from '../../../design-system/components/commerce/CheckoutSteps.jsx';
+import { PaymentOption } from '../../../design-system/components/commerce/PaymentOption.jsx';
 import { api, pollDelivery, statusKey, STATUS, ApiError } from '../api.js';
 import { Icons } from '../Icons.jsx';
 
@@ -35,6 +36,8 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   const [phase, setPhase] = React.useState(PHASE.IDLE);
   const [err, setErr] = React.useState('');            // ApiError.message
   const [waitMsg, setWaitMsg] = React.useState('');    // 等待态副提示(轮询 onTick)
+  // 二维码刷新:递增 key 让占位二维码重绘(本地演示无真实二维码图,仅作可视刷新反馈)
+  const [qrKey, setQrKey] = React.useState(0);
 
   // 倒计时:用 order.expireAt 算剩余秒
   const expireTs = React.useMemo(() => parseBackendTime(order.expireAt), [order.expireAt]);
@@ -158,11 +161,29 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
     }
   };
 
+  // 二维码刷新:仅清空 idle 阶段的发起失败错误并重绘占位二维码,不动状态机。
+  // 已进入异步流程(paying / 终态)时不允许刷新,避免与轮询/已支付状态冲突。
+  const handleRefreshQr = () => {
+    if (paying || phase !== PHASE.IDLE) return;
+    setErr('');
+    setQrKey((k) => k + 1);
+  };
+
   const inWaiting = phase === PHASE.WAITING;
   const isException = phase === PHASE.EXCEPTION;
   const isClosed = phase === PHASE.CLOSED;
   const isTimeout = phase === PHASE.TIMEOUT;
   const showOverlay = inWaiting || isException || isClosed || isTimeout;
+  const terminalBack = isException || isClosed || isTimeout;
+
+  const card = {
+    background: '#fff', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden',
+  };
+  const sectionLabel = {
+    fontSize: 13, fontWeight: 800, color: 'var(--text-subtle)',
+    letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12,
+  };
 
   return (
     <div style={{ maxWidth: 560, margin: '0 auto', padding: '18px 16px 120px' }}>
@@ -178,7 +199,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
           color: expired ? 'var(--danger-fg, #b91c1c)' : 'var(--text-strong)',
           fontSize: 13.5, fontWeight: 600,
         }}>
-          <Icons.Clock size={16} color={expired ? 'var(--danger-solid, #dc2626)' : 'var(--brand-solid, #2563eb)'} />
+          <Icons.Clock size={16} color={expired ? 'var(--danger-solid, #dc2626)' : 'var(--brand, #FF5000)'} />
           {expired
             ? <span>订单已过期,请返回重新下单</span>
             : <span>剩余 <b className="ds-mono" style={{ fontSize: 14 }}>{fmtMMSS(remain)}</b>,未支付将自动取消</span>}
@@ -186,7 +207,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       )}
 
       {/* 订单信息 */}
-      <div style={{ marginTop: 18, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+      <div style={{ marginTop: 18, ...card }}>
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-strong)' }}>订单信息</span>
           <span className="ds-mono" style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{order.orderNo}</span>
@@ -208,15 +229,12 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
 
       {/* 等待 / 异常 / 关闭 / 超时 状态卡 */}
       {showOverlay && (
-        <div style={{
-          marginTop: 18, padding: 18, borderRadius: 'var(--radius-lg)',
-          background: '#fff', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)',
-        }}>
+        <div style={{ marginTop: 18, padding: 18, ...card }}>
           {inWaiting && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', padding: '8px 0' }}>
               <div className="ds-spin" style={{
                 width: 38, height: 38, borderRadius: '50%',
-                border: '3px solid var(--brand-soft)', borderTopColor: 'var(--brand-solid, #2563eb)',
+                border: '3px solid var(--brand-soft)', borderTopColor: 'var(--brand, #FF5000)',
                 animation: 'ds-spin 0.8s linear infinite',
               }} />
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>等待支付确认 · 发货中</div>
@@ -264,26 +282,66 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         </div>
       )}
 
-      {/* 支付方式:聚合支付单入口(后端仅 epay,不让用户选具体钱包) */}
+      {/* 扫码区:占位二维码 + 过期/可刷新(本地演示无真实二维码图,过期后由后端 4003 兜底) */}
       {phase === PHASE.IDLE && (
         <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-subtle)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>支付方式</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
-            background: '#fff', border: '1.5px solid var(--brand)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-sm)',
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 12, flex: 'none', background: 'var(--brand-soft)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Icons.QrCode size={24} color="var(--brand-active)" />
+          <div style={sectionLabel}>扫码支付</div>
+          <div style={{ ...card, padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 'none' }}>
+              <div key={qrKey} style={{
+                width: 128, height: 128, borderRadius: 'var(--radius-md)',
+                border: '1.5px solid var(--border)', background: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                filter: expired ? 'grayscale(1)' : 'none', opacity: expired ? 0.45 : 1,
+              }}>
+                <Icons.QrCode size={88} color="var(--text-strong)" />
+              </div>
+              {expired && (
+                <button
+                  type="button"
+                  onClick={handleRefreshQr}
+                  style={{
+                    position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)',
+                    background: 'rgba(255,255,255,0.86)', border: 'none', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 6, color: 'var(--brand-active)', fontSize: 12.5, fontWeight: 700,
+                  }}
+                >
+                  <Icons.RefreshCw size={22} color="var(--brand, #FF5000)" />
+                  二维码已过期 · 点击刷新
+                </button>
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-strong)' }}>扫码支付</div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>聚合收银台 · 即时到账 · 付款后自动发货</div>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-strong)' }}>扫码即时支付</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                聚合收银台 · 微信 / 支付宝均可扫 · 付款后自动发货。点击下方按钮在新窗口打开收银台。
+              </div>
+              {expired ? (
+                <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={16} />}
+                  onClick={handleRefreshQr} style={{ marginTop: 12 }}>刷新二维码</Button>
+              ) : (
+                <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--secure-fg)' }}>
+                  <Icons.Check size={15} color="var(--secure-solid)" />二维码有效,等待扫码
+                </div>
+              )}
             </div>
-            <Icons.Check size={20} color="var(--brand)" style={{ flex: 'none' }} />
           </div>
+        </div>
+      )}
+
+      {/* 支付方式:聚合支付单入口(后端仅 epay,不让用户选具体钱包,固定选中) */}
+      {phase === PHASE.IDLE && (
+        <div style={{ marginTop: 18 }} role="radiogroup" aria-label="支付方式">
+          <div style={sectionLabel}>支付方式</div>
+          <PaymentOption
+            name="扫码支付"
+            desc="聚合收银台 · 即时到账 · 付款后自动发货"
+            tag="推荐"
+            icon={<Icons.QrCode size={22} color="var(--brand-active)" />}
+            selected
+            onSelect={() => {}}
+          />
         </div>
       )}
 
@@ -302,7 +360,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         boxShadow: '0 -6px 24px rgba(18,27,42,.06)',
       }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          {(isException || isClosed || isTimeout) ? (
+          {terminalBack ? (
             <Button variant="neutral" size="lg" block onClick={() => onBack && onBack()}
               iconLeft={<Icons.ChevronLeft size={18} />} style={{ flex: 1 }}>返回</Button>
           ) : (

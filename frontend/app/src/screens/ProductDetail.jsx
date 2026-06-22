@@ -10,11 +10,14 @@ import { Icons } from '../Icons.jsx';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function InfoRow({ label, children }) {
+// 商品类型 → 中文标签(1卡密/2知识/3资源/4权益)
+const TYPE_LABEL = { 1: '卡密', 2: '知识', 3: '资源', 4: '权益' };
+
+function InfoRow({ label, children, strong }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-strong)' }}>{children}</span>
+      <span style={{ fontSize: 14, fontWeight: 700, color: strong ? 'var(--price-accent)' : 'var(--text-strong)' }}>{children}</span>
     </div>
   );
 }
@@ -23,6 +26,17 @@ function CenterState({ children }) {
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '64px 16px', minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, textAlign: 'center' }}>
       {children}
+    </div>
+  );
+}
+
+// 区块小标题(橙色装饰条 + uppercase 标签),贯穿淘宝风信息分组
+function SectionTitle({ children, icon }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <span style={{ width: 4, height: 15, borderRadius: 2, background: 'var(--brand-gradient)', flex: 'none' }} />
+      {icon}
+      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>{children}</span>
     </div>
   );
 }
@@ -48,6 +62,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const [touched, setTouched] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitErr, setSubmitErr] = React.useState('');
+
+  // 知识类章节目录(购前预览,仅标题):{ items:[{id,title}] }
+  const [chapters, setChapters] = React.useState(null);
 
   const load = React.useCallback(() => {
     let alive = true;
@@ -90,6 +107,17 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   // 图片地址变化时重置失败态,避免新图沿用旧回退
   React.useEffect(() => { setImgFailed(false); }, [product && product.image]);
 
+  // 知识类(goods_type=2)拉章节目录预览;非知识类不请求,清空。
+  const isKnowledge = Number((product && product.goods_type) ?? 1) === 2;
+  React.useEffect(() => {
+    if (!productId || !isKnowledge) { setChapters(null); return; }
+    let alive = true;
+    api.productChapters(productId)
+      .then((r) => { if (alive) setChapters(Array.isArray(r && r.items) ? r.items : []); })
+      .catch(() => { if (alive) setChapters(null); });
+    return () => { alive = false; };
+  }, [productId, isKnowledge]);
+
   // ---- loading ----
   if (loading) {
     return (
@@ -100,7 +128,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     );
   }
 
-  // ---- load error ----
+  // ---- load error / empty ----
   if (loadErr || !product) {
     return (
       <CenterState>
@@ -123,6 +151,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   const out = isCard ? p.stock <= 0 : false;
   const hasSold = p.sold != null;
   const hasOriginal = p.original != null && p.original > p.price;
+  const goodsType = Number(p.goods_type) || 1;
 
   // 库存展示:非卡密类显示「现货」;卡密类 show_stock_type=1 精确「库存 N」,=0 模糊(充足>20/少量1-20/缺货0)。
   const stockBadge = (() => {
@@ -202,8 +231,13 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     }
   };
 
+  const savedAmount = hasOriginal ? ((Math.round(Number(p.original) * 100) - priceCents) / 100).toFixed(0) : '0';
+
+  // 卡片容器统一样式(淘宝风:白底、细描边、软阴影、圆角)
+  const cardStyle = { background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-xs)' };
+
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '18px 16px 120px' }}>
+    <div style={{ maxWidth: 760, margin: '0 auto', padding: '18px 16px 132px' }}>
       {onBack && (
         <button
           type="button"
@@ -220,38 +254,38 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       {partialErr && (
         <div role="status" style={{
           marginTop: 12, display: 'flex', alignItems: 'center', gap: 9, padding: '10px 13px',
-          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
-          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg, #92600a)',
+          background: 'var(--pending-bg)', border: '1px solid var(--pending-border)',
+          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg)',
         }}>
-          <Icons.AlertTriangle size={16} color="var(--pending-fg, #92600a)" style={{ flex: 'none' }} />
+          <Icons.AlertTriangle size={16} color="var(--pending-fg)" style={{ flex: 'none' }} />
           <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>商品详情加载不完整,可重试</span>
           <button
             type="button"
             onClick={load}
             style={{
               flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px',
-              border: '1px solid var(--pending-border, #fde7b8)', background: '#fff', color: 'var(--pending-fg, #92600a)',
+              border: '1px solid var(--pending-border)', background: '#fff', color: 'var(--pending-fg)',
               borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap',
             }}
           ><Icons.RefreshCw size={13} />重试</button>
         </div>
       )}
 
-      {/* 顶部大图 */}
+      {/* 顶部大图(无图回退 emoji 占位,暖橙渐变底) */}
       <div style={{
         marginTop: 18, width: '100%', aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-        background: 'var(--brand-soft)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'var(--brand-gradient)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         {p.image && !imgFailed
           ? <img src={p.image} alt={p.name} onError={() => setImgFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-          : <div style={{ fontSize: 64 }}>{p.thumb}</div>}
+          : <div style={{ fontSize: 72, filter: 'drop-shadow(0 4px 12px rgba(122,36,0,.28))' }}>{p.thumb}</div>}
       </div>
 
-      {/* head */}
+      {/* head:标题 + 徽标行(类型/库存/发货/已售) */}
       <div style={{ marginTop: 16 }}>
-        <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3 }}>{p.name}</h1>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <Badge variant="brand">{({ 1: '卡密', 2: '知识', 3: '资源', 4: '权益' }[Number(p.goods_type) || 1])}</Badge>
+        <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.3, margin: 0 }}>{p.name}</h1>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          <Badge variant="brand">{TYPE_LABEL[goodsType]}</Badge>
           {p.on_sale && <Badge variant="danger" icon={<Icons.Zap size={13} />}>限时折扣</Badge>}
           <Badge variant={stockBadge.variant} dot>{stockBadge.text}</Badge>
           <Badge variant="secure" icon={<Icons.Zap size={13} />}>{isCard ? '自动发货' : '即时发货'}</Badge>
@@ -259,12 +293,16 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         </div>
       </div>
 
-      {/* price */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 16, flexWrap: 'wrap' }}>
+      {/* price:现价大红 + 划线原价 + 「省¥X」 */}
+      <div style={{
+        marginTop: 16, padding: '16px 18px', borderRadius: 'var(--radius-lg)',
+        background: 'linear-gradient(180deg, var(--brand-soft) 0%, #fff 100%)', border: '1px solid var(--brand-soft-border)',
+        display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap',
+      }}>
         <PriceTag amount={p.price} original={hasOriginal ? p.original : undefined} size="lg" />
         {hasOriginal && (
-          <span style={{ fontSize: 13, color: 'var(--success-fg)', fontWeight: 700, background: 'var(--success-bg)', padding: '3px 9px', borderRadius: 99 }}>
-            省 ¥{((Math.round(Number(p.original) * 100) - priceCents) / 100).toFixed(0)}
+          <span style={{ fontSize: 13, color: 'var(--danger-fg)', fontWeight: 800, background: 'var(--promo-soft-bg)', border: '1px solid var(--promo-soft-border)', padding: '3px 9px', borderRadius: 99 }}>
+            省 ¥{savedAmount}
           </span>
         )}
       </div>
@@ -273,23 +311,57 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       {shop && (shop.announcement || '').trim() && (
         <div style={{
           marginTop: 16, display: 'flex', gap: 9, alignItems: 'flex-start', padding: '10px 13px',
-          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
-          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg, #92600a)',
+          background: 'var(--pending-bg)', border: '1px solid var(--pending-border)',
+          borderRadius: 'var(--radius-md)', color: 'var(--pending-fg)',
         }}>
-          <Icons.Megaphone size={17} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+          <Icons.Megaphone size={17} color="var(--pending-fg)" style={{ flex: 'none', marginTop: 1 }} />
           <span style={{ fontSize: 13, lineHeight: 1.55, fontWeight: 600 }}>{shop.announcement.trim()}</span>
         </div>
       )}
 
-      {/* detail */}
+      {/* detail:商品说明 */}
       {p.detail && (
-        <div style={{ marginTop: 22, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-xs)' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-subtle)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 10 }}>商品说明</div>
-          <p style={{ fontSize: 15, color: 'var(--text-body)', lineHeight: 1.7, whiteSpace: 'pre-wrap', textWrap: 'pretty' }}>{p.detail}</p>
+        <div style={{ marginTop: 16, ...cardStyle }}>
+          <SectionTitle icon={<Icons.Package size={16} color="var(--brand)" />}>商品说明</SectionTitle>
+          <p style={{ fontSize: 15, color: 'var(--text-body)', lineHeight: 1.7, whiteSpace: 'pre-wrap', textWrap: 'pretty', margin: 0 }}>{p.detail}</p>
         </div>
       )}
 
-      {/* trust promise */}
+      {/* 知识类章节目录预览(仅标题,购前预览) */}
+      {isKnowledge && (
+        <div style={{ marginTop: 16, ...cardStyle }}>
+          <SectionTitle icon={<Icons.Inbox size={16} color="var(--brand)" />}>章节目录</SectionTitle>
+          {chapters == null ? (
+            <div style={{ fontSize: 13.5, color: 'var(--text-muted)', padding: '6px 0' }}>正在加载章节目录…</div>
+          ) : chapters.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--text-muted)', padding: '6px 0' }}>暂无可预览章节,购买后即可解锁全部内容</div>
+          ) : (
+            <>
+              <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column' }}>
+                {chapters.map((c, i) => (
+                  <li key={c.id ?? i} style={{
+                    display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0',
+                    borderBottom: i < chapters.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <span style={{
+                      flex: 'none', width: 24, height: 24, borderRadius: 'var(--radius-sm)', background: 'var(--brand-soft)',
+                      color: 'var(--brand-active)', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>{i + 1}</span>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: 'var(--text-body)', fontWeight: 600, lineHeight: 1.5 }}>{c.title}</span>
+                    <Icons.Lock size={15} color="var(--text-subtle)" style={{ flex: 'none' }} />
+                  </li>
+                ))}
+              </ol>
+              <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icons.Lock size={13} color="var(--text-subtle)" />仅展示标题,购买后可阅读全部章节内容
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* trust promise(发货说明) */}
       {p.delivery_message && (
         <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--secure-bg)', border: '1px solid var(--teal-50)', borderRadius: 'var(--radius-lg)', padding: '12px 14px' }}>
           <Icons.Package size={18} color="var(--secure-solid)" style={{ flex: 'none', marginTop: 1 }} />
@@ -301,10 +373,10 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       {(p.purchase_notice || '').trim() && (
         <div style={{
           marginTop: 16, display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px',
-          background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
-          borderRadius: 'var(--radius-lg)', color: 'var(--pending-fg, #92600a)',
+          background: 'var(--pending-bg)', border: '1px solid var(--pending-border)',
+          borderRadius: 'var(--radius-lg)', color: 'var(--pending-fg)',
         }}>
-          <Icons.AlertTriangle size={18} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
+          <Icons.AlertTriangle size={18} color="var(--pending-fg)" style={{ flex: 'none', marginTop: 1 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>购买须知</div>
             <div style={{ fontSize: 13.5, lineHeight: 1.6, fontWeight: 600, whiteSpace: 'pre-wrap', textWrap: 'pretty' }}>
@@ -314,70 +386,76 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         </div>
       )}
 
-      {/* order form */}
+      {/* order form:数量 / 邮箱 / 查单密码 / 优惠券 / 金额分解 */}
       <div style={{ marginTop: 16, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <SectionTitle icon={<Icons.Zap size={16} color="var(--brand)" />}>购买信息</SectionTitle>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 16px' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>购买数量</span>
           {out
             ? <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger-fg)' }}>暂时缺货</span>
             : <QuantityStepper value={safeQty} min={minBuy} max={effMax} onChange={setQty} />}
         </div>
-        <Input
-          label="接收邮箱"
-          required
-          type="email"
-          placeholder="you@example.com"
-          inputMode="email"
-          autoComplete="email"
-          icon={<Icons.Mail size={18} />}
-          value={email}
-          onChange={(e) => { setEmail(e.target.value); if (submitErr) setSubmitErr(''); }}
-          onBlur={() => setTouched(true)}
-          error={touched && !emailOk ? '请输入有效的邮箱地址,卡密将发送至此' : ''}
-          hint="卡密将自动发送到此邮箱,并可在「取卡 / 查单」页查看"
-        />
-        <Input
-          label="查单密码(选填)"
-          type="password"
-          placeholder="设置后可凭订单号 + 密码查单"
-          autoComplete="new-password"
-          icon={<Icons.Lock size={18} />}
-          value={queryPassword}
-          onChange={(e) => setQueryPassword(e.target.value)}
-          hint="选填:设置后无需邮箱,凭订单号 + 此密码即可查单取卡"
-        />
 
-        {/* 优惠券(选填):输入券码后验证,生效则抵扣应付金额 */}
-        <div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1 }}>
-              <Input
-                label="优惠券(选填)"
-                placeholder="输入券码"
-                icon={<Icons.Star size={18} />}
-                value={couponCode}
-                onChange={(e) => { setCouponCode(e.target.value); setAppliedCoupon(''); setCouponErr(''); }}
-                error={couponErr}
-              />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Input
+            label="接收邮箱"
+            required
+            type="email"
+            placeholder="you@example.com"
+            inputMode="email"
+            autoComplete="email"
+            icon={<Icons.Mail size={18} />}
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); if (submitErr) setSubmitErr(''); }}
+            onBlur={() => setTouched(true)}
+            error={touched && !emailOk ? '请输入有效的邮箱地址,卡密将发送至此' : ''}
+            hint="卡密将自动发送到此邮箱,并可在「取卡 / 查单」页查看"
+          />
+          <Input
+            label="查单密码(选填)"
+            type="password"
+            placeholder="设置后可凭订单号 + 密码查单"
+            autoComplete="new-password"
+            icon={<Icons.Lock size={18} />}
+            value={queryPassword}
+            onChange={(e) => setQueryPassword(e.target.value)}
+            hint="选填:设置后无需邮箱,凭订单号 + 此密码即可查单取卡"
+          />
+
+          {/* 优惠券(选填):输入券码后验证,生效则抵扣应付金额 */}
+          <div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Input
+                  label="优惠券(选填)"
+                  placeholder="输入券码"
+                  icon={<Icons.Star size={18} />}
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value); setAppliedCoupon(''); setCouponErr(''); }}
+                  error={couponErr}
+                />
+              </div>
+              <Button variant="secondary" size="md" onClick={applyCoupon} loading={couponChecking} disabled={out}>验证</Button>
             </div>
-            <Button variant="secondary" size="md" onClick={applyCoupon} loading={couponChecking} disabled={out}>验证</Button>
+            {couponApplied && (
+              <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--success-fg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icons.Check size={14} color="var(--success-solid)" />优惠券已生效
+              </div>
+            )}
+            {!couponApplied && hasDiscount && (
+              <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--brand-active)', fontWeight: 700 }}>
+                已享{preview.discount_label || '优惠'} −¥{discountNum.toFixed(2)}
+              </div>
+            )}
           </div>
-          {couponApplied && (
-            <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--success-fg)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icons.Check size={14} color="var(--success-solid)" />优惠券已生效
-            </div>
-          )}
-          {!couponApplied && hasDiscount && (
-            <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--brand-active)', fontWeight: 700 }}>
-              已享{preview.discount_label || '优惠'} −¥{discountNum.toFixed(2)}
-            </div>
-          )}
         </div>
 
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
+        {/* 金额分解:单价×数量 − 优惠 = 预计应付 */}
+        <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
           <InfoRow label="单价">¥{p.price.toFixed(2)}</InfoRow>
           <InfoRow label="数量">{out ? '—' : `×${safeQty}`}</InfoRow>
-          {hasDiscount && <InfoRow label={preview.discount_label || '优惠'}>−¥{discountNum.toFixed(2)}</InfoRow>}
+          {hasDiscount && <InfoRow label={preview.discount_label || '优惠'} strong>−¥{discountNum.toFixed(2)}</InfoRow>}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-strong)' }}>预计应付</span>
             {out
@@ -393,11 +471,11 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         平台担保 · 付款后通常数十秒内自动发货,可在取卡页查看
       </div>
 
-      {/* sticky buy bar */}
+      {/* 底部 sticky 购买条 */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 30, background: 'rgba(255,255,255,0.92)',
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid var(--border)',
-        boxShadow: '0 -6px 24px rgba(18,27,42,.06)',
+        boxShadow: '0 -6px 24px rgba(122,36,0,.08)',
       }}>
         <div style={{ maxWidth: 760, margin: '0 auto', padding: '12px 16px' }}>
           {submitErr && (
@@ -407,14 +485,14 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15, flex: 'none' }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>预计应付</span>
               {out
                 ? <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-muted)' }}>—</span>
                 : <PriceTag amount={payable} size="md" />}
             </div>
             <Button
-              variant="primary"
+              variant={out ? 'primary' : 'buy'}
               size="lg"
               block
               loading={submitting}

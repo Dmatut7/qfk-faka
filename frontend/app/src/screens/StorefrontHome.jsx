@@ -1,23 +1,35 @@
 import React from 'react';
 import { Icons } from '../Icons.jsx';
 import { normId } from '../api.js';
+import { ProductCard } from '../../../design-system/components/commerce/ProductCard.jsx';
 
-/* 鲸发卡风格发卡商城首页 —
-   店招(cover 横幅 + 圆形 logo 叠左下 + 店名 + 认证 + 三联统计 + 联系客服)
-   + 公告条 + 分类 tab(按 category_id 精确筛选)+ 2 列带图商品网格 + 联系客服弹窗。
-   数据全部来自 props(已 normalize),无 window.MK_*。 */
+/* 秒卡 MiaoKa 风格发卡商城首页(淘宝商业橙)——
+   平台公告条(轮播 + 可关闭)→ 橙色封面 banner → 商户卡(圆形 avatar + 店名 + 已认证 +
+   三联统计 + 信任 chips + 联系客服)→ 4 横排销售类型卡(按 goods_type 分组计数,点击筛选)
+   → 搜索框 → 排序/分类筛选(综合/销量/上新/价格 + 分类计数,选中橙高亮)
+   → 2 列 image-led 商品网格(ESM <ProductCard/>)→ 底部 tab bar。
+   配色全走 CSS 变量(橙 token);业务逻辑/状态/handler 原样保留,只重写渲染与配色。 */
 
 const money = (v) => {
   const n = Number(v);
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
 };
 
-/* —— 已认证徽章 —— */
+/* 销售类型元数据(对标演示站,emoji 仅做占位缩略) */
+const GOODS_TYPE_META = {
+  1: { name: '数字卡密', emoji: '⚡️', short: '卡密' },
+  2: { name: '知识文章', emoji: '☘️', short: '知识' },
+  3: { name: '资源下载', emoji: '💎', short: '资源' },
+  4: { name: '数字权益', emoji: '👑', short: '权益' },
+};
+const GOODS_TYPE_ORDER = [1, 2, 3, 4];
+
+/* —— 已认证徽章(橙渐变) —— */
 function VerifiedBadge() {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 9px 0 7px',
-      background: 'var(--brand)', color: '#fff', borderRadius: 'var(--radius-pill)',
+      background: 'var(--brand-gradient)', color: '#fff', borderRadius: 'var(--radius-pill)',
       fontSize: 12, fontWeight: 800, flex: 'none', whiteSpace: 'nowrap',
     }}>
       <Icons.ShieldCheck size={13} color="#fff" />已认证
@@ -26,109 +38,39 @@ function VerifiedBadge() {
 }
 
 /* —— 三联统计单元 —— */
-function Stat({ value, label, icon }) {
+function Stat({ value, label, seal }) {
   return (
-    <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+    <div style={{ flex: 1, minWidth: 0, textAlign: 'center', lineHeight: 1.2 }}>
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-        fontSize: 17, fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums',
+        fontWeight: 800, fontSize: 17, color: 'var(--text-strong)',
+        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+      }}>{value}</div>
+      <div style={{
+        fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap',
       }}>
-        {icon}{value}
+        {seal && (
+          <span style={{
+            display: 'inline-flex', width: 14, height: 14, borderRadius: '50%',
+            background: 'var(--secure-solid)', color: '#fff', alignItems: 'center',
+            justifyContent: 'center', fontSize: 9, fontWeight: 800,
+          }}>保</span>
+        )}
+        {label}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }}>{label}</div>
     </div>
   );
 }
 
-/* —— 库存标签 ——
-   showStockType=1 精确显示「库存 N」;否则模糊(充足/少量/缺货)。
-   缺货(stock<=0)始终显示「缺货」,与显示方式无关。 */
-function StockPill({ stock, showStockType, isCard = true }) {
-  let bg = 'var(--success-bg)', fg = 'var(--success-fg)', bd = 'var(--success-border)', txt = '库存充足';
-  // 非卡密类(知识/资源/权益)无卡库存概念,统一显示「现货」
-  if (!isCard) { txt = '现货'; }
-  else if (stock <= 0) { bg = 'var(--surface-sunken)'; fg = 'var(--text-muted)'; bd = 'var(--border)'; txt = '缺货'; }
-  else if (Number(showStockType) === 1) { txt = `库存 ${stock}`; }
-  else if (stock <= 20) { bg = 'var(--pending-bg)'; fg = 'var(--pending-fg)'; bd = 'var(--pending-border)'; txt = '库存少量'; }
+/* —— 信任 chip —— */
+function TrustChip({ icon, children }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 8px',
-      background: bg, color: fg, border: `1px solid ${bd}`, borderRadius: 'var(--radius-pill)',
-      fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', flex: 'none',
-    }}>{txt}</span>
-  );
-}
-
-/* —— 带图缩略(加载失败回退 emoji 占位,不破图) —— */
-function GoodsThumb({ src, alt, thumb, fontSize = 38 }) {
-  const [failed, setFailed] = React.useState(false);
-  // src 变化时重置失败态,避免新图沿用旧的回退态
-  React.useEffect(() => { setFailed(false); }, [src]);
-  if (src && !failed) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        loading="lazy"
-        onError={() => setFailed(true)}
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-      />
-    );
-  }
-  return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize }}>{thumb}</div>
-  );
-}
-
-/* —— 带图商品卡(2 列网格用) —— */
-function GoodsCard({ p, onClick }) {
-  const isCard = Number(p.goods_type ?? 1) === 1;
-  const out = isCard ? p.stock <= 0 : false;
-  const hasOriginal = p.original != null && p.original > p.price;
-  return (
-    <button
-      type="button"
-      onClick={out ? undefined : onClick}
-      disabled={out}
-      style={{
-        display: 'flex', flexDirection: 'column', textAlign: 'left', padding: 0, width: '100%',
-        background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
-        overflow: 'hidden', cursor: out ? 'default' : 'pointer', opacity: out ? 0.66 : 1,
-        boxShadow: 'var(--shadow-xs)', fontFamily: 'var(--font-sans)',
-        transition: 'transform .15s, box-shadow .15s, border-color .15s',
-      }}
-      onMouseEnter={(e) => { if (!out) { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; e.currentTarget.style.transform = 'none'; }}
-    >
-      {/* 图片 16:9 */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', background: 'var(--brand-soft)', overflow: 'hidden' }}>
-        <GoodsThumb src={p.image} alt={p.name} thumb={p.thumb} fontSize={38} />
-        <div style={{ position: 'absolute', top: 8, right: 8 }}><StockPill stock={p.stock} showStockType={p.show_stock_type} isCard={isCard} /></div>
-        {p.on_sale && (
-          <div style={{ position: 'absolute', top: 8, left: 8, display: 'inline-flex', alignItems: 'center', gap: 3, height: 20, padding: '0 8px', background: 'var(--danger-solid, #e5484d)', color: '#fff', borderRadius: 'var(--radius-pill)', fontSize: 11, fontWeight: 800 }}>限时</div>
-        )}
-      </div>
-      {/* 内容 */}
-      <div style={{ padding: '10px 11px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <div style={{
-          fontSize: 14, fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.35,
-          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', minHeight: '2.7em',
-        }}>{p.name}</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--price-accent)', fontWeight: 800, fontSize: 18, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ fontSize: 12, marginRight: 1 }}>¥</span>{money(p.price)}
-          </span>
-          {hasOriginal && (
-            <span style={{ color: 'var(--text-subtle)', textDecoration: 'line-through', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
-              ¥{money(p.original)}
-            </span>
-          )}
-        </div>
-        {p.sales_count != null && (
-          <div style={{ fontSize: 11.5, color: 'var(--text-subtle)', marginTop: 6 }}>已售 {p.sales_count}</div>
-        )}
-      </div>
-    </button>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600,
+      color: 'var(--text-body)', whiteSpace: 'nowrap',
+    }}>
+      <span style={{ display: 'flex', color: 'var(--secure-solid)' }}>{icon}</span>{children}
+    </div>
   );
 }
 
@@ -190,7 +132,8 @@ function ContactModal({ contact, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 460, background: '#fff', borderRadius: '18px 18px 0 0',
-          padding: '18px 18px calc(18px + env(safe-area-inset-bottom, 0px))', boxShadow: 'var(--shadow-lg, 0 -10px 40px rgba(18,27,42,.18))',
+          padding: '18px 18px calc(18px + env(safe-area-inset-bottom, 0px))',
+          boxShadow: 'var(--shadow-lg, 0 -10px 40px rgba(18,27,42,.18))',
           animation: 'mk-sheet-up .22s ease-out',
         }}
       >
@@ -273,7 +216,7 @@ function PlatformNoticeModal({ notices, onClose }) {
   );
 }
 
-/* —— 平台公告条(店招之上,可关闭;多条轮播显示最新一条 + 点击看全部) —— */
+/* —— 平台公告条(banner 之上,橙底,可关闭;多条轮播 + 点击看全部) —— */
 function PlatformNoticeBar({ notices }) {
   const [closed, setClosed] = React.useState(false);
   const [idx, setIdx] = React.useState(0);
@@ -296,123 +239,75 @@ function PlatformNoticeBar({ notices }) {
 
   return (
     <>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px',
-        background: 'var(--brand-soft, #eef3ff)', borderBottom: '1px solid var(--brand-soft-border, #d6e2ff)',
-        color: 'var(--brand-active)',
-      }}>
-        <Icons.Megaphone size={17} color="var(--brand-active)" style={{ flex: 'none' }} />
-        <button
-          type="button"
-          onClick={() => setShowAll(true)}
-          title="查看全部平台公告"
-          style={{
-            flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, padding: 0, border: 'none',
-            background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'inherit',
-            fontFamily: 'var(--font-sans)',
-          }}
-        >
-          <span style={{
-            flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-            overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>
-            <span style={{ fontWeight: 800 }}>{cur.title}</span>
-            {cur.content ? <span style={{ fontWeight: 600, opacity: .85 }}>{'  ·  ' + cur.content}</span> : null}
-          </span>
-          <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, opacity: .8, whiteSpace: 'nowrap' }}>
-            {many ? `全部 ${notices.length} 条 ›` : '详情 ›'}
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setClosed(true)}
-          aria-label="关闭公告"
-          style={{
-            flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
-            border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--brand-active)', opacity: .7,
-          }}
-        ><Icons.X size={15} /></button>
+      <div style={{ background: 'var(--brand-soft)', borderBottom: '1px solid var(--brand-soft-border)' }}>
+        <div style={{
+          maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', minHeight: 36,
+          display: 'flex', alignItems: 'center', gap: 9,
+        }}>
+          <Icons.Megaphone size={16} color="var(--orange-700)" style={{ flex: 'none' }} />
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            title="查看全部平台公告"
+            style={{
+              flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '7px 0', border: 'none',
+              background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--orange-700)',
+              fontFamily: 'var(--font-sans)',
+            }}
+          >
+            <span style={{
+              flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              <span style={{ fontWeight: 800 }}>{cur.title}</span>
+              {cur.content ? <span style={{ fontWeight: 600, opacity: .85 }}>{'  ·  ' + cur.content}</span> : null}
+            </span>
+            <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, opacity: .8, whiteSpace: 'nowrap' }}>
+              {many ? `全部 ${notices.length} 条 ›` : '详情 ›'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setClosed(true)}
+            aria-label="关闭公告"
+            style={{
+              flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22,
+              border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--orange-600)', opacity: .8,
+            }}
+          ><Icons.X size={15} /></button>
+        </div>
       </div>
       {showAll && <PlatformNoticeModal notices={notices} onClose={() => setShowAll(false)} />}
     </>
   );
 }
 
-const GRID = { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 };
-
-/* 商品类型分组陈列(对标鲸商城PRO 店铺首页按销售类型分组)。emoji 与演示站一致。 */
-const GOODS_TYPE_META = {
-  1: { name: '数字卡密', emoji: '⚡️' },
-  2: { name: '知识文章', emoji: '☘️' },
-  3: { name: '资源下载', emoji: '💎' },
-  4: { name: '数字权益', emoji: '👑' },
-};
-const GOODS_TYPE_ORDER = [1, 2, 3, 4];
-
-/* 把商品按 goods_type 分组,返回有序非空分组 [{type, meta, items}] */
-function groupByGoodsType(products) {
-  const buckets = new Map();
-  for (const p of products) {
-    const t = Number(p.goods_type ?? 1);
-    if (!buckets.has(t)) buckets.set(t, []);
-    buckets.get(t).push(p);
-  }
-  // 已知类型按固定顺序在前,未知类型(理论上无)兜底排后
-  const types = [...buckets.keys()].sort((a, b) => {
-    const ia = GOODS_TYPE_ORDER.indexOf(a), ib = GOODS_TYPE_ORDER.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-  });
-  return types.map((t) => ({
-    type: t,
-    meta: GOODS_TYPE_META[t] || { name: '其他商品', emoji: '📦' },
-    items: buckets.get(t),
-  }));
-}
-
-/* 顶部 4 横排销售类型卡(对标鲸商城PRO 店铺招牌):点击按类型筛选 */
+/* —— 顶部 4 横排销售类型卡(按 goods_type 计数,点击筛选) —— */
 function TypeSummaryCards({ counts, active, onPick }) {
   const types = GOODS_TYPE_ORDER.filter((t) => (counts[t] || 0) > 0);
   if (types.length < 2) return null; // 单一类型店无需类型卡
   return (
-    <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '18px 16px 0' }}>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+    <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '16px 16px 0' }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {types.map((t) => {
           const meta = GOODS_TYPE_META[t];
           const on = active === t;
           return (
             <button key={t} type="button" onClick={() => onPick(on ? null : t)} style={{
-              flex: '1 1 200px', minWidth: 170, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              gap: 10, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
+              flex: '1 1 160px', minWidth: 150, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 10, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-sans)',
               borderRadius: 'var(--radius-lg)', background: on ? 'var(--brand-soft)' : '#fff',
               border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)', boxShadow: 'var(--shadow-xs)',
+              transition: 'all .15s',
             }}>
               <span style={{ minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 16, fontWeight: 800, color: on ? 'var(--brand-active)' : 'var(--text-strong)', letterSpacing: '-0.01em' }}>{meta.name}</span>
-                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4 }}>包含 {counts[t] || 0} 件商品</span>
+                <span style={{ display: 'block', fontSize: 15, fontWeight: 800, color: on ? 'var(--brand-active)' : 'var(--text-strong)', letterSpacing: '-0.01em' }}>{meta.name}</span>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>包含 {counts[t] || 0} 件商品</span>
               </span>
-              <span style={{ fontSize: 26, flex: 'none' }} aria-hidden="true">{meta.emoji}</span>
+              <span style={{ fontSize: 24, flex: 'none' }} aria-hidden="true">{meta.emoji}</span>
             </button>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-/* 类型分组小节:标题(emoji + 名称 + 计数)+ 2 列网格 */
-function GoodsTypeSection({ group, onSelect }) {
-  return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 2px 12px' }}>
-        <span style={{ fontSize: 18 }} aria-hidden="true">{group.meta.emoji}</span>
-        <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>{group.meta.name}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-subtle)' }}>{group.items.length} 件</span>
-        <span style={{ flex: 1, height: 1, background: 'var(--border)', marginLeft: 6 }} />
-      </div>
-      <div style={GRID}>
-        {group.items.map((p) => (
-          <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
-        ))}
       </div>
     </div>
   );
@@ -429,10 +324,18 @@ function StateWrap({ children }) {
   );
 }
 
+/* 商品网格(2 列移动 / auto-fill ≥168 桌面) */
+const GRID = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 };
+
+/* 排序项:综合 / 销量 / 上新 / 价格 */
+const SORTS = ['综合', '销量', '上新', '价格'];
+
 export default function StorefrontHome({ shop, categories, products, loading, error, onReload, onSelect }) {
   const [cat, setCat] = React.useState('all');
   const [typeFilter, setTypeFilter] = React.useState(null); // null=全部类型;否则 goods_type
   const [query, setQuery] = React.useState('');
+  const [sort, setSort] = React.useState('综合'); // 综合 / 销量 / 上新 / 价格
+  const [priceDir, setPriceDir] = React.useState('desc'); // 价格排序方向
   const [showContact, setShowContact] = React.useState(false);
   const list = products || [];
   const store = shop || {};
@@ -458,7 +361,7 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
   const allCount = list.length;
   const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
-  // 按销售类型计数(对标鲸商城PRO 顶部 4 类型卡)
+  // 按销售类型计数(顶部 4 类型卡)
   const typeCounts = React.useMemo(() => {
     const c = {};
     for (const p of list) { const t = Number(p.goods_type ?? 1); c[t] = (c[t] || 0) + 1; }
@@ -469,7 +372,16 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const byType = typeFilter ? byCat.filter((p) => Number(p.goods_type ?? 1) === typeFilter) : byCat;
   // 客户端实时搜索:在筛选结果上,按 name 包含关键词(不区分大小写)叠加过滤。
   const q = query.trim().toLowerCase();
-  const shown = q ? byType.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byType;
+  const filtered = q ? byType.filter((p) => String(p.name || '').toLowerCase().includes(q)) : byType;
+  // 排序:综合(原序)/ 销量 / 上新 / 价格。不改变 filtered 引用,复制后排序。
+  const shown = React.useMemo(() => {
+    const arr = filtered.slice();
+    const soldOf = (p) => Number(p.sold ?? p.sales_count ?? 0);
+    if (sort === '销量') arr.sort((a, b) => soldOf(b) - soldOf(a));
+    else if (sort === '上新') arr.sort((a, b) => normId(b.id) - normId(a.id)); // 无 date 字段,用 id 近似上新
+    else if (sort === '价格') arr.sort((a, b) => priceDir === 'asc' ? Number(a.price) - Number(b.price) : Number(b.price) - Number(a.price));
+    return arr;
+  }, [filtered, sort, priceDir]);
 
   const verified = Number(store.verified) === 1;
   // 平台公告(store.notices,由 App 注入)— 区别于下面的商户店铺公告 announcement 字段。
@@ -480,72 +392,77 @@ export default function StorefrontHome({ shop, categories, products, loading, er
   const deposit = money(store.deposit);
 
   return (
-    <div>
-      {/* 平台公告条(店招之上) */}
+    <div style={{ paddingBottom: 64 }}>
+      {/* 平台公告条(banner 之上) */}
       {notices.length > 0 && <PlatformNoticeBar notices={notices} />}
 
-      {/* 店招封面横幅(浅蓝→淡紫渐变,对标鲸商城PRO 轻盈风) */}
+      {/* 店招封面横幅(淘宝橙 radial 渐变) */}
       <div style={{
         height: 150, position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(120deg, #EAF1FF 0%, #E9ECFF 48%, #F1ECFF 100%)',
+        background: 'radial-gradient(120% 140% at 80% 0%, #FF7B33 0%, #FF5000 45%, #C23A00 100%)',
       }}>
         {store.cover && (
-          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.32 }} />
+          <img src={store.cover} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.34 }} />
         )}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0) 55%, rgba(255,255,255,.55) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(60% 80% at 18% 120%, rgba(255,193,77,.55), transparent 60%)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0) 60%, rgba(0,0,0,.10) 100%)' }} />
       </div>
 
       {/* 商家卡片 */}
       <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
         <div style={{
-          marginTop: -34, position: 'relative', background: '#fff', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', padding: '0 16px 16px',
+          marginTop: -28, position: 'relative', background: '#fff', border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-md)', padding: '0 18px 16px',
         }}>
-          {/* 头像(圆形)叠在左下 + 联系客服按钮(右上) */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+          {/* 头像(圆形)叠在左下 + 三联统计 */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
             <div style={{
               width: 76, height: 76, borderRadius: '50%', marginTop: -30, flex: 'none', overflow: 'hidden',
-              background: 'var(--brand)', boxShadow: 'var(--shadow-brand, 0 6px 18px rgba(47,107,255,.35))', border: '4px solid #fff',
+              background: 'var(--brand-gradient)', boxShadow: 'var(--shadow-brand)', border: '4px solid #fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 30, fontWeight: 800,
             }}>
               {store.logo
                 ? <img src={store.logo} alt={store.name || '店铺'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : (store.name || '店').slice(0, 1)}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowContact(true)}
-              style={{
-                marginLeft: 'auto', marginBottom: 6, flex: 'none', display: 'flex', alignItems: 'center', gap: 6,
-                height: 34, padding: '0 14px', border: '1.5px solid var(--brand-soft-border)', background: 'var(--brand-soft)',
-                color: 'var(--brand-active)', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)',
-                fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap',
-              }}
-            ><Icons.Headset size={16} />联系客服</button>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', paddingTop: 14, paddingBottom: 2 }}>
+              <Stat value={allCount} label="在售商品" />
+              <Stat value={salesCount} label="累计成交" />
+              <Stat value={'¥' + deposit} label="保证金" seal />
+            </div>
           </div>
 
-          {/* 店名 + 认证 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {/* 店名 + 认证 + 联系客服 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>
               {store.name || '店铺'}
             </h1>
             {verified && <VerifiedBadge />}
+            <button
+              type="button"
+              onClick={() => setShowContact(true)}
+              style={{
+                marginLeft: 'auto', flex: 'none', display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px',
+                border: '1.5px solid var(--brand-soft-border)', background: 'var(--brand-soft)', color: 'var(--brand-active)',
+                borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 13,
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            ><Icons.Headset size={16} />联系客服</button>
           </div>
 
           {/* intro 行 */}
-          {intro && <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{intro}</p>}
+          {intro && <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{intro}</p>}
 
-          {/* 三联统计:商品数 / 成交 / 保证金 */}
-          <div style={{ display: 'flex', alignItems: 'stretch', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <Stat value={allCount} label="在售商品" />
-            <div style={{ width: 1, background: 'var(--border)', margin: '2px 0' }} />
-            <Stat value={salesCount} label="累计成交" />
-            <div style={{ width: 1, background: 'var(--border)', margin: '2px 0' }} />
-            <Stat value={deposit} label="保证金(元)" icon={<Icons.ShieldCheck size={15} color="var(--secure-solid)" />} />
+          {/* 信任 chips */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <TrustChip icon={<Icons.ShieldCheck size={16} />}>平台担保交易</TrustChip>
+            <TrustChip icon={<Icons.Zap size={16} />}>自动发货 · 秒到账</TrustChip>
+            <TrustChip icon={<Icons.RefreshCw size={16} />}>非人为问题包补</TrustChip>
+            <TrustChip icon={<Icons.Headset size={16} />}>7×24 在线客服</TrustChip>
           </div>
         </div>
 
-        {/* 公告条 */}
+        {/* 店铺公告条(商户 announcement,区别于平台公告) */}
         {announcement && (
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 12, padding: '10px 13px',
@@ -558,61 +475,91 @@ export default function StorefrontHome({ shop, categories, products, loading, er
         )}
       </div>
 
-      {/* 顶部销售类型卡(对标鲸商城PRO 招牌) */}
+      {/* 顶部销售类型卡 */}
       {!loading && !error && <TypeSummaryCards counts={typeCounts} active={typeFilter} onPick={setTypeFilter} />}
 
       {/* 商品搜索框 */}
       {!loading && !error && (
         <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, height: 42, padding: '0 14px',
-            background: 'var(--surface-sunken, #f2f4f7)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-pill)',
-          }}>
-            <Icons.Search size={18} color="var(--text-muted)" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索商品名称"
-              aria-label="搜索商品"
-              style={{
-                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
-                fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-strong)',
-              }}
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                aria-label="清除搜索"
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', gap: 9, height: 42, padding: '0 14px',
+              background: '#fff', border: '1.5px solid var(--border)', borderRadius: 'var(--radius-pill)',
+            }}>
+              <Icons.Search size={18} color="var(--text-subtle)" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="搜索店内商品"
+                aria-label="搜索商品"
                 style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, flex: 'none',
-                  border: 'none', background: 'var(--border)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-muted)',
+                  flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                  fontFamily: 'var(--font-sans)', fontSize: 14, color: 'var(--text-strong)',
                 }}
-              ><Icons.X size={13} /></button>
-            )}
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="清除搜索"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, flex: 'none',
+                    border: 'none', background: 'var(--border)', borderRadius: '50%', cursor: 'pointer', color: 'var(--text-muted)',
+                  }}
+                ><Icons.X size={13} /></button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 分类筛选(带计数方框,对标鲸商城PRO) */}
-      {tabs.length > 1 && !loading && !error && (
-        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '18px 16px 0' }}>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {tabs.map((c) => {
-              const on = c.id === cat;
+      {/* 排序 + 分类筛选 */}
+      {!loading && !error && (tabs.length > 1 || true) && (
+        <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '0 16px', marginTop: 12 }}>
+          {/* 分类计数方框 */}
+          {tabs.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 10 }}>
+              {tabs.map((c) => {
+                const on = c.id === cat;
+                return (
+                  <button key={String(c.id)} type="button" onClick={() => setCat(c.id)} style={{
+                    flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, height: 34, padding: '0 14px',
+                    cursor: 'pointer', borderRadius: 'var(--radius-pill)',
+                    background: on ? 'var(--brand-soft)' : '#fff',
+                    border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                    fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: on ? 800 : 600,
+                    color: on ? 'var(--brand-active)' : 'var(--text-body)', whiteSpace: 'nowrap', transition: 'all .15s',
+                  }}>
+                    {c.image ? <img src={c.image} alt="" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'cover' }} /> : null}
+                    <span>{c.name}</span>
+                    {!q && c.goods_count != null ? <span style={{ fontSize: 12, fontWeight: 600, color: on ? 'var(--brand-active)' : 'var(--text-subtle)', opacity: .8 }}>{c.goods_count}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* 排序行(综合/销量/上新/价格) */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 4, height: 42,
+            borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)',
+          }}>
+            {SORTS.map((s) => {
+              const on = s === sort;
+              const isPrice = s === '价格';
               return (
-                <button key={String(c.id)} onClick={() => setCat(c.id)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', cursor: 'pointer',
-                  borderRadius: 'var(--radius-md)', background: on ? 'var(--brand-soft)' : '#fff',
-                  border: on ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                  fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: on ? 800 : 600,
-                  color: on ? 'var(--brand-active)' : 'var(--text-body)', whiteSpace: 'nowrap', transition: 'all .12s',
+                <button key={s} type="button" onClick={() => { if (isPrice && on) setPriceDir((d) => d === 'asc' ? 'desc' : 'asc'); setSort(s); }} style={{
+                  flex: 'none', display: 'flex', alignItems: 'center', gap: 2, height: 30, padding: '0 14px',
+                  border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  fontWeight: on ? 800 : 600, fontSize: 13.5, color: on ? 'var(--brand)' : 'var(--text-body)',
                 }}>
-                  {c.image ? <img src={c.image} alt="" style={{ width: 18, height: 18, borderRadius: 4, objectFit: 'cover' }} /> : null}
-                  <span>{c.name}</span>
-                  {!q && c.goods_count != null ? <span style={{ fontSize: 12, color: on ? 'var(--brand-active)' : 'var(--text-subtle)' }}>{c.goods_count}</span> : null}
+                  {s}
+                  {isPrice && (
+                    <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: .5, marginLeft: 1 }}>
+                      <span style={{ fontSize: 8, color: on && priceDir === 'asc' ? 'var(--brand)' : 'var(--text-subtle)' }}>▲</span>
+                      <span style={{ fontSize: 8, color: on && priceDir === 'desc' ? 'var(--brand)' : 'var(--text-subtle)' }}>▼</span>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -621,12 +568,12 @@ export default function StorefrontHome({ shop, categories, products, loading, er
       )}
 
       {/* 商品区 */}
-      <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '16px 16px 96px' }}>
+      <div style={{ maxWidth: 'var(--container-page)', margin: '0 auto', padding: '12px 16px 24px' }}>
         {loading ? (
           <div style={GRID}>
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} style={{
-                height: 196, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)',
+                height: 230, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)',
                 background: 'linear-gradient(90deg, var(--bg-subtle, #f2f4f7) 25%, #e9edf2 50%, var(--bg-subtle, #f2f4f7) 75%)',
                 backgroundSize: '200% 100%', animation: 'mk-shimmer 1.2s ease-in-out infinite',
               }} />
@@ -635,45 +582,79 @@ export default function StorefrontHome({ shop, categories, products, loading, er
           </div>
         ) : error ? (
           <StateWrap>
-            <Icons.AlertTriangle size={40} color="var(--danger-solid, #e5484d)" />
+            <Icons.AlertTriangle size={40} color="var(--price-accent)" />
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
               {(error && error.message) || (typeof error === 'string' ? error : '') || '加载失败,请重试'}
             </div>
-            <button onClick={onReload} style={{
+            <button type="button" onClick={onReload} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 20px',
               border: 'none', background: 'var(--brand)', color: '#fff', borderRadius: 'var(--radius-pill)',
               fontFamily: 'var(--font-sans)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              boxShadow: 'var(--shadow-brand)',
             }}><Icons.RefreshCw size={16} color="#fff" />重试</button>
           </StateWrap>
         ) : shown.length === 0 ? (
           <StateWrap>
             <Icons.Inbox size={44} color="var(--text-subtle)" />
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-strong)' }}>
-              {q ? '没有找到相关商品' : (cat === 'all' ? '该店铺暂无在售商品' : '该分类下暂无商品')}
+              {q ? '没有找到相关商品' : (cat === 'all' && !typeFilter ? '该店铺暂无在售商品' : '当前筛选下暂无商品')}
             </div>
           </StateWrap>
         ) : (
           <>
-            {(() => {
-              const groups = groupByGoodsType(shown);
-              // 仅单一类型(如纯卡密店)→ 维持扁平网格,不加分组标题;多类型 → 按类型分组陈列
-              if (groups.length <= 1) {
+            <div style={GRID}>
+              {shown.map((p) => {
+                const t = Number(p.goods_type ?? 1);
+                const meta = GOODS_TYPE_META[t] || { short: '商品' };
+                const isCard = t === 1;
+                // 卡密类用真实库存;非卡密(知识/资源/权益)恒有货,给一个正库存避免误判已售罄
+                const stock = isCard ? Number(p.stock ?? 0) : 999;
+                const soldVal = p.sold != null ? p.sold : (p.sales_count != null ? p.sales_count : undefined);
                 return (
-                  <div style={GRID}>
-                    {shown.map((p) => (
-                      <GoodsCard key={p.id} p={p} onClick={() => onSelect && onSelect(p)} />
-                    ))}
-                  </div>
+                  <ProductCard
+                    key={p.id}
+                    name={p.name}
+                    price={Number(p.price)}
+                    original={(p.original != null && Number(p.original) > Number(p.price)) ? Number(p.original) : undefined}
+                    stock={stock}
+                    image={p.image || undefined}
+                    thumb={p.thumb || meta.emoji || '📦'}
+                    typeLabel={meta.short}
+                    promo={p.on_sale ? '限时' : undefined}
+                    sold={soldVal}
+                    onClick={() => onSelect && onSelect(p)}
+                    onCart={() => onSelect && onSelect(p)}
+                  />
                 );
-              }
-              return groups.map((g) => (
-                <GoodsTypeSection key={g.type} group={g} onSelect={onSelect} />
-              ));
-            })()}
-            <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 28 }}>— 没有更多了 —</div>
+              })}
+            </div>
+            <div style={{ textAlign: 'center', color: 'var(--text-subtle)', fontSize: 13, marginTop: 24 }}>— 没有更多了 —</div>
           </>
         )}
       </div>
+
+      {/* 底部 tab bar(展示型;客服项打开联系弹窗,其余为占位) */}
+      <nav style={{
+        position: 'sticky', bottom: 0, zIndex: 15, background: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)',
+        borderTop: '1px solid var(--border)', display: 'flex', maxWidth: 'var(--container-page)', margin: '0 auto',
+      }}>
+        {[
+          { k: 'home', label: '首页', icon: Icons.Star, active: true },
+          { k: 'goods', label: '宝贝', icon: Icons.Package },
+          { k: 'store', label: '门店', icon: Icons.Shield },
+          { k: 'new', label: '新品', icon: Icons.Zap },
+          { k: 'service', label: '客服', icon: Icons.Headset, onTap: () => setShowContact(true) },
+        ].map((it) => (
+          <button key={it.k} type="button" onClick={it.onTap || undefined} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 0 10px',
+            border: 'none', background: 'transparent', cursor: it.onTap ? 'pointer' : 'default',
+            color: it.active ? 'var(--brand)' : 'var(--text-muted)', fontFamily: 'var(--font-sans)',
+            fontWeight: it.active ? 800 : 600, fontSize: 11,
+          }}>
+            <it.icon size={22} />{it.label}
+          </button>
+        ))}
+      </nav>
 
       {showContact && <ContactModal contact={store.contact} onClose={() => setShowContact(false)} />}
     </div>

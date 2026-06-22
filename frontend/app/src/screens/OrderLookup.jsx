@@ -1,8 +1,11 @@
 import React from 'react';
 import { Button } from '../../../design-system/components/core/Button.jsx';
 import { Input } from '../../../design-system/components/core/Input.jsx';
+import { Badge } from '../../../design-system/components/core/Badge.jsx';
+import { PriceTag } from '../../../design-system/components/core/PriceTag.jsx';
 import { CardKey } from '../../../design-system/components/commerce/CardKey.jsx';
 import { OrderStatusBadge } from '../../../design-system/components/commerce/OrderStatusBadge.jsx';
+import { CheckoutSteps } from '../../../design-system/components/commerce/CheckoutSteps.jsx';
 import { api, normalizeProduct, statusKey, STATUS, ApiError, BASE } from '../api.js';
 import { Icons } from '../Icons.jsx';
 
@@ -16,28 +19,36 @@ const STATUS_LABEL = {
   exception: '异常待人工',
 };
 
-/* 客服提示条 */
+/* 订单进度条:把后端状态映射到「下单 · 付款 · 取卡」三步(取卡=已发货) */
+function statusToStep(statusNum) {
+  if (statusNum === STATUS.DELIVERED) return 3;     // 已取卡 → 全部完成
+  if (statusNum === STATUS.PAID) return 2;          // 已付款,发货中
+  if (statusNum === STATUS.PENDING) return 1;       // 已下单,待支付
+  return 1;                                          // 关闭/退款/异常 → 停在下单
+}
+
+/* 客服提示条(淘宝橙温和底) */
 function SupportHint({ text }) {
   return (
     <div style={{ marginTop: 14, display: 'flex', gap: 9, padding: '12px 14px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-      <Icons.Headset size={16} color="var(--text-muted)" />
+      <Icons.Headset size={16} color="var(--text-muted)" style={{ flex: 'none', marginTop: 1 }} />
       <span style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>{text}</span>
     </div>
   );
 }
 
-/* 平台查单风险提示(纯文本渲染,保留换行;为空不显示)。对标鲸发卡查单页安全提示。 */
+/* 平台查单风险提示(纯文本渲染,保留换行;为空不显示)。橙色商业风的安全提示。 */
 function OrderQueryTips({ text }) {
   const t = (text || '').trim();
   if (!t) return null;
   return (
     <div style={{
       marginTop: 16, display: 'flex', gap: 10, padding: '12px 14px',
-      background: 'var(--pending-bg, #fff8eb)', border: '1px solid var(--pending-border, #fde7b8)',
+      background: 'var(--pending-bg)', border: '1px solid var(--pending-border)',
       borderRadius: 'var(--radius-md)',
     }}>
-      <Icons.ShieldCheck size={17} color="var(--pending-fg, #92600a)" style={{ flex: 'none', marginTop: 1 }} />
-      <span style={{ fontSize: 12.5, color: 'var(--pending-fg, #92600a)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{t}</span>
+      <Icons.ShieldCheck size={17} color="var(--pending-fg)" style={{ flex: 'none', marginTop: 1 }} />
+      <span style={{ fontSize: 12.5, color: 'var(--pending-fg)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{t}</span>
     </div>
   );
 }
@@ -110,28 +121,40 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
   const onSubmit = (e) => { e.preventDefault(); if (!loading) search(); };
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '20px 16px 60px' }}>
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 16px 64px' }}>
       {onBack && (
         <button onClick={onBack} style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent',
           color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600,
-          cursor: 'pointer', padding: 0, marginBottom: 12,
+          cursor: 'pointer', padding: 0, marginBottom: 14,
         }}><Icons.ChevronLeft size={18} />返回</button>
       )}
 
-      <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', margin: 0 }}>订单查询 / 取卡</h1>
-      <p style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 6 }}>
-        {directMode
-          ? '以下是您本次订单的详情与卡密,请妥善保管。'
-          : '输入下单时的订单号和邮箱,即可查看订单状态并领取卡密。'}
-      </p>
+      {/* 标题区:淘宝橙渐变标识 + 大标题 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 'var(--radius-md)', flex: 'none',
+          background: 'var(--brand-gradient)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: 'var(--shadow-brand)',
+        }}>
+          <Icons.Package size={22} color="#fff" />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 800, color: 'var(--text-strong)', letterSpacing: '-0.02em', margin: 0 }}>订单查询 / 取卡</h1>
+          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 4 }}>
+            {directMode
+              ? '以下是您本次订单的详情与卡密,请妥善保管。'
+              : '输入下单时的订单号和邮箱,即可查看订单状态并领取卡密。'}
+          </p>
+        </div>
+      </div>
 
       {/* 平台查单风险提示(表单上方;directMode 付款后直达结果不展示) */}
       {!directMode && <OrderQueryTips text={queryTips} />}
 
       {/* 查询表单(directMode 下不展示) */}
       {!directMode && (
-        <form onSubmit={onSubmit} style={{ marginTop: 18, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
+        <form onSubmit={onSubmit} style={{ marginTop: 18, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Input
               label="订单号"
@@ -143,22 +166,26 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
               autoComplete="off"
               disabled={loading}
             />
-            {/* 凭证方式切换:邮箱 / 查单密码 */}
-            <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-              {[['email', '邮箱查单'], ['password', '密码查单']].map(([m, label]) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => { setMode(m); setError(''); setFieldErr((s) => ({ ...s, email: '', password: '' })); }}
-                  disabled={loading}
-                  style={{
-                    flex: 1, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    fontFamily: 'var(--font-sans)', border: 'none',
-                    background: mode === m ? 'var(--brand-soft)' : '#fff',
-                    color: mode === m ? 'var(--brand-active)' : 'var(--text-muted)',
-                  }}
-                >{label}</button>
-              ))}
+            {/* 凭证方式切换:邮箱 / 查单密码(淘宝橙分段) */}
+            <div>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 6 }}>查单凭证</div>
+              <div style={{ display: 'flex', gap: 8, background: 'var(--surface-sunken)', padding: 4, borderRadius: 'var(--radius-md)' }}>
+                {[['email', '邮箱查单'], ['password', '密码查单']].map(([m, label]) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => { setMode(m); setError(''); setFieldErr((s) => ({ ...s, email: '', password: '' })); }}
+                    disabled={loading}
+                    style={{
+                      flex: 1, height: 38, border: 'none', borderRadius: 'var(--radius-sm)', cursor: loading ? 'not-allowed' : 'pointer',
+                      fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 700,
+                      background: mode === m ? 'var(--surface-card)' : 'transparent',
+                      color: mode === m ? 'var(--brand-active)' : 'var(--text-muted)',
+                      boxShadow: mode === m ? 'var(--shadow-xs)' : 'none',
+                    }}
+                  >{label}</button>
+                ))}
+              </div>
             </div>
             {mode === 'email' ? (
               <Input
@@ -186,7 +213,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
               />
             )}
           </div>
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 16 }}>
             <Button type="submit" variant="primary" size="lg" block loading={loading} iconLeft={loading ? undefined : <Icons.Search size={18} />}>
               {loading ? '查询中…' : '查询订单'}
             </Button>
@@ -194,9 +221,20 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
         </form>
       )}
 
+      {/* 加载态(查询进行中,无错无果) */}
+      {!directMode && loading && !result && (
+        <div style={{ marginTop: 18, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '28px 20px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+          <div className="ol-spin" style={{
+            width: 30, height: 30, margin: '0 auto 12px', borderRadius: '50%',
+            border: '3px solid var(--brand-soft-border)', borderTopColor: 'var(--brand)',
+          }} />
+          <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>正在查询订单…</div>
+        </div>
+      )}
+
       {/* 错误 / 空错态 */}
       {!directMode && error && !loading && (
-        <div style={{ marginTop: 18, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '28px 20px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
+        <div style={{ marginTop: 18, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '28px 20px', boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
           <div style={{ width: 52, height: 52, margin: '0 auto 12px', borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icons.Inbox size={26} color="var(--text-muted)" />
           </div>
@@ -213,7 +251,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       {/* 结果区 */}
       {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} contactPassword={password.trim()} />}
 
-      {/* toast */}
+      {/* toast「已复制」统一样式 */}
       <div role="status" aria-live="polite" aria-atomic="true">
         {toast && (
           <div style={{
@@ -225,6 +263,9 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
           </div>
         )}
       </div>
+
+      {/* 加载圈动画(内联,避免依赖外部 keyframes) */}
+      <style>{`@keyframes ol-spin{to{transform:rotate(360deg)}}.ol-spin{animation:ol-spin .7s linear infinite}`}</style>
     </div>
   );
 }
@@ -285,23 +326,45 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
   };
 
   return (
-    <div style={{ marginTop: 18, background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+    <div style={{ marginTop: 18, background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+      {/* 头部:订单号 + 状态徽标 */}
       <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <span className="ds-mono" style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{r.order_no}</span>
         <OrderStatusBadge status={key} label={STATUS_LABEL[key]} />
       </div>
 
+      {/* 进度条:下单 · 付款 · 取卡 */}
+      <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface-sunken)' }}>
+        <CheckoutSteps steps={['下单', '付款', '取卡']} current={statusToStep(statusNum)} />
+      </div>
+
       <div style={{ padding: 18 }}>
-        {/* 订单信息 */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 11, background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flex: 'none' }}>{prodThumb}</div>
+        {/* 订单商品摘要(缩略图 + 名称 + 数量 + 红色实付 + 邮箱) */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flex: 'none', overflow: 'hidden' }}>
+            {prod && prod.image
+              ? <img src={prod.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : prodThumb}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-strong)' }}>{prodName}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>数量 ×{qty} · 实付 ¥{total.toFixed(2)}</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.35, wordBreak: 'break-word' }}>{prodName}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <Badge variant="neutral">数量 ×{qty}</Badge>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>实付</span>
+                <PriceTag amount={total} size="sm" />
+              </span>
+            </div>
+            {contactEmail && (
+              <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 5, display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                <Icons.Mail size={13} color="var(--text-subtle)" />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contactEmail}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* 已发货:展示卡密 */}
+        {/* 已发货:展示卡密(CardKey 列表 + 逐条复制 + 复制全部) */}
         {statusNum === STATUS.DELIVERED && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 0 12px' }}>
@@ -310,9 +373,9 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
               </div>
               {cards.length > 1 && (
                 <button onClick={copyAll} style={{
-                  display: 'flex', alignItems: 'center', gap: 6, border: '1.5px solid var(--border-strong)', background: '#fff',
-                  borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: 12.5, fontWeight: 700, color: 'var(--text-strong)', cursor: 'pointer',
-                }}><Icons.Copy size={14} />复制全部</button>
+                  display: 'flex', alignItems: 'center', gap: 6, border: '1.5px solid var(--brand)', background: 'var(--brand-soft)',
+                  borderRadius: 'var(--radius-pill)', padding: '5px 12px', fontSize: 12.5, fontWeight: 700, color: 'var(--brand-active)', cursor: 'pointer',
+                }}><Icons.Copy size={14} color="var(--brand)" />复制全部</button>
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -322,12 +385,12 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
                   index={cards.length > 1 ? i + 1 : undefined}
                   label={noun}
                   code={code}
-                  onCopy={() => flashToast('已复制' + noun)}
+                  onCopy={() => flashToast('已复制')}
                 />
               ))}
             </div>
             <div style={{ marginTop: 14, display: 'flex', gap: 9, padding: '12px 14px', background: 'var(--pending-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--pending-border)' }}>
-              <Icons.Clock size={16} color="var(--pending-solid)" />
+              <Icons.Clock size={16} color="var(--pending-solid)" style={{ flex: 'none', marginTop: 1 }} />
               <span style={{ fontSize: 12.5, color: 'var(--pending-fg)', lineHeight: 1.5 }}>请尽快复制并妥善保管{noun}。{noun}仅展示给本订单,如遇问题请在 24 小时内联系客服。</span>
             </div>
           </div>
@@ -352,7 +415,7 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
         {/* 已关闭 */}
         {statusNum === STATUS.CLOSED && (
           <div style={{ display: 'flex', gap: 9, padding: '14px 16px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-            <Icons.Clock size={18} color="var(--text-muted)" />
+            <Icons.Clock size={18} color="var(--text-muted)" style={{ flex: 'none', marginTop: 1 }} />
             <span style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.5 }}>该订单已关闭或已过期,未完成支付,因此没有卡密。如需购买请返回重新下单。</span>
           </div>
         )}
@@ -360,16 +423,16 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
         {/* 已退款 */}
         {statusNum === STATUS.REFUNDED && (
           <div style={{ display: 'flex', gap: 9, padding: '14px 16px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-            <Icons.RefreshCw size={18} color="var(--text-muted)" />
+            <Icons.RefreshCw size={18} color="var(--text-muted)" style={{ flex: 'none', marginTop: 1 }} />
             <span style={{ fontSize: 13, color: 'var(--text-body)', lineHeight: 1.5 }}>该订单已退款,款项将原路退回。本订单不再展示卡密,如有疑问请联系客服。</span>
           </div>
         )}
 
-        {/* 异常待人工:醒目,绝不显示去支付 */}
+        {/* 异常待人工:醒目红,绝不显示去支付 */}
         {statusNum === STATUS.EXCEPTION && (
           <div>
-            <div style={{ display: 'flex', gap: 10, padding: '14px 16px', background: 'var(--danger-bg, #fdeced)', borderRadius: 'var(--radius-md)', border: '1px solid var(--danger-solid)' }}>
-              <Icons.AlertTriangle size={20} color="var(--danger-solid)" />
+            <div style={{ display: 'flex', gap: 10, padding: '14px 16px', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--danger-solid)' }}>
+              <Icons.AlertTriangle size={20} color="var(--danger-solid)" style={{ flex: 'none', marginTop: 1 }} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--danger-fg)' }}>订单异常</div>
                 <div style={{ fontSize: 12.5, color: 'var(--danger-fg)', lineHeight: 1.5, marginTop: 3 }}>款项已收到,但发货受阻。客服将尽快为您处理或安排退款,无需重复支付。</div>
@@ -379,18 +442,18 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
           </div>
         )}
 
-        {/* 知识类:站内阅读章节 */}
+        {/* 知识类:站内阅读章节(左目录 + 右正文) */}
         {canRead && <ChapterReader orderNo={r.order_no} email={contactEmail} password={contactPassword} />}
 
-        {/* 资源类:限时签名下载链 */}
+        {/* 资源类:限时签名下载链(30 分钟有效期) */}
         {statusNum === STATUS.DELIVERED && r.download_url && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
-            <a href={BASE + r.download_url} target="_blank" rel="noopener noreferrer" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7, border: 'none', textDecoration: 'none',
-              background: 'var(--brand)', color: '#fff', borderRadius: 'var(--radius-pill)', padding: '11px 20px',
-              fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 800,
-            }}><Icons.Package size={17} color="#fff" />下载资源</a>
-            <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 8 }}>链接有效期 30 分钟,过期请重新查单获取。</div>
+            <Button as="a" href={BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
+              下载资源
+            </Button>
+            <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <Icons.Clock size={13} color="var(--text-subtle)" />链接有效期 30 分钟,过期请重新查单获取。
+            </div>
           </div>
         )}
 
@@ -401,7 +464,7 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
   );
 }
 
-/* 知识类章节阅读:购后凭订单凭证拉取章节全文,站内展开阅读 */
+/* 知识类章节阅读:购后凭订单凭证拉取章节全文,左目录右正文站内展开 */
 function ChapterReader({ orderNo, email, password }) {
   const [open, setOpen] = React.useState(false);
   const [chapters, setChapters] = React.useState(null);
@@ -424,10 +487,9 @@ function ChapterReader({ orderNo, email, password }) {
   return (
     <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
       {!open ? (
-        <button onClick={load} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, border: '1.5px solid var(--brand)', background: 'var(--brand-soft)',
-          borderRadius: 'var(--radius-pill)', padding: '9px 16px', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 700, color: 'var(--brand-active)',
-        }}><Icons.Inbox size={16} color="var(--brand)" />阅读内容</button>
+        <Button variant="secondary" size="md" onClick={load} iconLeft={<Icons.Inbox size={16} />}>
+          阅读内容
+        </Button>
       ) : loading ? (
         <div style={{ textAlign: 'center', color: 'var(--text-subtle)', padding: '20px 0' }}>加载中…</div>
       ) : err ? (
@@ -435,23 +497,28 @@ function ChapterReader({ orderNo, email, password }) {
       ) : !chapters || chapters.length === 0 ? (
         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>暂无可阅读章节。</div>
       ) : (
-        <div>
-          {/* 章节目录 */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div className="ol-reader" style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, alignItems: 'start' }}>
+          {/* 左:章节目录 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
             {chapters.map((c, i) => (
               <button key={c.id} onClick={() => setActive(i)} style={{
-                padding: '5px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-sans)',
+                textAlign: 'left', padding: '8px 11px', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--font-sans)', lineHeight: 1.4,
                 border: i === active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                background: i === active ? 'var(--brand-soft)' : '#fff', color: i === active ? 'var(--brand-active)' : 'var(--text-muted)',
+                background: i === active ? 'var(--brand-soft)' : 'var(--surface-card)',
+                color: i === active ? 'var(--brand-active)' : 'var(--text-muted)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{c.title}</button>
             ))}
           </div>
-          {/* 当前章节正文 */}
-          <article style={{ background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '16px 18px' }}>
+          {/* 右:当前章节正文 */}
+          <article style={{ background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', padding: '16px 18px', minWidth: 0 }}>
             <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 800, color: 'var(--text-strong)' }}>{chapters[active].title}</h3>
             <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--text-body)', wordBreak: 'break-word' }}
               dangerouslySetInnerHTML={{ __html: chapters[active].content || '' }} />
           </article>
+          {/* 移动端单列:目录在上、正文在下 */}
+          <style>{`@media (max-width:520px){.ol-reader{grid-template-columns:1fr!important}.ol-reader>div{flex-direction:row!important;flex-wrap:wrap!important;max-height:none!important}}`}</style>
         </div>
       )}
     </div>
@@ -465,7 +532,7 @@ const COMPLAINT_TYPES = [
   { v: 4, label: '其他问题' },
 ];
 
-/* 售后投诉:填写邮箱(预填查单邮箱)+ 类型 + 描述,提交后展示进度 */
+/* 售后投诉:填写邮箱(预填查单邮箱)+ 类型 + 描述,提交后展示进度,可申请平台介入 */
 function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState(defaultEmail || '');
@@ -474,6 +541,33 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
   const [busy, setBusy] = React.useState(false);
   const [err, setErr] = React.useState('');
   const [done, setDone] = React.useState(false);
+  // 售后列表 + 平台介入
+  const [complaints, setComplaints] = React.useState(null);
+  const [listBusy, setListBusy] = React.useState(false);
+  const [listErr, setListErr] = React.useState('');
+  const [escId, setEscId] = React.useState(null); // 正在申请介入的投诉 id
+
+  const loadComplaints = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setListErr('请填写下单时的邮箱以核验身份'); return; }
+    setListErr(''); setListBusy(true);
+    try {
+      const d = await api.queryComplaints({ orderNo, email: email.trim() });
+      setComplaints(Array.isArray(d.items) ? d.items : (Array.isArray(d.complaints) ? d.complaints : (Array.isArray(d) ? d : [])));
+    } catch (e) {
+      setListErr(e instanceof ApiError ? e.message : '加载售后记录失败');
+    } finally { setListBusy(false); }
+  };
+
+  const escalate = async (id) => {
+    setListErr(''); setEscId(id);
+    try {
+      await api.escalateComplaint({ id, orderNo, email: email.trim() });
+      flashToast && flashToast('已申请平台介入');
+      await loadComplaints();
+    } catch (e) {
+      setListErr(e instanceof ApiError ? e.message : '申请平台介入失败');
+    } finally { setEscId(null); }
+  };
 
   const submit = async () => {
     setErr('');
@@ -491,8 +585,21 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
 
   if (done) {
     return (
-      <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', fontSize: 12.5, color: 'var(--success-fg)', display: 'flex', gap: 8, alignItems: 'center' }}>
-        <Icons.Check size={16} color="var(--success-solid)" />售后申请已提交,商户会尽快处理;若未解决可在此页再次申请平台介入。
+      <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
+        <div style={{ padding: '12px 14px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-md)', fontSize: 12.5, color: 'var(--success-fg)', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Icons.Check size={16} color="var(--success-solid)" />售后申请已提交,商户会尽快处理;若未解决可在此查看进度并申请平台介入。
+        </div>
+        {/* 售后记录 + 申请平台介入 */}
+        <div style={{ marginTop: 12 }}>
+          {!complaints ? (
+            <Button variant="neutral" size="sm" onClick={loadComplaints} loading={listBusy} iconLeft={listBusy ? undefined : <Icons.RefreshCw size={14} />}>
+              查看售后进度
+            </Button>
+          ) : (
+            <ComplaintList items={complaints} escId={escId} onEscalate={escalate} onRefresh={loadComplaints} listBusy={listBusy} />
+          )}
+          {listErr ? <div style={{ fontSize: 12.5, color: 'var(--danger-fg)', marginTop: 8 }}>{listErr}</div> : null}
+        </div>
       </div>
     );
   }
@@ -500,11 +607,14 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
   return (
     <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--border)' }}>
       {!open ? (
-        <button onClick={() => setOpen(true)} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--border-strong)',
-          background: '#fff', borderRadius: 'var(--radius-pill)', padding: '8px 14px', cursor: 'pointer',
-          fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 700, color: 'var(--text-strong)',
-        }}><Icons.AlertTriangle size={15} color="var(--pending-solid)" />遇到问题?申请售后</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="neutral" size="sm" onClick={() => setOpen(true)} iconLeft={<Icons.AlertTriangle size={15} color="var(--pending-solid)" />}>
+            遇到问题?申请售后
+          </Button>
+          <Button variant="ghost" size="sm" onClick={loadComplaints} loading={listBusy} iconLeft={listBusy ? undefined : <Icons.RefreshCw size={14} />}>
+            查看售后进度
+          </Button>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {err ? <div style={{ fontSize: 12.5, color: 'var(--danger-fg)' }}>{err}</div> : null}
@@ -517,7 +627,7 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
                   padding: '6px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
                   fontFamily: 'var(--font-sans)',
                   border: type === t.v ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                  background: type === t.v ? 'var(--brand-soft)' : '#fff',
+                  background: type === t.v ? 'var(--brand-soft)' : 'var(--surface-card)',
                   color: type === t.v ? 'var(--brand-active)' : 'var(--text-muted)',
                 }}>{t.label}</button>
               ))}
@@ -530,6 +640,79 @@ function ComplaintBox({ orderNo, defaultEmail, flashToast }) {
           </div>
         </div>
       )}
+      {/* 未提交分支下,若已加载到售后记录也展示(支持「查看售后进度」入口) */}
+      {!open && complaints && (
+        <div style={{ marginTop: 12 }}>
+          <ComplaintList items={complaints} escId={escId} onEscalate={escalate} onRefresh={loadComplaints} listBusy={listBusy} />
+        </div>
+      )}
+      {!open && listErr ? <div style={{ fontSize: 12.5, color: 'var(--danger-fg)', marginTop: 8 }}>{listErr}</div> : null}
+    </div>
+  );
+}
+
+/* 售后进度状态 → 文案 + 徽标色(后端 status 数字或字符串都兼容) */
+const COMPLAINT_STATUS = {
+  0: { label: '待处理', variant: 'pending' },
+  1: { label: '处理中', variant: 'brand' },
+  2: { label: '已解决', variant: 'success' },
+  3: { label: '已驳回', variant: 'danger' },
+  4: { label: '平台介入中', variant: 'brand' },
+  pending: { label: '待处理', variant: 'pending' },
+  processing: { label: '处理中', variant: 'brand' },
+  resolved: { label: '已解决', variant: 'success' },
+  rejected: { label: '已驳回', variant: 'danger' },
+  escalated: { label: '平台介入中', variant: 'brand' },
+};
+const complaintStatus = (s) => COMPLAINT_STATUS[s] || COMPLAINT_STATUS[Number(s)] || { label: '处理中', variant: 'brand' };
+const TYPE_LABEL = { 1: '未收到货', 2: '卡密/内容无效', 3: '与描述不符', 4: '其他问题' };
+
+/* 售后记录列表:逐条显示状态,可对未终结的投诉申请平台介入 */
+function ComplaintList({ items, escId, onEscalate, onRefresh, listBusy }) {
+  if (!items || items.length === 0) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>暂无售后记录。</span>
+        <Button variant="ghost" size="sm" onClick={onRefresh} loading={listBusy}>刷新</Button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text-strong)' }}>售后进度({items.length})</span>
+        <Button variant="ghost" size="sm" onClick={onRefresh} loading={listBusy} iconLeft={listBusy ? undefined : <Icons.RefreshCw size={13} />}>刷新</Button>
+      </div>
+      {items.map((c) => {
+        const st = complaintStatus(c.status);
+        const cid = c.id ?? c.complaint_id;
+        // 终结态(已解决/已驳回)或已在介入中 → 不再展示「申请平台介入」
+        const canEscalate = !(st.variant === 'success' || st.variant === 'danger' || st.label === '平台介入中' || c.escalated);
+        const typeLabel = TYPE_LABEL[Number(c.type)] || c.type_label || '售后';
+        return (
+          <div key={cid ?? Math.random()} style={{ padding: '12px 14px', background: 'var(--surface-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-strong)' }}>{typeLabel}</span>
+              <Badge variant={st.variant} dot>{st.label}</Badge>
+            </div>
+            {(c.description || c.desc) && (
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5, wordBreak: 'break-word' }}>{c.description || c.desc}</div>
+            )}
+            {(c.reply || c.merchant_reply) && (
+              <div style={{ fontSize: 12.5, color: 'var(--text-body)', marginTop: 6, padding: '8px 10px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-sm)', lineHeight: 1.5 }}>
+                <span style={{ fontWeight: 700 }}>商户回复:</span>{c.reply || c.merchant_reply}
+              </div>
+            )}
+            {canEscalate && cid != null && (
+              <div style={{ marginTop: 10 }}>
+                <Button variant="secondary" size="sm" loading={escId === cid} onClick={() => onEscalate(cid)} iconLeft={escId === cid ? undefined : <Icons.Shield size={14} />}>
+                  申请平台介入
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
