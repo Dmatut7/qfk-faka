@@ -16,6 +16,7 @@ const KNOWN_KEYS = [
   'order_query_tips',
   'default_commission_rate',
   'withdraw_fee_rate',
+  'registration_require_invite',
 ];
 
 // 费率字段(金融高危):0~1 之间的小数。展示换算百分比、保存前严格校验。
@@ -37,7 +38,7 @@ function validateRate(raw) {
 
 // 单项「保存」行:回填现值,变更后调 api.setSetting(key,value)。
 // rate=true 时为费率字段:展示换算百分比并在保存前做 0~1 范围校验。
-function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api, rate }) {
+function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api, rate, boolean }) {
   const [value, setValue] = React.useState(initial != null ? String(initial) : '');
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState('');
@@ -82,7 +83,20 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api,
   return (
     <Field label={label} hint={hint}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-        {multiline ? (
+        {boolean ? (
+          <select
+            value={value === '1' ? '1' : '0'}
+            onChange={(e) => { setValue(e.target.value); setOk(false); }}
+            style={{
+              flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 8,
+              border: '1px solid var(--ds-border, #d0d5dd)', font: 'inherit', fontSize: 14,
+              background: 'var(--ds-surface, #fff)', color: 'inherit',
+            }}
+          >
+            <option value="0">否(关闭)</option>
+            <option value="1">是(开启)</option>
+          </select>
+        ) : multiline ? (
           <textarea
             value={value}
             placeholder={hint}
@@ -332,6 +346,15 @@ export default function Settings({ api }) {
                 hint="商户提现时扣取的手续费比例,0~1 之间的小数(如 0.01 表示 1%)"
                 initial={get('withdraw_fee_rate')}
                 rate
+                onSaved={reload}
+              />
+              <SettingRow
+                api={api}
+                settingKey="registration_require_invite"
+                label="商户注册需邀请码"
+                hint="开启后,新商户注册必须填写有效邀请码(在「邀请码」页生成);关闭则开放注册"
+                initial={get('registration_require_invite')}
+                boolean
                 onSaved={reload}
               />
             </section>
