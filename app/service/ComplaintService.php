@@ -91,17 +91,20 @@ class ComplaintService
     /** 商户回复:进行中投诉写回复,OPEN→REPLIED(介入中仍可补充回复但不改状态) */
     public function merchantReply(int $merchantId, int $id, string $reply): Complaint
     {
-        $c = $this->ownedActive($merchantId, $id);
         $reply = trim($reply);
         if ($reply === '') {
             throw new BizException(Code::PARAM_ERROR, '请填写回复内容');
         }
-        $patch = ['merchant_reply' => $reply];
-        if ((int) $c->status === Complaint::STATUS_OPEN) {
-            $patch['status'] = Complaint::STATUS_REPLIED;
-        }
-        $c->save($patch);
-        return $c;
+        // #8/L29 并发安全:事务 + 行锁内重查归属/状态再写,统一状态机入口口径
+        return Db::transaction(function () use ($merchantId, $id, $reply) {
+            $c = $this->ownedActive($merchantId, $id, true);
+            $patch = ['merchant_reply' => $reply];
+            if ((int) $c->status === Complaint::STATUS_OPEN) {
+                $patch['status'] = Complaint::STATUS_REPLIED;
+            }
+            $c->save($patch);
+            return $c;
+        });
     }
 
     // ===== 平台 =====
@@ -192,9 +195,13 @@ class ComplaintService
         return $order;
     }
 
-    private function ownedActive(int $merchantId, int $id): Complaint
+    private function ownedActive(int $merchantId, int $id, bool $lock = false): Complaint
     {
-        $c = Complaint::find($id);
+        $query = Complaint::where('id', $id);
+        if ($lock) {
+            $query->lock(true); // 事务内行锁:重查归属/状态防并发竞态(#8/L29)
+        }
+        $c = $query->find();
         if (!$c) {
             throw new BizException(Code::NOT_FOUND, '投诉不存在');
         }

@@ -118,7 +118,9 @@ class AdminWithdrawService
                 'merchant_id'   => (int) $m->id,
                 'type'          => MerchantFundLog::TYPE_WITHDRAW,
                 'amount'        => '+' . $amount,
-                'balance_after' => $newBalance,
+                // #4 与全局约定一致:balance_after 记**逻辑净头寸**(balance - debt),
+                // 而非物理 balance(NotifyService/RefundService 流水写入处皆如此)。
+                'balance_after' => Money::sub($newBalance, (string) ($m->debt ?? '0')),
                 'remark'        => '提现拒绝退回 #' . $w->id,
             ]);
 
