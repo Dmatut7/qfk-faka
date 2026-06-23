@@ -70,6 +70,38 @@ class StorefrontTest extends TestCase
         $this->assertSame(Code::PRODUCT_OFF, $body['code']);
     }
 
+    /** 安全:知识/资源类的 delivery_message 即发货内容,购前详情不得下发(防白嫖)。 */
+    public function testKnowledgeDeliveryContentNotLeakedPrePurchase(): void
+    {
+        $m = $this->makeMerchant();
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '付费教程', 'price' => '9.90',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE,
+            'delivery_message' => '这是付费正文:网盘 https://x/secret']);
+        $body = $this->callJson('GET', '/buyer/product/' . $p->id);
+        $this->assertSame(0, $body['code']);
+        $this->assertNull($body['data']['delivery_message'], '知识类购前不得返回发货内容');
+    }
+
+    /** 卡密/权益类的 delivery_message 是发货附言,购前可展示。 */
+    public function testCardDeliveryNoteShownPrePurchase(): void
+    {
+        $m = $this->makeMerchant();
+        $p = Product::create(['merchant_id' => $m->id, 'title' => '卡密商品', 'price' => '5.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_CARD,
+            'delivery_message' => '请在24小时内激活']);
+        $body = $this->callJson('GET', '/buyer/product/' . $p->id);
+        $this->assertSame('请在24小时内激活', $body['data']['delivery_message']);
+    }
+
+    /** 商户被冻结时,其商品按 id 直取的详情也不可见(与店铺列表口径一致)。 */
+    public function testFrozenMerchantProductDetailHidden(): void
+    {
+        $m = $this->makeMerchant(['status' => Merchant::STATUS_FROZEN]);
+        $p = Product::create(['merchant_id' => $m->id, 'title' => 'x', 'price' => '1.00', 'status' => Product::STATUS_ON]);
+        $body = $this->callJson('GET', '/buyer/product/' . $p->id);
+        $this->assertSame(Code::PRODUCT_OFF, $body['code']);
+    }
+
     /**
      * 商品带购买须知/库存显示方式创建后,/s/{slug} 与 /buyer/product/{id} 均能返回这两字段。
      */

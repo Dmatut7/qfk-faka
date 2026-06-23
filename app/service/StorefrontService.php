@@ -129,6 +129,11 @@ class StorefrontService
         if (!$p) {
             throw new BizException(Code::PRODUCT_OFF, '商品不存在或已下架');
         }
+        // 商户被冻结/待审时,其商品按 id 直取的详情同样不可见(与 store() 列表口径一致)
+        $m = Merchant::where('id', $p->merchant_id)->where('status', Merchant::STATUS_ACTIVE)->find();
+        if (!$m) {
+            throw new BizException(Code::PRODUCT_OFF, '商品不存在或已下架');
+        }
 
         $onSale = $p->discountActive();
         return [
@@ -147,7 +152,10 @@ class StorefrontService
             'sales_count'      => (int) $p->sales_count,
             'min_buy'          => (int) $p->min_buy,
             'max_buy'          => (int) $p->max_buy,
-            'delivery_message' => $p->delivery_message,
+            // 安全:仅码池类(卡密/权益)的 delivery_message 是"发货附言",可购前展示;
+            // 知识/资源类的 delivery_message 即"发货内容本身"(NotifyService 据此发货),
+            // 购前不得下发,否则未付款即可白嫖正文。
+            'delivery_message' => Product::goodsTypeUsesPool((int) ($p->goods_type ?? Product::GOODS_TYPE_CARD)) ? $p->delivery_message : null,
             'purchase_notice'  => $p->purchase_notice,
             'show_stock_type'  => (int) $p->show_stock_type,
         ];

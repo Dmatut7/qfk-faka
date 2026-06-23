@@ -22,12 +22,15 @@ class Cors
 
         $origin = $request->header('origin', '*');
 
+        // 安全:本 API 全程 Bearer 令牌鉴权(令牌存 localStorage,无 Cookie/Session),
+        // 前端从不使用 credentials:'include'。故**不下发** Access-Control-Allow-Credentials —
+        // 「回显任意 Origin」+「Allow-Credentials:true」是会让任意站点携凭证跨域读响应的危险组合,
+        // 去掉 Allow-Credentials 即中和该向量(Bearer 头由各源 JS 自行携带,不受影响)。
         return $response
             ->header([
                 'Access-Control-Allow-Origin'      => $origin ?: '*',
                 'Access-Control-Allow-Methods'     => 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers'     => 'Authorization, Content-Type, X-Requested-With',
-                'Access-Control-Allow-Credentials' => 'true',
                 'Access-Control-Max-Age'           => '86400',
             ]);
     }

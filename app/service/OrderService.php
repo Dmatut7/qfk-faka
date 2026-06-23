@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
+use app\model\Merchant;
 use app\model\Order;
 use app\model\Product;
 use app\util\Money;
@@ -86,6 +87,11 @@ class OrderService
                 throw new BizException(Code::NOT_FOUND, '商品不存在');
             }
             if ((int) $product->status !== Product::STATUS_ON) {
+                throw new BizException(Code::PRODUCT_OFF, '商品已下架');
+            }
+            // 商户被冻结/待审时不可继续成交(与前台 store()/product() 可见性口径一致)
+            $merchant = Merchant::where('id', $product->merchant_id)->find();
+            if (!$merchant || (int) $merchant->status !== Merchant::STATUS_ACTIVE) {
                 throw new BizException(Code::PRODUCT_OFF, '商品已下架');
             }
             $min = max(1, (int) $product->min_buy);

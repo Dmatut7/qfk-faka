@@ -91,6 +91,22 @@ class OrderCreateTest extends TestCase
         $this->assertSame(0, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count());
     }
 
+    public function testFrozenMerchantProductCannotBeOrdered(): void
+    {
+        $p = $this->product();
+        $this->addCards($p, 5);
+        // 商户被平台冻结后,其在售商品也不可再下单(避免向已停业商户继续成交)
+        \app\model\Merchant::where('id', $this->m->id)->update(['status' => \app\model\Merchant::STATUS_FROZEN]);
+        try {
+            $this->svc->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+            $this->fail('冻结商户商品应拒绝下单');
+        } catch (BizException $e) {
+            $this->assertSame(Code::PRODUCT_OFF, $e->getBizCode());
+        }
+        // 拒单不得残留锁定卡
+        $this->assertSame(0, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count());
+    }
+
     public function testExceedMaxBuy(): void
     {
         $p = $this->product(['max_buy' => 3]);
