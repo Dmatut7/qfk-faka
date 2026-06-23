@@ -7,7 +7,9 @@ use think\Model;
 
 /**
  * 商户资金流水(只增不改的账本)。无 update_time。
- * uniq(order_id,type) 保证同一订单同类型至多一条(结算幂等)。
+ * 结算幂等由 NotifyService 的「订单行锁 + 锁内状态重查」保证(应用层);DB 层 uniq(order_id,type)
+ * 已移除(退款会对同一订单再写一条 COMMISSION 回冲,与结算的 COMMISSION 冲突)。
+ * balance_after 语义:记「逻辑净头寸 balance-debt」(B1 负欠隔离),无负欠时即等于 merchants.balance。
  */
 class MerchantFundLog extends Model
 {

@@ -241,8 +241,8 @@ class NotifyService
     }
 
     /**
-     * 结算:商户余额 += 入账(net);记两条流水(订单收入 +total、平台佣金 -commission)。
-     * 商户行 FOR UPDATE 防丢失更新;uniq(order_id,type) 兜底结算幂等。
+     * 结算:商户「逻辑净头寸 balance-debt」+= 入账(net),先抵负欠再入可提余额(B1);记两条流水。
+     * 幂等:由上游 settle() 的订单行锁 + 锁内状态重查保证(DB uniq(order_id,type) 已移除,见 MerchantFundLog 注释)。
      */
     private function doSettle(Order $order, string $now): void
     {
