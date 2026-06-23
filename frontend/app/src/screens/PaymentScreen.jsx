@@ -36,6 +36,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   const [phase, setPhase] = React.useState(PHASE.IDLE);
   const [err, setErr] = React.useState('');            // ApiError.message
   const [waitMsg, setWaitMsg] = React.useState('');    // 等待态副提示(轮询 onTick)
+  const [payGatewayUrl, setPayGatewayUrl] = React.useState(''); // GET 网关地址,弹窗被拦截时给手动「前往支付」兜底
 
   // 倒计时:用 order.expireAt 算剩余秒
   const expireTs = React.useMemo(() => parseBackendTime(order.expireAt), [order.expireAt]);
@@ -78,6 +79,8 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       const { pay } = await api.pay(order.orderNo, undefined, returnUrl);
       // 跳转支付网关:携带后端签好的完整参数(GET 拼 query / POST 自动提交表单)。
       // 新开页去网关付款,本页轮询订单状态——发货由网关异步回调(notify)驱动。
+      // 弹窗被拦截时(移动端常见)存下网关地址,渲染「前往支付」按钮让买家手动点(用户手势不被拦截)。
+      let opened = false;
       try {
         if (pay && pay.url) {
           const method = String(pay.method || 'GET').toUpperCase();
@@ -95,14 +98,20 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
               });
               w.document.body.appendChild(form);
               form.submit();
+              opened = true;
             }
           } else {
             const qs = new URLSearchParams(params).toString();
             const url = pay.url + (qs ? (pay.url.includes('?') ? '&' : '?') + qs : '');
-            window.open(url, '_blank', 'noopener');
+            setPayGatewayUrl(url); // 兜底:弹窗被拦截时给可点链接
+            const w = window.open(url, '_blank', 'noopener');
+            opened = !!w;
           }
         }
-      } catch { /* 弹窗被拦截也无妨,继续轮询 */ }
+      } catch { opened = false; }
+      if (!opened) {
+        setWaitMsg('浏览器拦截了支付窗口,请点下方「前往支付」继续付款');
+      }
       if (!aliveRef.current) return;
       setWaitMsg('等待支付确认,发货中…');
 
@@ -263,6 +272,12 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
               <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {waitMsg || '若已在新窗口完成支付,卡密将自动发放,请稍候。'}
               </div>
+              {payGatewayUrl && (
+                <Button variant="primary" size="md" style={{ marginTop: 4 }}
+                  onClick={() => window.open(payGatewayUrl, '_blank', 'noopener')}>
+                  前往支付
+                </Button>
+              )}
             </div>
           )}
 
