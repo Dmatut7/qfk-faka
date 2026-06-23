@@ -82,7 +82,7 @@ class AdminWithdrawService
                 ->update(['frozen_balance' => $newFrozen, 'update_time' => $now]);
 
             Db::name('withdrawals')->where('id', $w->id)
-                ->update(['status' => Withdrawal::STATUS_PAID, 'update_time' => $now]);
+                ->update(['status' => Withdrawal::STATUS_PAID, 'processed_at' => $now, 'update_time' => $now]);
 
             $this->log('withdraw_approve', SystemLog::LEVEL_INFO, '提现审核通过(已打款)', [
                 'withdrawal_id' => (int) $w->id,
@@ -113,7 +113,7 @@ class AdminWithdrawService
                 ->update(['balance' => $newBalance, 'frozen_balance' => $newFrozen, 'update_time' => $now]);
 
             Db::name('withdrawals')->where('id', $w->id)
-                ->update(['status' => Withdrawal::STATUS_REJECTED, 'update_time' => $now]);
+                ->update(['status' => Withdrawal::STATUS_REJECTED, 'processed_at' => $now, 'update_time' => $now]);
 
             MerchantFundLog::create([
                 'merchant_id'   => (int) $m->id,

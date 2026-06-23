@@ -234,7 +234,12 @@ export default function Wallet({ api, session }) {
       key: 'processed_at',
       title: '处理时间',
       width: 170,
-      render: (row) => <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{row.processed_at || '—'}</span>,
+      // 已拒绝(2)/已打款(3)必已处理:旧数据 processed_at 为空时回退到 update_time(即处理时刻)
+      render: (row) => {
+        const done = Number(row.status) === 2 || Number(row.status) === 3;
+        const t = row.processed_at || (done ? row.update_time : '');
+        return <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t || '—'}</span>;
+      },
     },
   ];
 

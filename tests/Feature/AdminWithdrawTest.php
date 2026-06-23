@@ -58,7 +58,10 @@ class AdminWithdrawTest extends TestCase
         // 总额减少 A:70+0 = 70 = 100-30
         $this->assertSame(0, Money::cmp(Money::add($reload->balance, $reload->frozen_balance), '70.00'));
 
-        $this->assertSame(Withdrawal::STATUS_PAID, Withdrawal::find($w->id)->status);
+        $paid = Withdrawal::find($w->id);
+        $this->assertSame(Withdrawal::STATUS_PAID, $paid->status);
+        // 打款后必须留下处理时间(供商户/平台查处理时刻)
+        $this->assertNotEmpty($paid->processed_at, 'approve 后应写入 processed_at');
 
         // 不应产生新的收入/退回流水:仍只有申请那条 -30
         $logs = MerchantFundLog::where('merchant_id', $m->id)
@@ -81,7 +84,10 @@ class AdminWithdrawTest extends TestCase
         // 守恒不变:balance+frozen = 100
         $this->assertSame(0, Money::cmp(Money::add($reload->balance, $reload->frozen_balance), '100.00'));
 
-        $this->assertSame(Withdrawal::STATUS_REJECTED, Withdrawal::find($w->id)->status);
+        $rejected = Withdrawal::find($w->id);
+        $this->assertSame(Withdrawal::STATUS_REJECTED, $rejected->status);
+        // 拒绝同样属"已处理",应写入处理时间
+        $this->assertNotEmpty($rejected->processed_at, 'reject 后应写入 processed_at');
 
         // 退回流水 +30,balance_after=100
         $refund = MerchantFundLog::where('merchant_id', $m->id)
