@@ -550,7 +550,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid var(--border)',
         boxShadow: '0 -6px 24px rgba(122,36,0,.08)',
       }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: '12px 16px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))' }}>
           {submitErr && (
             <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--danger-fg)', fontSize: 13, fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
               <Icons.AlertTriangle size={15} color="var(--danger-solid)" style={{ flex: 'none', marginTop: 1 }} />

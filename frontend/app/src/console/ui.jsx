@@ -88,7 +88,7 @@ export function Panel({ title, subtitle, actions, children, padded = true, style
 export function Toolbar({ children, right }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>{children}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>{children}</div>
       {right && <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{right}</div>}
     </div>
   );

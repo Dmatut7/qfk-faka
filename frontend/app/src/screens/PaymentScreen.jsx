@@ -186,7 +186,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   };
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', padding: '18px 16px 120px' }}>
+    <div style={{ maxWidth: 560, margin: '0 auto', padding: '18px 16px calc(120px + env(safe-area-inset-bottom, 0px))' }}>
       <CheckoutSteps current={2} />
 
       {/* 倒计时条 */}
@@ -359,7 +359,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderTop: '1px solid var(--border)',
         boxShadow: '0 -6px 24px rgba(18,27,42,.06)',
       }}>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))', display: 'flex', alignItems: 'center', gap: 14 }}>
           {terminalBack ? (
             <Button variant="neutral" size="lg" block onClick={() => onBack && onBack()}
               iconLeft={<Icons.ChevronLeft size={18} />} style={{ flex: 1 }}>返回</Button>

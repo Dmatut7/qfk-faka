@@ -39,3 +39,23 @@
 
 > 备注:本轮一个 hunt agent 经 Bash 在 tests/ 落了个引用不存在类的临时验证文件(未跟踪),已清理;真实覆盖以 StockReconcileTest 为准。
 > **趋势**:三轮深挖确认真实缺陷数 backlog清零→6→1,边际递减,代码趋于干净。
+
+---
+
+# 第四轮深挖(前端/移动端显示 — 用户原始重点)
+
+3 finder × disprove,15候选 → 4「确认」,二次研判:**2 项真实并已修**。
+
+## 确认并已修(2)
+
+| # | 严重度 | 缺陷 | 处置 |
+|---|---|---|---|
+| 1 | high | 详情页/支付页**底部 fixed 购买条/付条缺 safe-area-inset-bottom**,刘海屏(iPhone X+)home indicator 遮挡价格与购买按钮(主容器已处理 env,fixed 条漏了) | 两条内边距加 `calc(12px + env(safe-area-inset-bottom))`;支付页滚动容器预留也补 env | 
+| 2 | high | 后台 Toolbar 内层 children 容器 `flex` **无 wrap**(仅外层 wrap),搜索栏固定宽输入框在窄屏被 flex-shrink 压扁至难用(admin/Orders 等) | ui.jsx Toolbar children 容器加 `flexWrap:'wrap'`,窄屏改为换行堆叠而非压缩(全后台 Toolbar 共享受益) |
+
+## 二次研判为非缺陷 / 不修(2)
+
+- **#3 StatCard 窄屏 2 列、大数字可能省略**(medium):**不修**。375px 下 2 列是可接受的响应式行为(非塌陷),仅极大金额才触发 nowrap 省略号,频率低;改 flex-basis 断点需动到全后台共用组件、收益边际,暂不动。
+- **#4 店铺分类 tab 360px 需横滑**(low):**by-design**。tab 用 `flex:'none' + overflowX:auto`,横向滚动是有意降级,无截断/重叠(disprove agent 自行下调);非 bug。
+
+> **趋势**:四轮深挖确认真实缺陷 **清零→6→1→2**,后端面已挖透,前端尚有 2 个真实移动端可用性 bug(safe-area / toolbar 压缩),已修。
