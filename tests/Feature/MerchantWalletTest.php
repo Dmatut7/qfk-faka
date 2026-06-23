@@ -78,6 +78,20 @@ class MerchantWalletTest extends TestCase
         }
     }
 
+    public function testBelowMinimumWithdrawRejected(): void
+    {
+        $m = $this->merchant('100.00');
+        // 低于最小提现额(1.00)→ 拒绝;恰好 1.00 允许
+        try {
+            $this->svc->applyWithdrawal((int) $m->id, '0.50', 'acc');
+            $this->fail('低于最小提现额应被拒');
+        } catch (BizException $e) {
+            $this->assertSame(Code::PARAM_ERROR, $e->getBizCode());
+        }
+        $w = $this->svc->applyWithdrawal((int) $m->id, '1.00', 'acc');
+        $this->assertNotNull($w->id);
+    }
+
     public function testFrozenMerchantWithdrawForbidden(): void
     {
         $m = $this->makeMerchant(['balance' => '100.00', 'status' => Merchant::STATUS_FROZEN]);

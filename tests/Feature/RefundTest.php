@@ -137,7 +137,7 @@ class RefundTest extends TestCase
 
         // 4) 有负欠时禁止提现(堵住稀释再套现)
         try {
-            (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, '0.01', 'alipay:x');
+            (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, '1.00', 'alipay:x');
             $this->fail('有负欠应禁止提现');
         } catch (BizException $e) {
             $this->assertSame(Code::STATE_INVALID, $e->getBizCode());

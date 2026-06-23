@@ -18,6 +18,9 @@ class MerchantWalletService
 {
     private const MAX_RETRY = 3;
 
+    /** 最小提现额(防 0.01 级微额提现刷爆打款工单) */
+    private const MIN_WITHDRAW = '1.00';
+
     public function balance(int $merchantId): array
     {
         $m = Merchant::find($merchantId);
@@ -52,6 +55,10 @@ class MerchantWalletService
     {
         if (!preg_match('/^\d+(\.\d{1,2})?$/', $amount) || Money::cmp($amount, '0') <= 0) {
             throw new BizException(Code::PARAM_ERROR, '提现金额必须为正');
+        }
+        // L2:最小提现额护栏(防微额提现刷爆打款工单)
+        if (Money::cmp($amount, self::MIN_WITHDRAW) < 0) {
+            throw new BizException(Code::PARAM_ERROR, '单笔提现不得低于 ' . self::MIN_WITHDRAW . ' 元');
         }
 
         $attempt = 0;
