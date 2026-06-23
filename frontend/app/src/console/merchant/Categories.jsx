@@ -92,7 +92,12 @@ export default function Categories({ api, session }) {
       title: '分类图',
       width: 72,
       render: (row) => row.image
-        ? <div aria-label="分类图" style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', backgroundColor: 'var(--surface-sunken)', backgroundImage: `url("${row.image}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }} />
+        ? (
+          <div aria-label="分类图" style={{ position: 'relative', width: 36, height: 36, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand-active)' }}>{(row.name || '#').slice(0, 1)}</span>
+            <img src={row.image} alt="" onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+        )
         : <span style={{ color: 'var(--text-subtle)', fontSize: 12 }}>—</span>,
     },
     { key: 'name', title: '分类名', render: (row) => row.name },
