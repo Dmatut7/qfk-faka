@@ -60,6 +60,11 @@ class MerchantWalletService
         if (Money::cmp($amount, self::MIN_WITHDRAW) < 0) {
             throw new BizException(Code::PARAM_ERROR, '单笔提现不得低于 ' . self::MIN_WITHDRAW . ' 元');
         }
+        // L22:收款账户信息去空白并拒空(控制器 require 放行纯空格,会落库成无效打款账户)
+        $accountInfo = trim($accountInfo);
+        if ($accountInfo === '') {
+            throw new BizException(Code::PARAM_ERROR, '请填写收款账户信息');
+        }
 
         $attempt = 0;
         while (true) {

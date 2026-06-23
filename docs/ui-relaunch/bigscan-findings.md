@@ -179,17 +179,23 @@
 - 问题: 反向资金依据 MerchantFundLog->sum('amount') 的返回值,ThinkPHP/PDO 对 DECIMAL 聚合在部分驱动下返回 float,经 Money::s()(对 float 走 number_format($n,12))再 bcadd 到 scale=2。单条收入行场景精确,但当同一 order_id 存在多条 INCOME/COMMISSION 流水累加时,float 求和的二进制表示误差可能在 number_format 截断前引入亚分位偏差。属代码库已知‘金额走 sum() 浮点’模式,当前由单行流水掩盖,但口径不够硬。
 - 修法: 反向冲账金额改为以原始结算流水行的字符串 amount 逐条 Money::add 累加(或在 SQL 层用 CAST(SUM(amount) AS CHAR)/SUM 后立即 (string) 且确保驱动返回字符串),避免 float 中转;与 doSettle 写入口径保持整数分/字符串一致。
 
-### [L20] {校验} app/service/pay/EpayDriver.php:53-61
+### [L20] {校验} app/service/pay/EpayDriver.php:53-61 — ⏸ 不修(防御性默认,非缺陷)
 - 问题: parse() 返回的 currency 恒为字符串(默认 'CNY'),NotifyService.php:89 处 ($parsed['currency'] ?? 'CNY') 的 ?? 分支为死代码;另 verify() 通过后 parse() 不再校验 trade_status 之外的异常态(如 TRADE_CLOSED/REFUND)只简单映射 success=false,正常但对 epay 退款通知/部分状态缺乏显式区分。非安全缺陷,属健壮性/可读性。
 - 修法: 移除 NotifyService.php:89 的冗余 ?? 'CNY';如后续接入 epay 退款回调,parse() 显式区分 trade_status 各态并在 NotifyService 中分流处理,避免退款通知被当作普通失败静默 success 应答。
+- ⏸ 评估结论:`($parsed['currency'] ?? 'CNY')` 是对「驱动未返回 currency 键」的防御性默认,移除会让非规范驱动触发 undefined index。保留更稳健,非真实缺陷,不动。
 
-### [L21] {状态机/死代码} app/model/Withdrawal.php:22 与 app/service/AdminWithdrawService.php:85
+
+### [L21] {状态机/死代码} app/model/Withdrawal.php:22 与 app/service/AdminWithdrawService.php:85 — ⏸ 不修(预留常量)
 - 问题: Withdrawal::STATUS_APPROVED(=1,注释「通过」)在全仓库无任何使用(grep 仅命中定义处)。审核打款 approve() 直接把状态从 PENDING(0)置为 PAID(3),跳过 APPROVED。状态机实际只有 0→3 与 0→2,常量 1 是误导性死定义。若未来前端/筛选按「1=通过」过滤提现单会永远查不到记录,或开发者误用 STATUS_APPROVED 做审核落库导致状态语义错乱。
 - 修法: 删除未用的 STATUS_APPROVED 常量,或明确状态机为 PENDING→PAID/REJECTED 并在注释中说明无独立 APPROVED 态;如需「已通过待打款」两段式,则补全 approve→APPROVED、打款→PAID 的流转与对应资金处理。
+- ⏸ 评估结论:`STATUS_APPROVED=1` 为「已通过待打款」两段式预留态;当前 PENDING→PAID 直转虽未用到,但保留不影响正确性,删除反而丢失语义。暂不动,如永不做两段式审核可后续清理。
 
-### [L22] {校验/边界} app/service/MerchantWalletService.php:50-54
+
+### [L22] {校验/边界} app/service/MerchantWalletService.php:50-54 — ✅ 已修(含测试)
 - 问题: applyWithdrawal 仅校验金额为正(line 52),无最小提现额、无金额上限(regex 允许任意位数,如 '999999999.99' 超出 DECIMAL(10,2) 量级,虽被余额不足拦下但语义上无业务护栏)。也未对 accountInfo 内容做校验(仅控制器层 max:255),空白/纯空格收款账户可入库,后续人工打款拿到无效账户。balance() 在 line 23 对 Merchant::find 结果未判空,商户不存在时 $m->balance 触发 fatal(虽走鉴权中间件一般存在,但被冻结/删除后边界仍可能命中)。
 - 修法: 增加最小提现额与单笔上限的业务校验(配置化);trim 校验 account_info 非空白;balance() 对 find() 结果判空抛 NOT_FOUND,与 applyWithdrawal 内的判空保持一致。
+- ✅ 已修:applyWithdrawal 对 account_info 先 trim 再判空(空抛 PARAM_ERROR),纯空白不再落库成无效打款账户。测试 `MerchantWalletTest::testBlankAccountInfoRejected`。
+
 
 ### [L23] {性能/可维护} app/service/AdminWithdrawService.php:51-54
 - 问题: 待审金额合计用 ->column('amount') 把全部待审提现的金额逐条拉回 PHP 再 Money::add 累加,待审单量大时一次性载入全部行且 O(n) bcadd 循环。MySQL 对 DECIMAL 的 SUM 是精确无浮点误差的,本可直接 ->sum('amount') 既精确又高效(同文件外 AdminViewService.php:53 正是用 ->sum)。当前实现纯属冗余,且与同仓另一处口径写法不一致。

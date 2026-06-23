@@ -51,6 +51,20 @@ class MerchantWalletTest extends TestCase
         $this->assertSame('70.00', $log->balance_after);
     }
 
+    /** L22:纯空白收款账户必须被拒,且不动余额、不建提现单 */
+    public function testBlankAccountInfoRejected(): void
+    {
+        $m = $this->merchant('100.00');
+        try {
+            $this->svc->applyWithdrawal((int) $m->id, '30.00', "   \t ");
+            $this->fail('纯空白收款账户应被拒');
+        } catch (BizException $e) {
+            $this->assertSame(Code::PARAM_ERROR, $e->getBizCode());
+        }
+        $this->assertSame('100.00', Merchant::find($m->id)->balance, '被拒不得动余额');
+        $this->assertSame(0, Withdrawal::where('merchant_id', $m->id)->count(), '被拒不得建提现单');
+    }
+
     public function testInsufficientBalanceRejected(): void
     {
         $m = $this->merchant('10.00');
