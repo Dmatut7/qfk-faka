@@ -82,6 +82,27 @@ class GoodsTypeOrderTest extends TestCase
         $this->assertSame(0, Card::where('order_id', $order->id)->count());
     }
 
+    public function testManualDeliverNonCardOrderUsesContentNotCardPool(): void
+    {
+        // 知识/资源类异常单(如延迟回调 closed_then_paid)补发应按内容发货,
+        // 而非误走发卡路径在空卡池上报"库存不足"导致永远无法补发。
+        $content = '课程地址 https://x/learn 提取码 6666';
+        $p = Product::create([
+            'merchant_id' => $this->m->id, 'title' => '课', 'price' => '10.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE,
+            'delivery_message' => $content, 'stock' => 0,
+        ]);
+        $order = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+
+        (new OrderService())->deliverManually((int) $order->id);
+
+        $fresh = Order::find($order->id);
+        $this->assertSame(Order::STATUS_DELIVERED, (int) $fresh->status);
+        $this->assertSame($content, $fresh->delivered_content);
+        $this->assertSame(0, Card::where('order_id', $order->id)->count());
+    }
+
     public function testNonCardCallbackDeliversDeliveryMessageAndSettles(): void
     {
         $content = "下载链接: https://cdn.example.com/file.zip\n提取码: 8888";

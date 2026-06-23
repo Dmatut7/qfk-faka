@@ -294,6 +294,19 @@ class OrderService
                     throw new BizException(Code::STATE_INVALID, '仅已支付/异常订单可补发');
                 }
 
+                // 非码池类(知识/资源)无卡库存:补发=按内容发货(delivered_content=商品 delivery_message),
+                // 不走取卡路径(否则空卡池必报"库存不足"导致这类异常单永远无法补发)。
+                if (!Product::goodsTypeUsesPool((int) $order->goods_type)) {
+                    $product = Product::find($order->product_id);
+                    Db::name('orders')->where('id', $orderId)->update([
+                        'status'            => Order::STATUS_DELIVERED,
+                        'delivered_content' => $product ? (string) $product->delivery_message : '',
+                        'delivered_at'      => $now,
+                        'update_time'       => $now,
+                    ]);
+                    return;
+                }
+
                 $qty = (int) $order->quantity;
                 // 已锁定卡 + 需新占卡
                 $lockedIds = Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)->column('id');
