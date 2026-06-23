@@ -12,6 +12,7 @@ use app\model\Order;
 use app\model\Payment;
 use app\model\PaymentChannel;
 use app\model\Product;
+use app\service\CouponService;
 use app\service\OrderService;
 use app\util\Money;
 use app\util\OrderNo;
@@ -125,6 +126,31 @@ class CouponOrderTest extends TestCase
         // 名额已释放,新单可再用
         $o2 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com', 'coupon_code' => $c->code]);
         $this->assertSame((int) $c->id, (int) $o2->coupon_id);
+    }
+
+    /** M4:商户手动关单(cancelPending)同样释放占用的券额。 */
+    public function testManualCloseReleasesCouponSlot(): void
+    {
+        $c = $this->coupon(['code' => 'MC1', 'total' => 1, 'min_amount' => '0.00', 'value' => '5.00']);
+        $o = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com', 'coupon_code' => $c->code]);
+        $this->assertSame(1, (int) Coupon::find($c->id)->used);
+        (new OrderService())->cancelPending((int) $o->id);
+        $this->assertSame(Order::STATUS_CLOSED, (int) Order::find($o->id)->status);
+        $this->assertSame(0, (int) Coupon::find($c->id)->used, '手动关单应释放券额');
+    }
+
+    /** M1:有进行中订单占用券额时,券不可被硬删(防悬挂引用 + 占额丢失)。 */
+    public function testCannotDeleteCouponWithPendingOrder(): void
+    {
+        $c = $this->coupon(['code' => 'DEL1', 'min_amount' => '0.00']);
+        (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com', 'coupon_code' => $c->code]);
+        try {
+            (new CouponService())->delete((int) $this->m->id, (int) $c->id);
+            $this->fail('有在途订单占用,不应删除');
+        } catch (BizException $e) {
+            $this->assertSame(Code::STATE_INVALID, $e->getBizCode());
+        }
+        $this->assertNotNull(Coupon::find($c->id));
     }
 
     public function testOrderWithoutCouponUnchanged(): void

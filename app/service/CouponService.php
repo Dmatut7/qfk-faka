@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Coupon;
+use app\model\Order;
 use app\model\Product;
 use app\util\Money;
 
@@ -102,7 +103,13 @@ class CouponService
 
     public function delete(int $merchantId, int $id): void
     {
-        $this->findOwned($merchantId, $id)->delete();
+        $coupon = $this->findOwned($merchantId, $id);
+        // M1:有待支付订单占用该券额时禁止硬删——否则关单 dec('used') 找不到券行(静默失效),
+        // 且产生悬挂 coupon_id。请改为停用(status=OFF)。
+        if (Order::where('coupon_id', $coupon->id)->where('status', Order::STATUS_PENDING)->find()) {
+            throw new BizException(Code::STATE_INVALID, '该券有进行中的订单占用,暂不能删除,请先停用');
+        }
+        $coupon->delete();
     }
 
     /**

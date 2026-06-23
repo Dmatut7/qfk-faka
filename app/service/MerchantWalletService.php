@@ -75,7 +75,7 @@ class MerchantWalletService
                     }
                     // B1 负欠隔离:有未清偿负欠时禁止提现(后续入账先抵欠,清零后方可提),
                     // 杜绝"已提现订单退款致负欠被新入账稀释后再次提现"的重复套现。
-                    if (Money::cmp((string) $m->debt, '0') > 0) {
+                    if (Money::cmp((string) ($m->debt ?? '0'), '0') > 0) {
                         throw new BizException(Code::STATE_INVALID, '存在未清偿负欠,清偿后方可提现');
                     }
                     if (Money::cmp($amount, (string) $m->balance) > 0) {

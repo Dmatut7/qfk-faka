@@ -92,6 +92,45 @@ class RefundTest extends TestCase
         $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND)->count());
     }
 
+    /** M5:未结算异常单(closed_then_paid)退款不应触碰商户资金(无 income 流水 → 不反向)。 */
+    public function testRefundUnsettledExceptionDoesNotTouchBalance(): void
+    {
+        Merchant::where('id', $this->m->id)->update(['balance' => '0.00']);
+        $order = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        // 模拟 closed_then_paid:异常态、无任何结算流水
+        Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+
+        (new RefundService())->refund((int) $order->id);
+
+        $this->assertSame(Order::STATUS_REFUNDED, (int) Order::find($order->id)->status);
+        $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'), '未结算单退款不动余额');
+        $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->debt, '0'), '未结算单退款不产生负欠');
+        $this->assertSame(0, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND)->count(), '无反向流水');
+    }
+
+    /** M6:负欠「部分抵欠」与多笔抵欠——入账先抵 debt,余额保底 0,debt 不写成负。 */
+    public function testPartialDebtOffsetOnSettle(): void
+    {
+        Merchant::where('id', $this->m->id)->update(['commission_rate' => '0.0000', 'balance' => '0.00', 'debt' => '20.00']);
+        for ($i = 0; $i < 3; $i++) {
+            $s = 'PD-' . $i . '-' . uniqid();
+            Card::create(['merchant_id' => $this->m->id, 'product_id' => $this->p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);
+        }
+        Product::where('id', $this->p->id)->update(['stock' => 5]);
+
+        // 第一笔净入账 10(<debt 20)→ 部分抵欠:debt 20→10,余额保底 0
+        $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com']);
+        $m1 = Merchant::find($this->m->id);
+        $this->assertSame('10.00', Money::add((string) $m1->debt, '0'), '部分抵欠');
+        $this->assertSame('0.00', Money::add((string) $m1->balance, '0'), '余额保底0,不写负 debt');
+
+        // 第二笔净入账 20(>剩余 debt 10)→ debt 清零,余额 = 20-10 = 10
+        $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 2, 'buyer_email' => 'b@x.com']);
+        $m2 = Merchant::find($this->m->id);
+        $this->assertSame('0.00', Money::add((string) $m2->debt, '0'), '抵欠清零');
+        $this->assertSame('10.00', Money::add((string) $m2->balance, '0'));
+    }
+
     /** LOCKED(尚未交付,如卡不足异常单)卡密退款可回库重售;与已交付 SOLD 区分对待。 */
     public function testRefundReleasesLockedButDisablesSoldCards(): void
     {
