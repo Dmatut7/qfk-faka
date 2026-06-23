@@ -40,16 +40,20 @@ class RefundService
                 throw new BizException(Code::STATE_INVALID, '该订单状态不可退款');
             }
 
-            // 1) 卡密回库:LOCKED/SOLD → UNSOLD,清归属;库存相对恢复
-            $restore = Card::where('order_id', $orderId)
-                ->whereIn('status', [Card::STATUS_LOCKED, Card::STATUS_SOLD])->count();
-            if ($restore > 0) {
-                Db::name('cards')->where('order_id', $orderId)
-                    ->whereIn('status', [Card::STATUS_LOCKED, Card::STATUS_SOLD])
+            // 1) 卡密处理(关键:防同一卡密退款后二次售卖):
+            //    - LOCKED(下单预占、尚未交付):可释放回 UNSOLD 并回补库存;
+            //    - SOLD(已支付交付、secret 已发给买家):按 spec §10.5「虚拟卡密一般不可回收」,
+            //      置作废终态、保留 order_id 归属、不回 UNSOLD、不回补库存——绝不重新进入可售池。
+            $lockedRestore = Card::where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)->count();
+            if ($lockedRestore > 0) {
+                Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_LOCKED)
                     ->update(['status' => Card::STATUS_UNSOLD, 'order_id' => null, 'locked_at' => null, 'sold_at' => null, 'update_time' => $now]);
                 Db::name('products')->where('id', $order->product_id)
-                    ->update(['stock' => Db::raw("stock + {$restore}"), 'update_time' => $now]);
+                    ->update(['stock' => Db::raw("stock + {$lockedRestore}"), 'update_time' => $now]);
             }
+            // 已交付卡作废(不可回收、不回库、不回补库存)
+            Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_SOLD)
+                ->update(['status' => Card::STATUS_DISABLED, 'update_time' => $now]);
 
             // 2) 反向资金:精确依据该订单实际产生的结算流水(兼容未结算的异常单 → 不反向)
             $incomeSum = Money::add((string) MerchantFundLog::where('order_id', $orderId)->where('type', MerchantFundLog::TYPE_INCOME)->sum('amount'), '0');

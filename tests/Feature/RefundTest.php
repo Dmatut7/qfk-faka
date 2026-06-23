@@ -79,13 +79,33 @@ class RefundTest extends TestCase
 
         (new RefundService())->refund((int) $order->id, '测试退款');
 
-        // 订单退款、卡密回库(2张回到未售、清order_id)、库存恢复、余额冲回 0
+        // 订单退款、资金冲回 0;但已交付(SOLD)卡密**不可回收**(spec §10.5):
+        // 置作废终态、保留 order_id 归属、不回 UNSOLD、不回补库存——杜绝同一卡密二次售卖。
         $this->assertSame(Order::STATUS_REFUNDED, (int) Order::find($order->id)->status);
-        $this->assertSame(0, Card::where('order_id', $order->id)->count());
-        $this->assertSame(2, Card::where('product_id', $this->p->id)->where('status', Card::STATUS_UNSOLD)->count());
+        $this->assertSame(2, Card::where('order_id', $order->id)->where('status', Card::STATUS_DISABLED)->count());
+        $this->assertSame(0, Card::where('product_id', $this->p->id)->where('status', Card::STATUS_UNSOLD)->count(), '已交付卡密不得回库重售');
+        $this->assertSame(0, (int) Product::find($this->p->id)->stock, '已交付卡密退款不回补库存');
         $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'));
         // 反向流水:退款冲收入 -20、佣金回冲 +2
         $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND)->count());
+    }
+
+    /** LOCKED(尚未交付,如卡不足异常单)卡密退款可回库重售;与已交付 SOLD 区分对待。 */
+    public function testRefundReleasesLockedButDisablesSoldCards(): void
+    {
+        // 构造:一单 2 件,人工把卡置成 1 张 LOCKED(未交付) + 1 张 SOLD(已交付)
+        $order = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 2, 'buyer_email' => 'b@x.com']);
+        $cards = Card::where('order_id', $order->id)->select();
+        $cards[0]->save(['status' => Card::STATUS_LOCKED]);
+        $cards[1]->save(['status' => Card::STATUS_SOLD]);
+        // 该单未结算(无 income 流水),退款只处理卡密
+        Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+
+        (new RefundService())->refund((int) $order->id);
+
+        // LOCKED 回 UNSOLD;SOLD 作废;库存仅对 LOCKED 那张回补
+        $this->assertSame(1, Card::where('product_id', $this->p->id)->where('status', Card::STATUS_UNSOLD)->count());
+        $this->assertSame(1, Card::where('order_id', $order->id)->where('status', Card::STATUS_DISABLED)->count());
     }
 
     public function testRefundNonCardOrder(): void
