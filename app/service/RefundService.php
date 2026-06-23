@@ -64,6 +64,13 @@ class RefundService
 
             if ($wasSettled) {
                 $merchant = Merchant::where('id', $order->merchant_id)->lock(true)->find();
+                // 资金一致性(#3/#5):商户有冻结中的待审提现(frozen>0)时,余额处于「部分已承诺打款」
+                // 的中间态。此时反向冲账会让逻辑净头寸(balance-debt)与物理余额/冻结口径错位:
+                // 退款产生的负欠在提现被驳回(frozen→balance)后会与返还的余额重复计,导致 balance+debt 虚高。
+                // 因此先处置该提现(批准打款 or 驳回退回)再退款,杜绝冻结×负欠会计失衡。
+                if (Money::cmp((string) ($merchant->frozen_balance ?? '0'), '0') > 0) {
+                    throw new BizException(Code::STATE_INVALID, '商户有冻结中的待审提现,请先处置该提现后再退款');
+                }
                 // 逻辑净头寸 = balance - debt;冲账在逻辑头寸上做(B1 负欠隔离):
                 // 冲收入 -income、佣金回冲 -commSum(commSum 负→加回);结果若为负,
                 // 说明该笔货款已被提现,差额落入负欠 debt,余额保底 0——不再把 balance 写成负数。

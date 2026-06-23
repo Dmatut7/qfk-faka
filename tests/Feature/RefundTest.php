@@ -206,6 +206,26 @@ class RefundTest extends TestCase
         $this->assertNotNull($w2->id);
     }
 
+    /** #3/#5:商户有冻结中的待审提现(frozen>0)时退款必须被拒,避免冻结×负欠会计失衡 */
+    public function testCannotRefundWhileWithdrawalPendingFrozen(): void
+    {
+        $o = $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'c@x.com']); // 净 9.00
+        $bal = (string) Merchant::find($this->m->id)->balance;
+        // 申请提现但不审批 → 全额冻结(balance→0,frozen=bal,处于待打款中间态)
+        (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, $bal, 'alipay:x');
+        $this->assertSame(0, Money::cmp((string) Merchant::find($this->m->id)->frozen_balance, $bal));
+
+        try {
+            (new RefundService())->refund((int) $o->id);
+            $this->fail('有冻结中待审提现时退款应被拒');
+        } catch (BizException $e) {
+            $this->assertSame(Code::STATE_INVALID, $e->getBizCode());
+        }
+        // 退款被拒:订单仍为已发货,冻结资金原封不动
+        $this->assertSame(Order::STATUS_DELIVERED, (int) Order::find($o->id)->status);
+        $this->assertSame(0, Money::cmp((string) Merchant::find($this->m->id)->frozen_balance, $bal), '冻结不得被改动');
+    }
+
     public function testRefundNonCardOrder(): void
     {
         $np = Product::create(['merchant_id' => $this->m->id, 'title' => '资源', 'price' => '30.00', 'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_RESOURCE, 'delivery_message' => 'link', 'stock' => 0]);
