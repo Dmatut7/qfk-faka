@@ -74,7 +74,8 @@ class CardService
             $rows[] = [
                 'merchant_id' => $merchantId,
                 'product_id'  => $productId,
-                'secret'      => $secret,
+                // 落库加密(opt-in:配 CARD_SECRET_KEY 时;否则明文)。secret_hash 仍为明文哈希,去重不受影响。
+                'secret'      => \app\util\CardSecret::encrypt($secret),
                 'secret_hash' => $hash,
                 'status'      => Card::STATUS_UNSOLD,
                 'batch_no'    => $batchNo,
@@ -176,6 +177,13 @@ class CardService
         }
         $total = $q->count();
         $items = $q->order('id', 'desc')->page($page, $size)->select()->toArray();
+        // 落库加密时,列表展示需解密(老明文卡 decrypt 原样返回)
+        foreach ($items as &$it) {
+            if (isset($it['secret'])) {
+                $it['secret'] = \app\util\CardSecret::decrypt((string) $it['secret']);
+            }
+        }
+        unset($it);
 
         return ['total' => $total, 'page' => $page, 'items' => $items];
     }

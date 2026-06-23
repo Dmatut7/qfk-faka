@@ -373,8 +373,11 @@ class OrderService
                     throw new BizException(Code::STATE_INVALID, '补发数量不符');
                 }
 
-                $secrets = Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_SOLD)
-                    ->order('id', 'asc')->column('secret');
+                $secrets = array_map(
+                    static fn ($s) => \app\util\CardSecret::decrypt((string) $s),
+                    Db::name('cards')->where('order_id', $orderId)->where('status', Card::STATUS_SOLD)
+                        ->order('id', 'asc')->column('secret')
+                );
                 Db::name('orders')->where('id', $orderId)->update([
                     'status' => Order::STATUS_DELIVERED, 'delivered_content' => implode("\n", $secrets),
                     'delivered_at' => $now, 'update_time' => $now,

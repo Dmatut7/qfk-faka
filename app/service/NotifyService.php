@@ -240,9 +240,12 @@ class NotifyService
                 throw new BizException(Code::STATE_INVALID, '发货并发冲突');
             }
 
-            // 快照(发货真相源,显式有序避免依赖隐式排序)
-            $secrets = Db::name('cards')->where('order_id', $order->id)->where('status', Card::STATUS_SOLD)
-                ->order('id', 'asc')->column('secret');
+            // 快照(发货真相源,显式有序避免依赖隐式排序);落库加密时解密为明文快照
+            $secrets = array_map(
+                static fn ($s) => \app\util\CardSecret::decrypt((string) $s),
+                Db::name('cards')->where('order_id', $order->id)->where('status', Card::STATUS_SOLD)
+                    ->order('id', 'asc')->column('secret')
+            );
             Db::name('orders')->where('id', $order->id)->update([
                 'status'            => Order::STATUS_DELIVERED,
                 'delivered_content' => implode("\n", $secrets),

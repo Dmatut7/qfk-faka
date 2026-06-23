@@ -39,7 +39,10 @@ class MerchantOrderService
         // 待支付(LOCKED 预占未付款)、已关闭、异常、已退款一律不返回明文,收敛明文暴露面,
         // 与买家侧「仅 DELIVERED 才返回卡密」口径一致。
         $data['cards'] = (int) $order->status === Order::STATUS_DELIVERED
-            ? Card::where('order_id', $order->id)->where('status', Card::STATUS_SOLD)->order('id', 'asc')->column('secret')
+            ? array_map(
+                static fn ($s) => \app\util\CardSecret::decrypt((string) $s),
+                Card::where('order_id', $order->id)->where('status', Card::STATUS_SOLD)->order('id', 'asc')->column('secret')
+            )
             : [];
         return $data;
     }
