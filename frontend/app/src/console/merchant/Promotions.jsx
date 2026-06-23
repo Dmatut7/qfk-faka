@@ -104,7 +104,9 @@ export default function Promotions({ api }) {
 
   async function confirmDelete() {
     if (!removing) return;
-    try { await api.deletePromotion(removing.id); setRemoving(null); list.reload(); } catch { /* 静默 */ }
+    setErr('');
+    try { await api.deletePromotion(removing.id); setRemoving(null); list.reload(); }
+    catch (e) { setErr(e instanceof ApiError ? e.message : '删除失败,请重试'); } // L6:不再静默吞错
   }
 
   const columns = [
@@ -116,7 +118,7 @@ export default function Promotions({ api }) {
     { key: 'actions', title: '操作', width: 150, align: 'right', render: (r) => (
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>编辑</Button>
-        <Button size="sm" variant="danger" onClick={() => setRemoving(r)}>删除</Button>
+        <Button size="sm" variant="danger" onClick={() => { setErr(''); setRemoving(r); }}>删除</Button>
       </div>
     ) },
   ];
@@ -190,6 +192,7 @@ export default function Promotions({ api }) {
           <Button variant="danger" onClick={confirmDelete}>确认删除</Button>
         </>}>
         确定删除该促销活动吗?
+        {err ? <div style={{ marginTop: 12 }}><Pill tone="danger">{err}</Pill></div> : null}
       </Modal>
     </Panel>
   );

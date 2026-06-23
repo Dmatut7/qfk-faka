@@ -322,7 +322,7 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
 
   // 商品信息:订单里可能没有完整商品对象,做优雅缺省
   const prod = r.product ? normalizeProduct(r.product) : null;
-  const prodName = prod ? prod.name : (r.product_name || `商品 #${r.product_id ?? ''}`);
+  const prodName = prod ? prod.name : (r.product_name || '商品'); // L1:缺商品名用中性占位,不外露内部 product_id
   const prodThumb = prod ? prod.thumb : '📦';
   const total = Number(r.total_amount ?? 0);
   const qty = Number(r.quantity ?? cards.length ?? 1);

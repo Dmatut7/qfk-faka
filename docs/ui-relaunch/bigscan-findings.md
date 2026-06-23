@@ -90,17 +90,21 @@
 
 ## LOW (30)
 
-### [L1] {健壮性/字段泄漏} frontend/app/src/screens/OrderLookup.jsx:324
+### [L1] {健壮性/字段泄漏} frontend/app/src/screens/OrderLookup.jsx:324 — ✅ 已修
 - 问题: 查单结果商品名缺省时把后端 product_id 直接拼进面向用户的文案:`const prodName = prod ? prod.name : (r.product_name || \`商品 #${r.product_id ?? ''}\`)`。当商品已下架/详情补拉失败且后端未回 product_name 时,用户会看到「商品 #137」这种暴露内部自增 ID 的字样;若 product_id 也缺失则更退化成「商品 #」(井号后空白)。
 - 修法: 缺省文案改为不暴露内部 ID 的中性表述,如「该商品」或「商品信息获取中」;`r.product_id` 缺失时不要渲染出孤立的「#」。例如:`prod ? prod.name : (r.product_name || '该商品')`。
+- ✅ 已修:OrderLookup 缺商品名回退中性「商品」,不再渲染内部 product_id(避免「商品 #」孤井号/内部 id 外露)。
+
 
 ### [L2] {一致性} frontend/app/src/components/TopBar.jsx:76
 - 问题: 店名兜底默认值为「极客发卡」(`title || shopName || '极客发卡'`),与平台品牌「秒卡 / 秒卡发卡」不一致。App.jsx:95 以 `shopName={shop?.name}` 传入,在 shop 接口返回前(或 name 为空时)买家顶栏会短暂显示「极客发卡」。该串源自 design-system demo 的示例店名(design-system/ui_kits/*/data.js)与 app/index.html 的 <title>,属残留;Portal.jsx:11 同位置的兜底用的是 `'秒卡发卡'`,两处兜底品牌名不一致。
 - 修法: 将兜底统一为平台品牌(如 '秒卡发卡' 或留空只显示 logo),与 Portal.jsx:11 的默认值保持一致;同时建议核对 app/index.html 的 <title> 是否也应改为平台品牌。
 
-### [L3] {健壮性} frontend/app/src/screens/Articles.jsx:39-50,109-116
+### [L3] {健壮性} frontend/app/src/screens/Articles.jsx:39-50,109-116 — ✅ 已修
 - 问题: 打开详情失败时(openDetail catch)只 setError 而 detail 仍为 null、detailLoading 归 false,列表视图的渲染分支 `error ?` 命中后用整屏错误块替换掉已经成功加载的列表(line 111-116),用户原本的资讯/FAQ 列表被清空。虽然「重试」按钮会调用 load 重载列表可恢复,但「点某条详情加载失败」却把整张列表也吞掉,属可见的 UX 退化。
 - 修法: 详情加载失败应使用独立的局部错误态(如 toast 或 detailError),不要污染列表级 error;或在 catch 里不改 error、改为弹出轻提示,保留列表原样。
+- ✅ 已修:Articles 新增独立 detailError 态,详情加载失败只在列表上方显示可关闭提示,不再用列表级 error 整屏替换。
+
 
 ### [L4] {一致性(权益类硬编码卡密)} frontend/app/src/console/merchant/Products.jsx:301
 - 问题: 商品总览的「库存合计」统计卡 sub 文案硬编码 sub="以卡密加锁查询为准"。该卡是跨全部商品类型的聚合(rows.reduce 累加所有 r.stock,包含 goods_type=2知识/3资源/4权益),而权益类商品的码池称谓应为「权益码」(同文件其他处及 Cards.jsx 用 codeNoun 区分)。对只售权益/知识/资源的商户,这句「以卡密加锁查询为准」是错误术语,与全局 codeNoun 一致性约定冲突,命中『权益类处硬编码卡密』的已知模式。
@@ -112,17 +116,23 @@
 - ✅ 已修:Delta 组件金额模式改整数分相减(ui.jsx),L5/L9 一并修复。
 
 
-### [L6] {健壮性/错误吞掉无反馈} frontend/app/src/console/merchant/Promotions.jsx:107
+### [L6] {健壮性/错误吞掉无反馈} frontend/app/src/console/merchant/Promotions.jsx:107 — ✅ 已修
 - 问题: confirmDelete 里 `catch { /* 静默 */ }`——删除活动失败时既不提示用户也不打日志,且 setRemoving(null) 仅在 try 成功路径调用,失败时弹窗不关、列表不刷新、无任何错误态,用户只会以为按钮没反应。对照同文件 submit() 与 Coupons.jsx:142 的删除都做了 setFormErr/ApiError 提示,此处是一致性与健壮性缺口。
 - 修法: 与 Coupons.deleteCoupon 一致:catch (e) 时 setErr(e instanceof ApiError ? e.message : '删除失败,请重试'),保持弹窗打开以便重试;成功后再 setRemoving(null)+reload。
+- ✅ 已修:Promotions confirmDelete 不再静默吞错,失败置 err 并在删除弹窗内展示;打开删除弹窗时清空 err 防串台。
 
-### [L7] {健壮性/缺『全部』筛选 + 计数误导} frontend/app/src/console/merchant/Complaints.jsx:27,28,75
+
+### [L7] {健壮性/缺『全部』筛选 + 计数误导} frontend/app/src/console/merchant/Complaints.jsx:27,28,75 — ✅ 已修
 - 问题: status 默认 '0' 且 FILTER_OPTIONS(17-23)只有 0~4 五个具体状态、没有『全部』项,后端 complaints({status}) 始终带 status 过滤(后端 status==='' 才不过滤,但前端永远不传空),导致商户无法一屏查看全部投诉。同时 Toolbar『共 {items.length} 条投诉』(75)统计的是当前单一状态下的条数,文案却像总数,易误导(切到『已解决』时会显示成总投诉数)。
 - 修法: 在 FILTER_OPTIONS 头部加 { value: '', label: '全部' } 并把默认 status 视需求决定;或把计数文案改为带状态限定(如『当前筛选 N 条』),避免把分状态条数当总数展示。
+- ✅ 已修:Complaints 补「全部」筛选(后端 status=''→不过滤),计数文案随筛选显示「共/当前筛选 N 条」不再误导为总数。
 
-### [L8] {健壮性 / 重复错误态} frontend/app/src/console/admin/Settlement.jsx:82,141-144
+
+### [L8] {健壮性 / 重复错误态} frontend/app/src/console/admin/Settlement.jsx:82,141-144 — ✅ 已修
 - 问题: 加载出错时会同时渲染两处错误:顶部 <ErrorBar message={report.error} onRetry={report.reload} />(82),以及 DataTable 内部因收到 error={report.error} 又自渲染一个 ErrorBar(DataTable 在 error 时 return ErrorBar,ui.jsx:150)。同一错误重复出现两条红条,且此时上方三张 StatCard 仍展示 ¥0.00,观感上像「有数据又报错」。
 - 修法: 二选一:要么去掉顶部 82 行的 ErrorBar 交给 DataTable 内部展示,要么给 DataTable 传 error={undefined} 由顶部统一展示;错误态下可隐藏/置灰 StatCard。
+- ✅ 已修:Settlement 删除顶部重复 ErrorBar,错误条统一由 DataTable 展示;清理未用 import。
+
 
 ### [L9] {金额} frontend/app/src/console/admin/Dashboard.jsx:65 — ✅ 已修
 - 问题: 「平台利润」卡的 Delta 对金额做浮点加减:Delta 内部 (ui.jsx:38-43) 执行 a-b 后 toFixed(2)。Dashboard 把 profit.today/profit.yesterday(DECIMAL 金额)传入 money 模式,违反 CLAUDE.md 铁规则六(金额禁止浮点运算)。当后端金额含小数(如 0.3-0.1)时会产生浮点尾差,虽多被 toFixed(2) 四舍五入掩盖,但属规则禁止的金额浮点比较/相减。同处 BigScreen 不调用 Delta,故仅 Dashboard 命中。

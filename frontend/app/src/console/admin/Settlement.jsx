@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Money, Pill, StatCard, ErrorBar } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Money, Pill, StatCard } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -79,7 +79,7 @@ export default function Settlement({ api, session }) {
         </div>
       </Toolbar>
 
-      {report.error ? <ErrorBar message={report.error} onRetry={report.reload} /> : null}
+      {/* L8:错误条统一由下方 DataTable(error=report.error)展示,避免顶部重复一条 */}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
         <StatCard

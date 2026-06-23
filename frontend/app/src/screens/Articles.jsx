@@ -23,6 +23,7 @@ export default function Articles({ type = 1, onBack }) {
   const [error, setError] = React.useState('');
   const [detail, setDetail] = React.useState(null);     // 当前打开的详情
   const [detailLoading, setDetailLoading] = React.useState(false);
+  const [detailError, setDetailError] = React.useState(''); // L3:详情加载失败独立态,不污染列表级 error
   const [cat, setCat] = React.useState('');             // FAQ 分类筛选
 
   const load = React.useCallback(() => {
@@ -38,12 +39,14 @@ export default function Articles({ type = 1, onBack }) {
 
   const openDetail = async (id) => {
     setDetailLoading(true);
+    setDetailError('');
     window.scrollTo(0, 0);
     try {
       const d = await api.article(id);
       setDetail(d);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '内容加载失败');
+      // L3:详情失败只置 detailError(保留列表),不改列表级 error 以免整屏被错误页替换
+      setDetailError(e instanceof ApiError ? e.message : '内容加载失败');
     } finally {
       setDetailLoading(false);
     }
@@ -105,6 +108,12 @@ export default function Articles({ type = 1, onBack }) {
           })}
         </div>
       )}
+
+      {detailError ? (
+        <div onClick={() => setDetailError('')} style={{ marginTop: 14, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--danger-bg, #fef2f2)', color: 'var(--danger-fg, #b91c1c)', fontSize: 13, cursor: 'pointer' }}>
+          {detailError}(点击关闭)
+        </div>
+      ) : null}
 
       {(loading || detailLoading) ? (
         <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--text-subtle)' }}>加载中…</div>
