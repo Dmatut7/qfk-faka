@@ -66,10 +66,19 @@ class MerchantWalletService
             throw new BizException(Code::PARAM_ERROR, '请填写收款账户信息');
         }
 
+        // 提现手续费:平台配置 withdraw_fee_rate(0~1 小数),fee = amount × rate(2 位)。
+        // 此前 fee 恒为 '0.00' 是半成品(配置项与商户/平台 UI 的「手续费」列都在、后端从不计算),此处补全。
+        // 商户提现 amount(冻结/扣减全额),实收 amount - fee,fee 为平台手续费收入。
+        $rate = (string) ((new SettingService())->get('withdraw_fee_rate', '0') ?? '0');
+        if (!preg_match('/^\d+(\.\d+)?$/', $rate) || Money::cmp($rate, '0') < 0 || Money::cmp($rate, '1') >= 0) {
+            $rate = '0'; // 配置非法(非 [0,1) 小数)→ 视为不收费,避免坏配置卡死提现
+        }
+        $fee = Money::round(Money::mul($amount, $rate));
+
         $attempt = 0;
         while (true) {
             try {
-                return Db::transaction(function () use ($merchantId, $amount, $accountInfo) {
+                return Db::transaction(function () use ($merchantId, $amount, $accountInfo, $fee) {
                     $now = date('Y-m-d H:i:s');
                     $m   = Merchant::where('id', $merchantId)->lock(true)->find();
                     if (!$m) {
@@ -93,7 +102,7 @@ class MerchantWalletService
                         ->update(['balance' => $newBalance, 'frozen_balance' => $newFrozen, 'update_time' => $now]);
 
                     $w = Withdrawal::create([
-                        'merchant_id' => $merchantId, 'amount' => $amount, 'fee' => '0.00',
+                        'merchant_id' => $merchantId, 'amount' => $amount, 'fee' => $fee,
                         'account_info' => $accountInfo, 'status' => Withdrawal::STATUS_PENDING,
                     ]);
 

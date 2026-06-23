@@ -51,6 +51,29 @@ class MerchantWalletTest extends TestCase
         $this->assertSame('70.00', $log->balance_after);
     }
 
+    /** 提现手续费:配置 withdraw_fee_rate 后 fee=amount×rate 落库(此前恒为 0.00 是半成品) */
+    public function testWithdrawFeeComputedFromConfiguredRate(): void
+    {
+        (new \app\service\SettingService())->set('withdraw_fee_rate', '0.02'); // 2%
+        $m = $this->merchant('100.00');
+        $w = $this->svc->applyWithdrawal((int) $m->id, '100.00', 'alipay:foo@bar');
+
+        $this->assertSame('100.00', Money::add((string) $w->amount, '0'));
+        $this->assertSame('2.00', Money::add((string) $w->fee, '0'), '手续费应为 100×2%=2.00');
+        // 全额冻结(实收 = 100-2 = 98,fee 为平台手续费收入)
+        $reload = Merchant::find($m->id);
+        $this->assertSame('0.00', Money::add((string) $reload->balance, '0'));
+        $this->assertSame('100.00', Money::add((string) $reload->frozen_balance, '0'));
+    }
+
+    /** 未配置费率(默认)时手续费为 0,行为不变(向后兼容) */
+    public function testWithdrawFeeZeroWhenRateUnset(): void
+    {
+        $m = $this->merchant('50.00');
+        $w = $this->svc->applyWithdrawal((int) $m->id, '50.00', 'alipay:x');
+        $this->assertSame('0.00', Money::add((string) $w->fee, '0'));
+    }
+
     /** L22:纯空白收款账户必须被拒,且不动余额、不建提现单 */
     public function testBlankAccountInfoRejected(): void
     {
