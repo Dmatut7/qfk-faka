@@ -305,8 +305,8 @@ class OrderService
      */
     public function deliverManually(int $orderId): void
     {
-        $this->withDeadlockRetry(function () use ($orderId) {
-            Db::transaction(function () use ($orderId) {
+        $deliveredNow = $this->withDeadlockRetry(function () use ($orderId) {
+            return Db::transaction(function () use ($orderId) {
                 $now   = date('Y-m-d H:i:s');
                 $order = Order::find($orderId);
                 if (!$order) {
@@ -318,7 +318,7 @@ class OrderService
                 $status = (int) $order->status;
 
                 if ($status === Order::STATUS_DELIVERED) {
-                    return; // 已发货,幂等
+                    return false; // 已发货,幂等,不重复通知
                 }
                 if ($status !== Order::STATUS_PAID && $status !== Order::STATUS_EXCEPTION) {
                     throw new BizException(Code::STATE_INVALID, '仅已支付/异常订单可补发');
@@ -343,7 +343,7 @@ class OrderService
                         'delivered_at'      => $now,
                         'update_time'       => $now,
                     ]);
-                    return;
+                    return true;
                 }
 
                 $qty = (int) $order->quantity;
@@ -379,8 +379,17 @@ class OrderService
                     'status' => Order::STATUS_DELIVERED, 'delivered_content' => implode("\n", $secrets),
                     'delivered_at' => $now, 'update_time' => $now,
                 ]);
+                return true;
             });
         });
+
+        // 补发成功 → 事务外 fire-and-forget 邮件通知买家(吞掉所有异常,不影响补发)
+        if ($deliveredNow) {
+            $ord = Order::find($orderId);
+            if ($ord) {
+                (new DeliveryMailService())->notifyDelivered($ord);
+            }
+        }
     }
 
     /**

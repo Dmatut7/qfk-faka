@@ -105,7 +105,15 @@ class NotifyService
         $attempt = 0;
         while (true) {
             try {
-                return $this->settle((int) $payment->id, $parsed['channel_trade_no'], $parsed['amount'], (string) $payload, $driver);
+                $result = $this->settle((int) $payment->id, $parsed['channel_trade_no'], $parsed['amount'], (string) $payload, $driver);
+                // 发货成功 → 事务外 fire-and-forget 邮件通知买家(notifyDelivered 内部吞掉所有异常)
+                if (!empty($result['delivered'])) {
+                    $ord = Order::find((int) $payment->order_id);
+                    if ($ord) {
+                        (new DeliveryMailService())->notifyDelivered($ord);
+                    }
+                }
+                return $result;
             } catch (BizException $e) {
                 // 发货并发冲突 → 失败应答促渠道重试(重试将命中幂等)
                 return $this->ack($driver->failResponse(), false, $e->getBizCode());

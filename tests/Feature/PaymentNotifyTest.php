@@ -10,8 +10,11 @@ use app\model\Order;
 use app\model\Payment;
 use app\model\PaymentChannel;
 use app\model\Product;
+use app\service\DeliveryMailService;
 use app\service\OrderService;
 use app\util\OrderNo;
+use tests\Support\RecordingMailer;
+use tests\Support\ThrowingMailer;
 use tests\TestCase;
 use think\facade\Db;
 
@@ -51,6 +54,12 @@ class PaymentNotifyTest extends TestCase
             'payment_no' => OrderNo::generate('PAY'), 'order_id' => $this->order->id,
             'merchant_id' => $this->m->id, 'channel' => 'epay', 'amount' => '20.00', 'status' => Payment::STATUS_PENDING,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        DeliveryMailService::setTestMailer(null); // 复位发货邮件测试 mailer
+        parent::tearDown();
     }
 
     private function epaySign(array $params, string $key): string
@@ -109,6 +118,31 @@ class PaymentNotifyTest extends TestCase
         $this->assertSame('20.00', $income->amount);
         $this->assertSame('-2.00', $commission->amount);
         $this->assertSame('18.00', $commission->balance_after);
+    }
+
+    // ===== 发货邮件通知(fire-and-forget) =====
+    public function testValidCallbackSendsDeliveryEmail(): void
+    {
+        $rec = new RecordingMailer();
+        DeliveryMailService::setTestMailer($rec);
+
+        $this->assertSame('success', $this->notify($this->makeCallback('20.00')));
+        $this->assertSame(Order::STATUS_DELIVERED, Order::find($this->order->id)->status);
+
+        $this->assertCount(1, $rec->sent, '发货成功应触发一封通知邮件');
+        $mail = $rec->last();
+        $this->assertSame('b@x.com', $mail['to']);
+        $this->assertStringContainsString($this->order->order_no, $mail['subject'], '邮件主题应含订单号');
+    }
+
+    public function testDeliverySurvivesMailFailure(): void
+    {
+        DeliveryMailService::setTestMailer(new ThrowingMailer());
+        // 邮件发送抛异常,但发货/结算必须照常完成(fire-and-forget 隔离)
+        $this->assertSame('success', $this->notify($this->makeCallback('20.00')));
+        $this->assertSame(Order::STATUS_DELIVERED, Order::find($this->order->id)->status);
+        $this->assertSame(2, Card::where('order_id', $this->order->id)->where('status', Card::STATUS_SOLD)->count());
+        $this->assertSame('18.00', Merchant::find($this->m->id)->balance);
     }
 
     // ===== 保证 1:防伪造 =====
