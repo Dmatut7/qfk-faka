@@ -62,11 +62,15 @@ class RefundService
 
             if ($wasSettled) {
                 $merchant = Merchant::where('id', $order->merchant_id)->lock(true)->find();
-                // 冲收入:余额 -= income
-                $afterIncomeReverse = Money::sub((string) $merchant->balance, $incomeSum);
-                // 佣金回冲:余额 -= commSum(commSum 为负 → 实为加回佣金)
+                // 逻辑净头寸 = balance - debt;冲账在逻辑头寸上做(B1 负欠隔离):
+                // 冲收入 -income、佣金回冲 -commSum(commSum 负→加回);结果若为负,
+                // 说明该笔货款已被提现,差额落入负欠 debt,余额保底 0——不再把 balance 写成负数。
+                $preLogical         = Money::sub((string) $merchant->balance, (string) $merchant->debt);
+                $afterIncomeReverse = Money::sub($preLogical, $incomeSum);
                 $afterCommReverse   = Money::sub($afterIncomeReverse, $commSum);
-                Db::name('merchants')->where('id', $merchant->id)->update(['balance' => $afterCommReverse, 'update_time' => $now]);
+                $newBalance = Money::cmp($afterCommReverse, '0') >= 0 ? $afterCommReverse : '0.00';
+                $newDebt    = Money::cmp($afterCommReverse, '0') < 0 ? Money::sub('0', $afterCommReverse) : '0.00';
+                Db::name('merchants')->where('id', $merchant->id)->update(['balance' => $newBalance, 'debt' => $newDebt, 'update_time' => $now]);
 
                 MerchantFundLog::create([
                     'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_REFUND,

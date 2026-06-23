@@ -252,10 +252,15 @@ class NotifyService
         $gross = (string) $order->total_amount;
         $calc  = (new SettlementService())->calc($gross, (string) $merchant->commission_rate);
 
-        $afterIncome     = Money::add((string) $merchant->balance, $gross);
-        $afterCommission = Money::sub($afterIncome, $calc['commission']); // = balance + income(net)
+        // 逻辑净头寸 = balance - debt;入账先抵负欠再入可提余额(B1 负欠隔离)。
+        // debt=0 时退化为原行为(balance += net),不影响常规结算。
+        $preLogical      = Money::sub((string) $merchant->balance, (string) $merchant->debt);
+        $afterIncome     = Money::add($preLogical, $gross);
+        $afterCommission = Money::sub($afterIncome, $calc['commission']); // = 逻辑净头寸(可能仍为负=仍有负欠)
+        $newBalance      = Money::cmp($afterCommission, '0') >= 0 ? $afterCommission : '0.00';
+        $newDebt         = Money::cmp($afterCommission, '0') < 0 ? Money::sub('0', $afterCommission) : '0.00';
 
-        Db::name('merchants')->where('id', $merchant->id)->update(['balance' => $afterCommission, 'update_time' => $now]);
+        Db::name('merchants')->where('id', $merchant->id)->update(['balance' => $newBalance, 'debt' => $newDebt, 'update_time' => $now]);
 
         MerchantFundLog::create([
             'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_INCOME,

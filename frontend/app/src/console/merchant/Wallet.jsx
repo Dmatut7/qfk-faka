@@ -271,6 +271,15 @@ export default function Wallet({ api, session }) {
             tone="brand"
             sub="平台按成交额抽取"
           />
+          {wallet.data && Number(wallet.data.debt || 0) > 0 && (
+            <StatCard
+              label="未清偿负欠"
+              value={<Money amount={wallet.data.debt} strong />}
+              icon="AlertTriangle"
+              tone="danger"
+              sub="已提现订单被退款产生;清零前不可提现,后续入账将先抵扣"
+            />
+          )}
         </div>
       )}
 

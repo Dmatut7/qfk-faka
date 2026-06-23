@@ -24,6 +24,7 @@ class MerchantWalletService
         return [
             'balance'        => $m->balance,
             'frozen_balance' => $m->frozen_balance,
+            'debt'           => $m->debt ?? '0.00', // 负欠(>0 时不可提现,后续入账先抵欠)
             'commission_rate' => $m->commission_rate,
         ];
     }
@@ -64,6 +65,11 @@ class MerchantWalletService
                     }
                     if ((int) $m->status !== Merchant::STATUS_ACTIVE) {
                         throw new BizException(Code::FORBIDDEN, '账号状态异常,暂不可提现');
+                    }
+                    // B1 负欠隔离:有未清偿负欠时禁止提现(后续入账先抵欠,清零后方可提),
+                    // 杜绝"已提现订单退款致负欠被新入账稀释后再次提现"的重复套现。
+                    if (Money::cmp((string) $m->debt, '0') > 0) {
+                        throw new BizException(Code::STATE_INVALID, '存在未清偿负欠,清偿后方可提现');
                     }
                     if (Money::cmp($amount, (string) $m->balance) > 0) {
                         throw new BizException(Code::STATE_INVALID, '可提现余额不足');

@@ -13,6 +13,8 @@ use app\model\Order;
 use app\model\Payment;
 use app\model\PaymentChannel;
 use app\model\Product;
+use app\service\AdminWithdrawService;
+use app\service\MerchantWalletService;
 use app\service\OrderService;
 use app\service\RefundService;
 use app\util\Money;
@@ -106,6 +108,50 @@ class RefundTest extends TestCase
         // LOCKED 回 UNSOLD;SOLD 作废;库存仅对 LOCKED 那张回补
         $this->assertSame(1, Card::where('product_id', $this->p->id)->where('status', Card::STATUS_UNSOLD)->count());
         $this->assertSame(1, Card::where('order_id', $order->id)->where('status', Card::STATUS_DISABLED)->count());
+    }
+
+    /** B1 资金安全:已提现订单退款 → 余额不写负数、差额落负欠;有负欠禁提现;新入账先抵欠;清零后可提。 */
+    public function testDebtIsolationOnRefundAfterWithdrawal(): void
+    {
+        Merchant::where('id', $this->m->id)->update(['commission_rate' => '0.0000', 'balance' => '0.00']);
+        for ($i = 0; $i < 5; $i++) {
+            $s = 'DBT-' . $i . '-' . uniqid();
+            Card::create(['merchant_id' => $this->m->id, 'product_id' => $this->p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);
+        }
+        Product::where('id', $this->p->id)->update(['stock' => 7]);
+
+        // 1) O1=10 结算 → balance 10
+        $o1 = $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com']);
+        $this->assertSame('10.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'));
+
+        // 2) 提现 10 并打款 → 钱已出平台,balance 0
+        $w = (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, '10.00', 'alipay:x');
+        (new AdminWithdrawService())->approve((int) $w->id);
+        $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'));
+
+        // 3) 退款 O1 → 余额保底 0(不写负数),差额 10 落入负欠
+        (new RefundService())->refund((int) $o1->id);
+        $after = Merchant::find($this->m->id);
+        $this->assertSame('0.00', Money::add((string) $after->balance, '0'), '余额保底为0,不写负数');
+        $this->assertSame('10.00', Money::add((string) $after->debt, '0'), '差额落入负欠');
+
+        // 4) 有负欠时禁止提现(堵住稀释再套现)
+        try {
+            (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, '0.01', 'alipay:x');
+            $this->fail('有负欠应禁止提现');
+        } catch (BizException $e) {
+            $this->assertSame(Code::STATE_INVALID, $e->getBizCode());
+        }
+
+        // 5) 新订单入账先抵欠:O2=20 → 负欠 10 清零、余额 10
+        $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 2, 'buyer_email' => 'b@x.com']);
+        $after2 = Merchant::find($this->m->id);
+        $this->assertSame('0.00', Money::add((string) $after2->debt, '0'), '入账先抵欠,负欠清零');
+        $this->assertSame('10.00', Money::add((string) $after2->balance, '0'), '抵欠后余额=20-10');
+
+        // 6) 负欠清零后可正常提现
+        $w2 = (new MerchantWalletService())->applyWithdrawal((int) $this->m->id, '10.00', 'alipay:x');
+        $this->assertNotNull($w2->id);
     }
 
     public function testRefundNonCardOrder(): void
