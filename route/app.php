@@ -131,7 +131,7 @@ Route::group('merchant', function () {
     Route::group(function () {
         Route::post('logout', 'merchant.Auth/logout');
         Route::get('me', 'merchant.Profile/me');
-        Route::post('change-password', 'merchant.Profile/changePassword');
+        Route::post('change-password', 'merchant.Profile/changePassword')->middleware(\app\middleware\RateLimit::class, 10, 60); // 防对 old_password 爆破(按 IP 10 次/分)
 
         // 店铺装修(deposit/verified 平台控,商户不可改)
         Route::get('shop', 'merchant.Shop/show');
