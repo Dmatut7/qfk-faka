@@ -116,4 +116,14 @@ tests/{Unit,Feature}/     # 测试
 
 ## 本期范围
 
-仅实现 **易支付/MD5** 渠道(支付宝/微信预留驱动接口);游客下单;卡密明文+去重。退款编排、发货通知、买家账号、手动发货商品、卡密加密为预留项(枚举/字段占位)。
+仅实现 **易支付/MD5** 渠道(支付宝/微信预留驱动接口);游客下单;卡密明文+去重。发货通知、买家账号、卡密加密为预留项。**退款闭环、负欠隔离、限量券下单即占额、异常单处置等已实现**;真实经网关退款给买家、多支付渠道等需接入对应外部能力(见 `docs/blockers.md`)。
+
+## 快速开始 / 贡献
+
+搭建、跑测试、开发规约见 **[CONTRIBUTING.md](CONTRIBUTING.md)**。简版:`composer install` → `cp .env.example .env`(改库连接)→ `php think migrate:run` → `php think db:seed` → `composer test` 全绿。
+
+> ⚠ 演示账号(`admin/admin123`、`demo_merchant/demo123456`)与 demo 支付密钥仅供本地体验,**部署前务必修改**。
+
+## 协议
+
+本项目代码采用 [MIT](LICENSE) 协议;依赖的 ThinkPHP 框架遵循 Apache-2.0。欢迎提 Issue / PR 一起维护。
