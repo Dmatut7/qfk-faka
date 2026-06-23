@@ -71,12 +71,12 @@ class SeedDemo extends Command
         } else {
             PaymentChannel::create([
                 'code'        => 'epay',
-                'name'        => '易支付',
+                'name'        => '易支付(演示占位·请在「支付渠道」改成你的真实参数)',
                 'driver'      => 'epay',
                 'config'      => [
                     'pid'     => '1000',
                     'key'     => 'demo_epay_key',
-                    'gateway' => 'https://pay.example.com/',
+                    'gateway' => 'https://pay.example.com/', // 占位:假网关,收不到钱,部署前务必改成你的易支付站点
                 ],
                 'status'      => PaymentChannel::STATUS_ENABLED,
                 'sort'        => 0,

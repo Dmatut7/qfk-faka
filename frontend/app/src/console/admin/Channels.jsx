@@ -210,6 +210,18 @@ export default function Channels({ api, session }) {
         共 {rows.length} 个渠道
       </Toolbar>
 
+      {rows.some((r) => Number(r.status) === STATUS_ENABLED && /example\.com/i.test(String((r.config && r.config.gateway) || ''))) && (
+        <div style={{
+          marginBottom: 12, padding: '12px 14px', borderRadius: 'var(--radius-md)',
+          background: 'var(--pending-bg, #fff7ed)', border: '1px solid var(--pending-border, #fdba74)',
+          color: 'var(--pending-fg, #9a3412)', fontSize: 13, lineHeight: 1.6,
+          display: 'flex', gap: 8, alignItems: 'flex-start',
+        }}>
+          <Icons.AlertTriangle size={16} style={{ flex: 'none', marginTop: 2 }} />
+          <span><b>检测到占位演示渠道</b>(网关指向 example.com 假地址,买家无法真正付款)。请点该渠道「编辑」,把 pid / 密钥 / 网关改成你的真实易支付参数并保存——配完可点「验签自测」确认。</span>
+        </div>
+      )}
+
       {rowErr ? (
         <div style={{ marginBottom: 12 }}>
           <ErrorBar message={rowErr} />
