@@ -4,7 +4,7 @@
 - **HIGH 2/2 已修**:H2 XSS 净化器加固(协议白名单+实体解码,绕过全堵)+测试;H1 B2 券占额并入有效性校验(状态/有效期)。
 - **MEDIUM**:M1 券删除守卫(有在途单禁删)+测试;M4/M5/M6 补 B1/B2/B3 测试缺口;L4 过时注释修正、M3 balance_after 语义文档化。
 - **待协调(不在自动循环里冒险)**:
-  - **M2** 恢复 fund_logs uniq(order_id,type)(spec §10.4.5 硬约束):需退款佣金回冲改独立 type + AdminReport 佣金口径同步 + 先清理 dev 库可能的重复行再迁移。应用层幂等(订单行锁+状态重查)为主防线已在,DB uniq 为兜底,故列为待协调而非紧急。
+  - ~~**M2** 恢复 fund_logs uniq~~ ✅**已落地**:新增 TYPE_REFUND_COMMISSION 让退款回冲用独立 type、迁移先 retype 旧行再恢复唯一索引、佣金报表口径同步统计两 type(净额不变)。+兜底测试。
   - **L2** 对账销售额纳入已结算 EXCEPTION 单(与 M7/M8 报表口径决策一并定)。
 
 ## CRITICAL
