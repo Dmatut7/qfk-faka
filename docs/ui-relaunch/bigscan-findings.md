@@ -3,7 +3,8 @@
 ## 处理状态(截至本轮)
 - **HIGH 7/7 已修**:H1 订单 codeNoun、H2 --color-text-muted、H3 风控级别枚举、H4 券超核销(条件原子自增+测试)、H5 折扣券 value 边界(+测试)、H6 CORS 去 Allow-Credentials、H7 知识/资源发货内容购前泄露(+测试)。
 - **MEDIUM 12/12 已处理**:M1~M6/M9/M10/M12 已修(含测试);M11 前端"仅剩N件"已按 show_stock_type 门控(后端 JSON 彻底混淆需新增分桶字段=后续);M8 澄清为口径文档(非bug);**M7 退款跨时间窗对账口径=待产品拍板**(净额 vs 发生额,见 AdminReportService docblock)。
-- **LOW**:已修 L2/L4/L11/L12(显示一致性)。其余 26 条为真实但低危的后端校验/信息可区分/限流/上传 MIME 等,列为**待办 backlog**(下方明细),建议后续一轮集中处理。重点候选:L16(商户订单详情对未支付/已关闭单也返回卡密明文)、L17(max_buy=0 时数量无上界)、L18(唯一约束冲突→网关无限重试)、L25(改密接口无限流)、L30(上传仅校验扩展名无 MIME)。
+- **LOW**:已修 L2/L4/L11/L12(显示一致性);**L17 已修**(`OrderService::HARD_MAX_QTY=9999` 绝对上限护栏,见 OrderService.php:109-110);**L18 已修**(渠道交易号唯一冲突不再 failResponse 无限重投,改成功应答+转人工,含 TDD 测试 `testDuplicateChannelTradeNoAcksSuccessNotInfiniteRetry`)。其余为真实但低危的后端校验/信息可区分/限流/上传 MIME 等,列为**待办 backlog**(下方明细)。剩余重点候选:L16(商户订单详情对未支付/已关闭单也返回卡密明文)、L25(改密接口无限流)、L30(上传仅校验扩展名无 MIME)。
+  > 注:原列「优惠券 used 无锁自增超发」一类并发问题已在后续迭代修复——占额改到下单 `reserve()` 事务内条件原子自增 `(total=0 OR used<total)->inc('used')`(OrderService.php:151-155),关单/超时释放 `dec('used')`(:286)。
 
 ## HIGH (7)
 
@@ -153,13 +154,15 @@
 - 问题: detail() 对任意状态订单无条件返回全部卡密明文:Card::where('order_id')->column('secret'),包括 STATUS_PENDING(卡仅 LOCKED 预占、买家尚未付款)与 STATUS_CLOSED/已关闭单。订单详情接口因此在未支付/已关闭时也吐出锁定卡的明文 secret。触发条件:商户调用订单详情查看一个待支付或已关闭订单。虽为商户查看自有库存,但与 BuyerOrderService 仅 DELIVERED 才返回卡密、且以 delivered_content 快照为唯一真相源的收敛原则不一致,扩大了明文暴露面。
 - 修法: detail() 仅在 (int)order->status===Order::STATUS_DELIVERED 时返回卡密,且优先读 order->delivered_content 快照而非实时查 cards;非发货态返回空数组或对 secret 做脱敏(保留前后若干位)。
 
-### [L17] {校验边界(数量无上界)} app/service/OrderService.php:91-97
+### [L17] {校验边界(数量无上界)} app/service/OrderService.php:91-97 — ✅ 已修
 - 问题: quantity 仅有下界校验:控制器 buyer/Order.php:19-22 只校验 integer|egt:1,服务内 min_buy 下界 + max_buy 上界仅在 max_buy>0 时生效。当商户设 max_buy=0(不限购)时,买家可传入超大 quantity(如 2_000_000_000)。码池类会在 cards 库存不足处被拦(count<quantity → 4005,无超卖);但非码池类(知识/资源)无任何库存/数量约束 → 直接以超大 quantity 建单,original=Money::mul(unitPrice,quantity) 产生天文金额订单,并发批量提交可制造垃圾订单/放大下游计算。
 - 修法: 在 OrderService::reserve 或下单校验处对 quantity 设硬上界(如 max(min_buy, 1) ≤ quantity ≤ 一个平台级合理上限,例如 9999),非码池类也强制校验该上限。
+- ✅ 已修:`OrderService::HARD_MAX_QTY = 9999` 绝对上限护栏(OrderService.php:109-110),不限购(max_buy=0)时仍拦截畸形巨量。
 
-### [L18] {幂等/可用性} app/service/NotifyService.php:113-120
+### [L18] {幂等/可用性} app/service/NotifyService.php:113-120 — ✅ 已修(含 TDD)
 - 问题: settle() 内非死锁的 PDOException(含唯一约束 uniq_channel_trade 冲突)被归类为 SERVER_ERROR 并返回 driver->failResponse(),促使支付网关无限重试。触发条件:同一笔 payment 行因故未走幂等分支(例如订单状态被并发改动后又有第二条携带相同 channel_trade_no 的成功回调到达,或网关复用 trade_no),markPaymentSuccess/卡更新触发 uniq_channel_trade 冲突 → 永远 fail 应答 → 网关持续重投。虽然正常时序由订单行锁+状态重查兜住,但唯一约束冲突场景下会陷入‘永远失败应答’而非幂等成功应答。
 - 修法: 在 catch(PDOException) 中区分唯一约束冲突(SQLSTATE 23000 / errno 1062):命中 uniq_channel_trade 时视为重复回调,重查订单状态若已支付/发货则返回 successResponse()+DUPLICATE_NOTIFY 终止网关重试,而非 SERVER_ERROR+failResponse。
+- ✅ 已修:新增 `isDuplicateTradeNo()` 判定(1062 + uniq_channel_trade);命中时重查订单——已支付/发货/异常→幂等成功应答(DUPLICATE_NOTIFY);仍未入账→记 settle_exception 转人工并成功应答止重试。TDD 红→绿:`PaymentNotifyTest::testDuplicateChannelTradeNoAcksSuccessNotInfiniteRetry`。
 
 ### [L19] {金额纪律} app/service/RefundService.php:55-56
 - 问题: 反向资金依据 MerchantFundLog->sum('amount') 的返回值,ThinkPHP/PDO 对 DECIMAL 聚合在部分驱动下返回 float,经 Money::s()(对 float 走 number_format($n,12))再 bcadd 到 scale=2。单条收入行场景精确,但当同一 order_id 存在多条 INCOME/COMMISSION 流水累加时,float 求和的二进制表示误差可能在 number_format 截断前引入亚分位偏差。属代码库已知‘金额走 sum() 浮点’模式,当前由单行流水掩盖,但口径不够硬。

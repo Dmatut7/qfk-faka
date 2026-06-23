@@ -254,4 +254,30 @@ class PaymentNotifyTest extends TestCase
         $this->notify($this->makeCallback('20.00', ['trade_status' => 'WAIT_BUYER_PAY']));
         $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
     }
+
+    // ===== L18:渠道交易号唯一冲突(uniq_channel_trade)不得 fail 致网关无限重投 =====
+    public function testDuplicateChannelTradeNoAcksSuccessNotInfiniteRetry(): void
+    {
+        // 预置:同渠道下 'DUP-XYZ' 这个交易号已被另一笔成功支付占用(uniq_channel_trade)
+        Payment::create([
+            'payment_no'       => OrderNo::generate('PAY'),
+            'order_id'         => $this->order->id,
+            'merchant_id'      => $this->m->id,
+            'channel'          => 'epay',
+            'amount'           => '20.00',
+            'status'           => Payment::STATUS_SUCCESS,
+            'channel_trade_no' => 'DUP-XYZ',
+        ]);
+
+        // 本单收到携带相同 trade_no 的合法回调 → markPaymentSuccess 写入时撞唯一约束(1062)
+        $ack = $this->notify($this->makeCallback('20.00', ['trade_no' => 'DUP-XYZ']));
+
+        // 核心:必须成功应答止重试,绝不能 fail(否则网关无限重投同一回调)
+        $this->assertSame('success', $ack, '唯一约束冲突须成功应答止重试,而非 fail 致网关无限重投');
+
+        // 本单无法入账 → 不发货、卡仍锁定、余额零(绝不因撞库而误发/误结算)
+        $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+        $this->assertSame(2, Card::where('order_id', $this->order->id)->where('status', Card::STATUS_LOCKED)->count());
+        $this->assertSame('0.00', Merchant::find($this->m->id)->balance);
+    }
 }

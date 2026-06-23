@@ -114,7 +114,23 @@ class NotifyService
                     usleep(10000 * $attempt);
                     continue;
                 }
-                // 非死锁 DB 异常(如唯一约束冲突)→ 受控失败应答,绝不裸抛 500(spec §10.4.7)
+                // 渠道交易号唯一冲突(uniq_channel_trade)= 该 trade_no 已入账,等价重复回调。
+                // 绝不 failResponse(会致网关无限重投同一回调);重查订单后成功应答止重试(spec §10.4.7,L18)。
+                if ($this->isDuplicateTradeNo($e)) {
+                    $ord    = Order::find($payment->order_id);
+                    $status = $ord ? (int) $ord->status : -1;
+                    if (in_array($status, [Order::STATUS_PAID, Order::STATUS_DELIVERED, Order::STATUS_EXCEPTION], true)) {
+                        // 并发回调已处理本单 → 幂等成功应答
+                        return $this->ack($driver->successResponse(), false, Code::DUPLICATE_NOTIFY);
+                    }
+                    // 交易号撞库但本单仍未入账(网关复用/错配 trade_no)→ 止重试并转人工核查
+                    $this->log('settle_exception', SystemLog::LEVEL_ERROR, '渠道交易号唯一冲突且本单未入账,止网关重试转人工', [
+                        'order_id'         => (int) $payment->order_id,
+                        'channel_trade_no' => (string) $parsed['channel_trade_no'],
+                    ], $ord ? (string) $ord->order_no : null);
+                    return $this->ack($driver->successResponse(), false, Code::ORDER_EXCEPTION);
+                }
+                // 其它非死锁 DB 异常 → 受控失败应答,绝不裸抛 500(spec §10.4.7)
                 Log::error('[notify] settle db error: ' . $e->getMessage());
                 return $this->ack($driver->failResponse(), false, Code::SERVER_ERROR);
             } catch (\Throwable $e) {
@@ -295,5 +311,13 @@ class NotifyService
     {
         $msg = $e->getMessage();
         return false !== stripos($msg, 'Deadlock found') || false !== stripos($msg, 'Lock wait timeout');
+    }
+
+    /** 是否为 channel_trade_no 唯一约束冲突(uniq_channel_trade,MySQL errno 1062)。 */
+    private function isDuplicateTradeNo(\Throwable $e): bool
+    {
+        $msg = $e->getMessage();
+        return (false !== stripos($msg, 'Duplicate entry') || false !== strpos($msg, '1062'))
+            && false !== stripos($msg, 'uniq_channel_trade');
     }
 }
