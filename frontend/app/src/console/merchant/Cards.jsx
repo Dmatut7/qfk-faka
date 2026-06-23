@@ -204,7 +204,7 @@ export default function Cards({ api, session }) {
               <StatCard label={statLabel('锁定')} value={stats.data.locked} icon="Lock" tone="pending" />
               <StatCard label={statLabel('已售')} value={stats.data.sold} icon="Check" tone="brand" />
               <StatCard label={statLabel('作废')} value={stats.data.disabled} icon="AlertTriangle" tone="danger" />
-              <StatCard label="库存(缓存)" value={stats.data.stock} icon="Zap" tone="brand" sub="product.stock" />
+              <StatCard label="库存(缓存)" value={stats.data.stock} icon="Zap" tone="brand" sub="商品缓存库存,应与未售一致" />
             </div>
           )}
         </Panel>
