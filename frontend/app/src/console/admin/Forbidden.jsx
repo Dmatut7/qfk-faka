@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -69,7 +69,7 @@ export default function Forbidden({ api }) {
           <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>取消</Button>
           <Button onClick={submit} loading={saving}>保存</Button>
         </>}>
-        {err ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{err}</Pill></div> : null}
+        {err ? <div style={{ marginBottom: 12 }}><ErrorBar message={err} /></div> : null}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Field label="类目"><Input value={form.category} placeholder="如 虚拟货币 / 博彩" onChange={set('category')} /></Field>
           <Field label="排序" hint="越大越前"><Input type="number" value={form.sort} onChange={set('sort')} /></Field>

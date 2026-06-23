@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -134,7 +134,7 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api,
       </div>
       {err ? (
         <div style={{ marginTop: 6 }}>
-          <Pill tone="danger">{err}</Pill>
+          <ErrorBar message={err} />
         </div>
       ) : ok ? (
         <div style={{ marginTop: 6 }}>
@@ -388,7 +388,7 @@ export default function Settings({ api }) {
       >
         {formErr ? (
           <div style={{ marginBottom: 12 }}>
-            <Pill tone="danger">{formErr}</Pill>
+            <ErrorBar message={formErr} />
           </div>
         ) : null}
 

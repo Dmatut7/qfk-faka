@@ -224,7 +224,7 @@ export default function Orders({ api, session }) {
   ];
 
   return (
-    <Panel title="订单管理" subtitle="查看本店订单、关闭未支付订单、对已支付/异常订单补发卡密">
+    <Panel title="订单管理" subtitle="查看本店订单、关闭未支付订单、对已支付/异常订单补发卡密 / 权益码">
       {actErr ? (
         <div style={{ marginBottom: 12 }}>
           <ErrorBar message={actErr} onRetry={() => setActErr('')} />
@@ -320,10 +320,11 @@ function ConfirmActionModal({ confirm, confirming, onCancel, onConfirm }) {
   const kind = confirm && confirm.kind;
   const order = (confirm && confirm.order) || {};
   const qty = Number(order.quantity || 0);
+  const codeNoun = Number(order.goods_type) === 4 ? '权益码' : '卡密';
   const isRedeliver = kind === 'redeliver';
-  const title = isRedeliver ? '确认补发卡密' : '确认关闭订单';
+  const title = isRedeliver ? `确认补发${codeNoun}` : '确认关闭订单';
   const message = isRedeliver
-    ? `将从库存分配 ${qty} 张新卡密并发货,操作不可撤销。`
+    ? `将从库存分配 ${qty} 个新${codeNoun}并发货,操作不可撤销。`
     : '将关闭该未支付订单,操作不可撤销。';
 
   return (
@@ -371,6 +372,7 @@ function Row({ label, children }) {
 function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, canRedeliver, onCloseOrder, onRedeliver, productTitle }) {
   const o = detail.data;
   const cards = (o && o.cards) || [];
+  const codeNoun = Number(o && o.goods_type) === 4 ? '权益码' : '卡密';
 
   const [copied, setCopied] = React.useState(false);
   function flashCopied() {
@@ -424,7 +426,7 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
             )}
             {canRedeliver(o.status) && (
               <Button variant="ghost" iconLeft={<Icons.RefreshCw />} loading={actBusy === o.id} onClick={() => onRedeliver(o)}>
-                补发卡密
+                补发{codeNoun}
               </Button>
             )}
             <Button onClick={onClose}>关闭</Button>
@@ -470,7 +472,7 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
           <div style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-strong)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Icons.Package size={14} /> 卡密 ({cards.length})
+                <Icons.Package size={14} /> {codeNoun} ({cards.length})
               </span>
               {cards.length > 0 && (
                 <Button size="sm" variant="ghost" iconLeft={<Icons.Copy />} onClick={copyCards}>
@@ -500,7 +502,7 @@ function OrderDetailModal({ open, detail, onClose, actBusy, actErr, canClose, ca
                 ))}
               </div>
             ) : (
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>暂无已发放卡密</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>暂无已发放{codeNoun}</div>
             )}
           </div>
         </div>

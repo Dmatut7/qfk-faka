@@ -118,7 +118,7 @@ export function CardKey({
           </>
         )}
       </div>
-      <span role="status" aria-live="polite" style={SR_ONLY}>{done ? '卡密已复制' : ''}</span>
+      <span role="status" aria-live="polite" style={SR_ONLY}>{done ? `${typeof label === 'string' ? label : '卡密'}已复制` : ''}</span>
     </div>
   );
 }

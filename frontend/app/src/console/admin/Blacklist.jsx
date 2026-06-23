@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -74,7 +74,7 @@ export default function Blacklist({ api }) {
           <Button variant="danger" onClick={add} loading={busy}>确认拉黑</Button>
         </>}
       >
-        {err ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{err}</Pill></div> : null}
+        {err ? <div style={{ marginBottom: 12 }}><ErrorBar message={err} /></div> : null}
         <Field label="买家邮箱">
           <Input value={email} type="email" placeholder="buyer@example.com" onChange={(e) => setEmail(e.target.value)} />
         </Field>

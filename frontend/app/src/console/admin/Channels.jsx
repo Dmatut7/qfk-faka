@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field } from '../ui.jsx';
+import { useAsync, Panel, Toolbar, DataTable, Pill, Modal, Field, ErrorBar } from '../ui.jsx';
 import { Icons } from '../../Icons.jsx';
 import { ApiError } from '../api.js';
 import { Button } from '../../../../design-system/components/core/Button.jsx';
@@ -212,7 +212,7 @@ export default function Channels({ api, session }) {
 
       {rowErr ? (
         <div style={{ marginBottom: 12 }}>
-          <Pill tone="danger">{rowErr}</Pill>
+          <ErrorBar message={rowErr} />
         </div>
       ) : null}
 
@@ -243,7 +243,7 @@ export default function Channels({ api, session }) {
       >
         {formErr ? (
           <div style={{ marginBottom: 12 }}>
-            <Pill tone="danger">{formErr}</Pill>
+            <ErrorBar message={formErr} />
           </div>
         ) : null}
 
@@ -328,7 +328,7 @@ export default function Channels({ api, session }) {
         {signBusy ? (
           <Pill tone="pending">验签中…</Pill>
         ) : signErr ? (
-          <Pill tone="danger">{signErr}</Pill>
+          <ErrorBar message={signErr} />
         ) : signResult ? (
           (() => {
             // 后端当前 testSign 仅返回 { valid: bool };以下排障字段为「若存在则展示」的增强,

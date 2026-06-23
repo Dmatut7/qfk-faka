@@ -45,7 +45,7 @@ export function DataTable({ columns, rows, loading, error, onReload, rowKey = 'i
           {rows.map((r, i) => (
             <tr key={r[rowKey] ?? i}>
               {columns.map((c) => (
-                <td key={c.key} style={{ textAlign: c.align || 'left', maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <td key={c.key} style={{ textAlign: c.align || 'left', maxWidth: c.width || 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {c.render ? c.render(r) : r[c.key]}
                 </td>
               ))}

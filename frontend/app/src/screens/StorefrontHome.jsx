@@ -345,7 +345,7 @@ function ProductListRow({ p, catName, onSelect }) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '2px 0' }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-strong)', lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.name}</div>
         <div style={{ marginTop: 8, color: 'var(--price-accent)', fontWeight: 800, fontSize: 19 }}>
-          {price <= 0 ? '免费' : <><span style={{ fontSize: 13 }}>¥</span>{price}</>}
+          {price <= 0 ? '免费' : <><span style={{ fontSize: 13 }}>¥</span>{money(p.price)}</>}
         </div>
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 12.5, color: 'var(--text-subtle)' }}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{catName || ''}</span>

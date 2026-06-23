@@ -48,7 +48,7 @@ export default function Settlement({ api, session }) {
             <Button variant="ghost" onClick={onReset} disabled={report.loading}>
               重置
             </Button>
-            <Button onClick={onQuery} disabled={report.loading} icon={<Icons.Search />}>
+            <Button onClick={onQuery} disabled={report.loading} iconLeft={<Icons.Search />}>
               查询
             </Button>
           </div>

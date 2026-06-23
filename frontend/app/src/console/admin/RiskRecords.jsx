@@ -6,6 +6,13 @@ import { Button } from '../../../../design-system/components/core/Button.jsx';
 /* 风控记录:聚合黑名单拦截 + 支付异常(发货受阻)。对标鲸商城PRO 总后台风控记录。 */
 const PAGE_SIZE = 20;
 
+/* 级别枚举 → 中文 + 色调(与 Logs.jsx 一致,勿把后端英文枚举裸渲染给用户) */
+const LEVEL = {
+  error: { tone: 'danger', label: '错误' },
+  warning: { tone: 'pending', label: '警告' },
+  info: { tone: 'neutral', label: '信息' },
+};
+
 function riskOf(r) {
   let c = r.context;
   if (typeof c === 'string') { try { c = JSON.parse(c); } catch { c = {}; } }
@@ -29,7 +36,7 @@ export default function RiskRecords({ api }) {
     { key: 'risk', title: '风险类型', width: 110, render: (r) => { const x = riskOf(r); return <Pill tone={x.tone}>{x.label}</Pill>; } },
     { key: 'message', title: '说明', render: (r) => <span style={{ fontSize: 13 }}>{r.message}</span> },
     { key: 'order_no', title: '订单', width: 160, render: (r) => <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>{r.order_no || '—'}</span> },
-    { key: 'level', title: '级别', width: 80, render: (r) => <Pill tone={r.level === 'error' ? 'danger' : 'pending'}>{r.level}</Pill> },
+    { key: 'level', title: '级别', width: 80, render: (r) => { const l = LEVEL[r.level] || { tone: 'neutral', label: r.level }; return <Pill tone={l.tone}>{l.label}</Pill>; } },
     { key: 'create_time', title: '时间', width: 170, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.create_time || '—'}</span> },
   ];
 

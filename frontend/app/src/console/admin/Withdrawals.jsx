@@ -167,7 +167,7 @@ export default function Withdrawals({ api, session }) {
             </Button>
           </div>
         ) : (
-          <span style={{ color: 'var(--color-text-muted)' }}>已处理</span>
+          <span style={{ color: 'var(--text-muted)' }}>已处理</span>
         ),
     },
   ];
@@ -223,7 +223,7 @@ export default function Withdrawals({ api, session }) {
               icon={<Icons.Search />}
             />
           </div>
-          <span style={{ color: 'var(--color-text-muted)' }}>共 {total} 笔</span>
+          <span style={{ color: 'var(--text-muted)' }}>共 {total} 笔</span>
         </div>
       </Toolbar>
 
@@ -262,7 +262,7 @@ export default function Withdrawals({ api, session }) {
       >
         {rejecting ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
               拒绝后将把冻结的{' '}
               <Money amount={rejecting.amount} strong /> 解冻退回商户 #{rejecting.merchant_id} 的可用余额,并记录一条退回流水。
             </div>
@@ -286,7 +286,7 @@ export default function Withdrawals({ api, session }) {
 function Pager({ total, page, totalPages, loading, onGo }) {
   if (!total) return null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 16px', fontSize: 13, color: 'var(--color-text-muted)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
       <span>共 {total} 条 · 第 {page}/{totalPages} 页</span>
       <Button size="sm" variant="ghost" disabled={page <= 1 || loading} onClick={() => onGo(page - 1)}>上一页</Button>
       <Button size="sm" variant="ghost" disabled={page >= totalPages || loading} onClick={() => onGo(page + 1)}>下一页</Button>
