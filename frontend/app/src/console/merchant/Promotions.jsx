@@ -160,7 +160,7 @@ export default function Promotions({ api }) {
             <Button variant={Number(form.type) === TYPE_DISCOUNT ? 'primary' : 'ghost'} onClick={() => setForm((f) => ({ ...f, type: TYPE_DISCOUNT }))}>满折</Button>
           </div>
         </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <Field label="门槛金额(元)" hint="订单满此额触发"><Input type="number" min="0" step="0.01" value={form.threshold} onChange={set('threshold')} placeholder="100.00" /></Field>
           {Number(form.type) === TYPE_DISCOUNT ? (
             <Field label="折扣(百分比)" hint="90 = 九折"><Input type="number" min="1" max="99" value={form.value} onChange={set('value')} placeholder="90" /></Field>
@@ -174,7 +174,7 @@ export default function Promotions({ api }) {
             <Button variant={Number(form.status) === 0 ? 'primary' : 'ghost'} onClick={() => setForm((f) => ({ ...f, status: 0 }))}>停用</Button>
           </div>
         </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <Field label="生效时间(可选)">
             <Input type="datetime-local" value={form.start_at} onChange={set('start_at')} />
           </Field>

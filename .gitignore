@@ -21,3 +21,4 @@ frontend/app/e2e/audit4/
 
 # 临时审计工作流脚本(scratch,可复跑不入库)
 .claude/wf-*.js
+frontend/app/e2e/mobile-audit/

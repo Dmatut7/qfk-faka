@@ -408,7 +408,7 @@ export default function Products({ api, session }) {
           <ImageUpload api={api} value={form.image} onChange={(url) => setForm((f) => ({ ...f, image: url }))}
             label="商品主图" hint="点击上传或粘贴 URL;建议正方形,jpg/png/webp ≤2MB" />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             <Input label="价格 (元)" required type="number" min="0" step="0.01" value={form.price} onChange={set('price')} placeholder="0.00" />
             <Input label="划线原价(可选)" hint="市场价" type="number" min="0" step="0.01" value={form.market_price} onChange={set('market_price')} placeholder="0.00" />
             <Input label="SKU(可选)" value={form.sku} onChange={set('sku')} placeholder="自定义货号" />
@@ -417,12 +417,12 @@ export default function Products({ api, session }) {
           {/* 限时折扣(可选):窗口内按折扣价售卖。日期用原生 datetime-local(min-width≈200px 不可压缩),
               故折扣价单独整行,两个日期各占一半,避免折扣价列被挤成竖排。 */}
           <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" error={fieldErrors.discount_price || undefined} type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Input label="折扣开始" error={fieldErrors.discount_start || undefined} type="datetime-local" value={form.discount_start} onChange={set('discount_start')} />
             <Input label="折扣结束" error={fieldErrors.discount_end || undefined} type="datetime-local" value={form.discount_end} onChange={set('discount_end')} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             <Field label="分类">
               <select
                 value={form.category_id}
@@ -441,7 +441,7 @@ export default function Products({ api, session }) {
             </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             <Input label="最少购买" type="number" min="1" step="1" value={form.min_buy} onChange={set('min_buy')} />
             <Input label="最多购买" hint="0=不限" type="number" min="0" step="1" value={form.max_buy} onChange={set('max_buy')} />
             <Input label="排序" hint="越小越前" type="number" step="1" value={form.sort} onChange={set('sort')} />

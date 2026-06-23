@@ -171,7 +171,7 @@ export default function Shop({ api }) {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
             <ImageUpload api={api} value={form.logo} onChange={(url) => { setForm((f) => ({ ...f, logo: url })); setOkMsg(''); }}
               label="店铺 Logo" hint="点击上传或粘贴 URL;建议正方形" />
             <ImageUpload api={api} value={form.cover} onChange={(url) => { setForm((f) => ({ ...f, cover: url })); setOkMsg(''); }}
@@ -208,7 +208,7 @@ export default function Shop({ api }) {
             <textarea value={form.announcement} onChange={set('announcement')} rows={4} style={textareaStyle} placeholder="例如:节假日照常发货,有问题请联系客服 QQ…" />
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
             <div>
               <Input label="客服 QQ" value={form.contact_qq} onChange={set('contact_qq')} placeholder="QQ 号" />
               {fieldErrors.contact_qq && <div style={fieldErrorStyle}>{fieldErrors.contact_qq}</div>}

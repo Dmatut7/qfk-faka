@@ -208,7 +208,7 @@ export default function Coupons({ api }) {
       >
         {formErr ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{formErr}</Pill></div> : null}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <Field label="券码" hint={editing ? '券码不可改' : '商户内唯一,买家凭此核销'}>
             <Input value={form.code} disabled={!!editing} maxLength={32} placeholder="如 SAVE20" onChange={set('code')} />
           </Field>
@@ -224,7 +224,7 @@ export default function Coupons({ api }) {
           </div>
         </Field>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           {Number(form.type) === TYPE_PERCENT ? (
             <>
               <Field label="折扣(百分比)" hint="90 = 九折(应付为原价 90%)">
@@ -246,7 +246,7 @@ export default function Coupons({ api }) {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <Field label="发放总量" hint="0 = 不限量">
             <Input type="number" min="0" value={form.total} onChange={set('total')} placeholder="0" />
           </Field>
@@ -258,7 +258,7 @@ export default function Coupons({ api }) {
           </Field>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
           <Field label="生效时间(可选)">
             <Input type="datetime-local" value={form.valid_from} onChange={set('valid_from')} />
           </Field>

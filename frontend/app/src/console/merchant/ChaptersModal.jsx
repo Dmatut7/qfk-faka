@@ -64,7 +64,7 @@ export default function ChaptersModal({ api, product, onClose }) {
               style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontFamily: 'var(--font-sans)', fontSize: 13.5, resize: 'vertical' }}
               placeholder="章节内容…(购买后买家可在订单页阅读)" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
             <Input label="排序" type="number" value={form.sort} onChange={(e) => setForm((f) => ({ ...f, sort: e.target.value }))} />
             <div>
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 6 }}>状态</div>
