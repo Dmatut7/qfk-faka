@@ -3,7 +3,10 @@
 ## 处理状态(截至本轮)
 - **HIGH 7/7 已修**:H1 订单 codeNoun、H2 --color-text-muted、H3 风控级别枚举、H4 券超核销(条件原子自增+测试)、H5 折扣券 value 边界(+测试)、H6 CORS 去 Allow-Credentials、H7 知识/资源发货内容购前泄露(+测试)。
 - **MEDIUM 12/12 已处理**:M1~M6/M9/M10/M12 已修(含测试);M11 前端"仅剩N件"已按 show_stock_type 门控(后端 JSON 彻底混淆需新增分桶字段=后续);M8 澄清为口径文档(非bug);**M7 退款跨时间窗对账口径=待产品拍板**(净额 vs 发生额,见 AdminReportService docblock)。
-- **LOW**:已修 L2/L4/L11/L12(显示一致性);**L17 已修**(`OrderService::HARD_MAX_QTY=9999` 绝对上限护栏,见 OrderService.php:109-110);**L18 已修**(渠道交易号唯一冲突不再 failResponse 无限重投,改成功应答+转人工,含 TDD 测试 `testDuplicateChannelTradeNoAcksSuccessNotInfiniteRetry`)。其余为真实但低危的后端校验/信息可区分/限流/上传 MIME 等,列为**待办 backlog**(下方明细)。剩余重点候选:L16(商户订单详情对未支付/已关闭单也返回卡密明文)、L25(改密接口无限流)、L30(上传仅校验扩展名无 MIME)。
+- **LOW**:经一轮系统性对账(逐条核对当前代码)后基本清零。
+  - **已修(24)**:L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12 L13 L14 L15 L16 L17 L18 L22 L23 L24 L25 L28 L29 L30。其中含 TDD 的关键路径:L16(订单详情卡密仅 DELIVERED 才返回)、L18(交易号唯一冲突不再无限重投)、L24(时间窗归一+生效≤失效)、L22(提现账户去空白)、L28/L29(投诉防枚举+状态锁)。
+  - **评估为非缺陷/预留,不动(3)**:L19(求和在 MySQL 端 DECIMAL 精确聚合,非 PHP 浮点累加)、L20(currency `??` 防御默认)、L21(STATUS_APPROVED 两段式预留态)。
+  - **仍 deferred(架构级/需求级)**:L27(固定窗限流 TOCTOU,真正原子需 Redis/DB 计数器,非本期)。
   > 注:原列「优惠券 used 无锁自增超发」一类并发问题已在后续迭代修复——占额改到下单 `reserve()` 事务内条件原子自增 `(total=0 OR used<total)->inc('used')`(OrderService.php:151-155),关单/超时释放 `dec('used')`(:286)。
 
 ## HIGH (7)
@@ -185,9 +188,11 @@
 - 修法: 在 catch(PDOException) 中区分唯一约束冲突(SQLSTATE 23000 / errno 1062):命中 uniq_channel_trade 时视为重复回调,重查订单状态若已支付/发货则返回 successResponse()+DUPLICATE_NOTIFY 终止网关重试,而非 SERVER_ERROR+failResponse。
 - ✅ 已修:新增 `isDuplicateTradeNo()` 判定(1062 + uniq_channel_trade);命中时重查订单——已支付/发货/异常→幂等成功应答(DUPLICATE_NOTIFY);仍未入账→记 settle_exception 转人工并成功应答止重试。TDD 红→绿:`PaymentNotifyTest::testDuplicateChannelTradeNoAcksSuccessNotInfiniteRetry`。
 
-### [L19] {金额纪律} app/service/RefundService.php:55-56
+### [L19] {金额纪律} app/service/RefundService.php:55-56 — ⏸ 评估为非缺陷
 - 问题: 反向资金依据 MerchantFundLog->sum('amount') 的返回值,ThinkPHP/PDO 对 DECIMAL 聚合在部分驱动下返回 float,经 Money::s()(对 float 走 number_format($n,12))再 bcadd 到 scale=2。单条收入行场景精确,但当同一 order_id 存在多条 INCOME/COMMISSION 流水累加时,float 求和的二进制表示误差可能在 number_format 截断前引入亚分位偏差。属代码库已知‘金额走 sum() 浮点’模式,当前由单行流水掩盖,但口径不够硬。
 - 修法: 反向冲账金额改为以原始结算流水行的字符串 amount 逐条 Money::add 累加(或在 SQL 层用 CAST(SUM(amount) AS CHAR)/SUM 后立即 (string) 且确保驱动返回字符串),避免 float 中转;与 doSettle 写入口径保持整数分/字符串一致。
+- ⏸ 评估结论:`(string) MerchantFundLog::...->sum('amount')` 的求和在 **MySQL 端按 DECIMAL 精确聚合**(非 PHP 浮点逐条累加),返回值经 `(string)` + `Money::add(...,'0')` 规整为两位小数,结果恒正确;不构成铁规则#6 所禁的「浮点累加金额」。改为逐条 bcmath 反增代码且改动已测的退款关键路径、收益为零,故不动。
+
 
 ### [L20] {校验} app/service/pay/EpayDriver.php:53-61 — ⏸ 不修(防御性默认,非缺陷)
 - 问题: parse() 返回的 currency 恒为字符串(默认 'CNY'),NotifyService.php:89 处 ($parsed['currency'] ?? 'CNY') 的 ?? 分支为死代码;另 verify() 通过后 parse() 不再校验 trade_status 之外的异常态(如 TRADE_CLOSED/REFUND)只简单映射 success=false,正常但对 epay 退款通知/部分状态缺乏显式区分。非安全缺陷,属健壮性/可读性。
