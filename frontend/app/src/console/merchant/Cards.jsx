@@ -195,7 +195,7 @@ export default function Cards({ api, session }) {
       </Panel>
 
       {selectedId != null && (
-        <Panel title={selectedProduct ? selectedProduct.title : '库存统计'} subtitle="按状态统计当前商品卡密数量">
+        <Panel title={selectedProduct ? selectedProduct.title : '库存统计'} subtitle={`按状态统计当前商品${codeNoun}数量`}>
           {stats.loading && <div style={{ padding: 16 }}><Spinner /></div>}
           {!stats.loading && stats.error && <ErrorBar message={stats.error} onRetry={stats.reload} />}
           {!stats.loading && !stats.error && stats.data && (
@@ -235,7 +235,7 @@ export default function Cards({ api, session }) {
             loading={cards.loading}
             error={cards.error}
             onReload={cards.reload}
-            empty="该商品暂无卡密,点击右上角导入"
+            empty={`该商品暂无${codeNoun},点击右上角导入`}
             emptyIcon="Inbox"
           />
           {total > 0 && (
@@ -264,6 +264,7 @@ export default function Cards({ api, session }) {
 
       <ConfirmActionModal
         confirm={confirm}
+        codeNoun={codeNoun}
         busy={confirmBusy}
         err={confirmErr}
         onCancel={() => (confirmBusy ? null : setConfirm(null))}
@@ -274,15 +275,15 @@ export default function Cards({ api, session }) {
 }
 
 /* 作废 / 删除 二次确认弹窗 */
-function ConfirmActionModal({ confirm, busy, err, onCancel, onConfirm }) {
+function ConfirmActionModal({ confirm, codeNoun = '卡密', busy, err, onCancel, onConfirm }) {
   const open = confirm != null;
   const kind = confirm && confirm.kind;
   const row = (confirm && confirm.row) || {};
   const isDelete = kind === 'delete';
-  const title = isDelete ? '确认删除卡密' : '确认作废卡密';
+  const title = isDelete ? `确认删除${codeNoun}` : `确认作废${codeNoun}`;
   const message = isDelete
-    ? '将永久删除这张未售卡密,操作不可撤销。'
-    : '将作废这张未售卡密,作废后不再参与发货,操作不可撤销。';
+    ? `将永久删除这张未售${codeNoun},操作不可撤销。`
+    : `将作废这张未售${codeNoun},作废后不再参与发货,操作不可撤销。`;
 
   return (
     <Modal
@@ -306,7 +307,7 @@ function ConfirmActionModal({ confirm, busy, err, onCancel, onConfirm }) {
     >
       <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.7 }}>
         <div style={{ marginBottom: 8 }}>
-          卡密:<span className="tnum" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-strong)' }}>{maskSecret(row.secret)}</span>
+          {codeNoun}:<span className="tnum" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-strong)' }}>{maskSecret(row.secret)}</span>
         </div>
         <div>{message}</div>
         {err ? <div style={{ marginTop: 10 }}><ErrorBar message={err} /></div> : null}
@@ -384,6 +385,7 @@ function RowOps({ row, onAsk }) {
 
 /* 导入卡密弹窗:多行 textarea(一行一卡) + 可选批次号 */
 function ImportModal({ open, product, api, onClose, onImported }) {
+  const codeNoun = product && Number(product.goods_type) === 4 ? '权益码' : '卡密';
   const [text, setText] = React.useState('');
   const [batchNo, setBatchNo] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -396,7 +398,7 @@ function ImportModal({ open, product, api, onClose, onImported }) {
 
   const submit = async () => {
     if (!product) return;
-    if (text.trim() === '') { setErr('请输入至少一行卡密'); return; }
+    if (text.trim() === '') { setErr(`请输入至少一行${codeNoun}`); return; }
     setBusy(true); setErr('');
     try {
       const res = await api.importCards(product.id, text, batchNo.trim() || undefined);
@@ -412,7 +414,7 @@ function ImportModal({ open, product, api, onClose, onImported }) {
   return (
     <Modal
       open={open}
-      title={product ? `导入卡密 · ${product.title}` : '导入卡密'}
+      title={product ? `导入${codeNoun} · ${product.title}` : '导入卡密'}
       onClose={onClose}
       width={560}
       footer={
@@ -431,7 +433,7 @@ function ImportModal({ open, product, api, onClose, onImported }) {
         <ImportResult result={result} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <Field label="卡密内容" hint="每行一张卡密,空行自动跳过,行内 / 库内重复将自动去重">
+          <Field label={`${codeNoun}内容`} hint={`每行一张${codeNoun},空行自动跳过,行内 / 库内重复将自动去重`}>
             <textarea
               className="mk-input"
               value={text}
