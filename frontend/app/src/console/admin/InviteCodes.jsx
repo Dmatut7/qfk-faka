@@ -252,7 +252,7 @@ function CreateModal({ api, onClose, onCreated }) {
           <Input value={count} inputMode="numeric" placeholder="1"
             onChange={(e) => { setCount(e.target.value); setErr(''); }} />
         </Field>
-        <Field label="使用上限(max_uses)" hint="每个码可被使用的次数,0 表示不限。">
+        <Field label="使用上限" hint="每个码可被使用的次数,0 表示不限。">
           <Input value={maxUses} inputMode="numeric" placeholder="1"
             onChange={(e) => { setMaxUses(e.target.value); setErr(''); }} />
         </Field>
