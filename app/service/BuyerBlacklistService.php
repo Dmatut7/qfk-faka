@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\BuyerBlacklist;
+use app\model\Order;
 
 /**
  * 买家黑名单(平台级):邮箱归一为小写存储/匹配。下单前以 isBlocked 拦截。
@@ -31,13 +32,31 @@ class BuyerBlacklistService
         if ($exist) {
             // 已存在则确保生效并更新原因(幂等)
             $exist->save(['status' => BuyerBlacklist::STATUS_ON, 'reason' => trim($reason)]);
-            return $exist;
+            $record = $exist;
+        } else {
+            $record = BuyerBlacklist::create([
+                'email'  => $email,
+                'reason' => trim($reason),
+                'status' => BuyerBlacklist::STATUS_ON,
+            ]);
         }
-        return BuyerBlacklist::create([
-            'email'  => $email,
-            'reason' => trim($reason),
-            'status' => BuyerBlacklist::STATUS_ON,
-        ]);
+        // M5:拉黑生效即关闭该买家所有待支付订单(释放占用的卡/券),阻止其继续完成在途下单
+        $this->closeBuyerPendingOrders($email);
+        return $record;
+    }
+
+    /** 关闭某买家所有待支付订单(邮箱大小写不敏感匹配),释放卡密/券额占用 */
+    private function closeBuyerPendingOrders(string $email): void
+    {
+        $ids = Order::whereRaw('LOWER(buyer_email) = :e', ['e' => $email])
+            ->where('status', Order::STATUS_PENDING)->column('id');
+        if (!$ids) {
+            return;
+        }
+        $svc = new OrderService();
+        foreach ($ids as $id) {
+            $svc->cancelPending((int) $id);
+        }
     }
 
     /** 解除拉黑(置 status=0,保留记录便于审计) */

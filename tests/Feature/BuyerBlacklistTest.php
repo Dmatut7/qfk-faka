@@ -73,6 +73,26 @@ class BuyerBlacklistTest extends TestCase
         $this->assertGreaterThan(0, (int) $order->id);
     }
 
+    /** M5:拉黑买家即关闭其所有待支付订单(释放卡密占用),阻止其完成在途下单。 */
+    public function testBlacklistClosesBuyerPendingOrders(): void
+    {
+        $m = $this->makeMerchant();
+        $p = Product::create(['merchant_id' => $m->id, 'title' => 'c', 'price' => '5.00', 'status' => Product::STATUS_ON, 'stock' => 0]);
+        $s = 'BLP-' . uniqid();
+        Card::create(['merchant_id' => $m->id, 'product_id' => $p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);
+        Product::where('id', $p->id)->update(['stock' => 1]);
+
+        // 买家先下单(PENDING,占用 1 张卡)
+        $order = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'Late@x.com']);
+        $this->assertSame(\app\model\Order::STATUS_PENDING, (int) $order->status);
+        $this->assertSame(Card::STATUS_LOCKED, (int) Card::where('order_id', $order->id)->find()->status);
+
+        // 拉黑该买家(大小写不敏感)→ 待支付单被关闭、卡释放
+        (new \app\service\BuyerBlacklistService())->add('late@x.com', '恶意');
+        $this->assertSame(\app\model\Order::STATUS_CLOSED, (int) \app\model\Order::find($order->id)->status);
+        $this->assertSame(1, Card::where('product_id', $p->id)->where('status', Card::STATUS_UNSOLD)->count(), '卡已释放回未售');
+    }
+
     public function testRemoveLiftsBlock(): void
     {
         $svc = new \app\service\BuyerBlacklistService();

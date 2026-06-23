@@ -18,6 +18,9 @@ class ComplaintService
     /** 可投诉的订单状态:已收款(已支付/发货/异常/已退款均可申诉) */
     private const COMPLAINABLE = [Order::STATUS_PAID, Order::STATUS_DELIVERED, Order::STATUS_EXCEPTION, Order::STATUS_REFUNDED];
 
+    /** 每订单投诉总数上限(含已终结):防对已驳回/已解决订单无限重开刷量 */
+    private const MAX_PER_ORDER = 5;
+
     // ===== 买家 =====
 
     public function file(string $orderNo, string $email, int $type, string $description): Complaint
@@ -28,6 +31,10 @@ class ComplaintService
         }
         if (Complaint::where('order_id', $order->id)->whereIn('status', Complaint::ACTIVE)->find()) {
             throw new BizException(Code::STATE_INVALID, '该订单已有处理中的投诉');
+        }
+        // M4 防刷:每订单投诉总数上限(含已驳回/已解决),避免无限重开
+        if (Complaint::where('order_id', $order->id)->count() >= self::MAX_PER_ORDER) {
+            throw new BizException(Code::STATE_INVALID, '该订单投诉次数已达上限,请联系平台客服');
         }
         $desc = trim($description);
         if ($desc === '') {

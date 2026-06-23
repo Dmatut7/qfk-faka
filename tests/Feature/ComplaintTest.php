@@ -100,6 +100,22 @@ class ComplaintTest extends TestCase
         $this->assertSame(Code::STATE_INVALID, $r2['code']);
     }
 
+    /** M4 防刷:每订单投诉总数达上限(含已驳回)后,不可再无限重开。 */
+    public function testComplaintPerOrderCapPreventsSpam(): void
+    {
+        $order = $this->paidOrder();
+        $admin = $this->bearer($this->makeAdminToken());
+        // 反复「投诉→驳回」5 次(驳回后非 ACTIVE,可再投诉),用满配额
+        for ($i = 0; $i < 5; $i++) {
+            $r = $this->callJson('POST', '/buyer/complaint', ['order_no' => $order->order_no, 'email' => 'buyer@x.com', 'type' => 4, 'description' => "第{$i}次"]);
+            $this->assertSame(0, $r['code'], "第{$i}次应成功");
+            $this->callJson('POST', '/admin/complaints/' . $r['data']['id'] . '/reject', ['remark' => 'x'], $admin);
+        }
+        // 第 6 次:超过每订单上限 → 拒绝
+        $r6 = $this->callJson('POST', '/buyer/complaint', ['order_no' => $order->order_no, 'email' => 'buyer@x.com', 'type' => 4, 'description' => '第6次']);
+        $this->assertSame(Code::STATE_INVALID, $r6['code']);
+    }
+
     public function testMerchantOnlySeesOwnComplaints(): void
     {
         $order = $this->paidOrder();
