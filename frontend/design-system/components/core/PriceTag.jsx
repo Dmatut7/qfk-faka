@@ -20,6 +20,12 @@ if (typeof document !== 'undefined' && !document.getElementById('mk-price-css'))
 }
 
 function parts(n) {
+  // 后端金额多以字符串(DECIMAL '29.9' / '45')下发,也需补足两位小数,避免显示成 ¥29.9 / ¥45
+  if (typeof n === 'string') {
+    const num = parseFloat(n);
+    if (Number.isFinite(num)) n = num;
+    else return { int: n, dec: '' };
+  }
   if (typeof n !== 'number') return { int: String(n), dec: '' };
   if (!Number.isFinite(n)) return { int: '0', dec: '.00' };
   const s = n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

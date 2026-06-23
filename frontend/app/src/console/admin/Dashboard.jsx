@@ -61,8 +61,8 @@ export default function Dashboard({ api, onNavigate }) {
           value={<Money amount={n(profit.today ?? commission.today)} strong />}
           sub={
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span>昨日 <Money amount={n(profit.yesterday)} /></span>
-              <Delta today={n(profit.today)} yesterday={n(profit.yesterday)} money />
+              <span>昨日 <Money amount={n(profit.yesterday ?? commission.yesterday)} /></span>
+              <Delta today={n(profit.today ?? commission.today)} yesterday={n(profit.yesterday ?? commission.yesterday)} money />
             </span>
           }
         />

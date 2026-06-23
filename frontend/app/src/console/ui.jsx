@@ -35,7 +35,8 @@ export function Money({ amount, strong, color }) {
 export function Delta({ today, yesterday, money }) {
   const a = Number(today), b = Number(yesterday);
   if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-  const diff = a - b;
+  // 金额模式用整数分相减,规避 JS 浮点尾差(如 19.9-10 出现 9.899999…);非金额按原值
+  const diff = money ? (Math.round(a * 100) - Math.round(b * 100)) / 100 : a - b;
   const up = diff > 0, down = diff < 0;
   const color = up ? 'var(--success-fg)' : down ? 'var(--danger-fg)' : 'var(--text-subtle)';
   const arrow = up ? '↑' : down ? '↓' : '→';

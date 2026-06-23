@@ -52,7 +52,7 @@ export function ConsoleShell({ nav, active, onNavigate, brandTitle = '秒卡 · 
             const Icon = g.icon;
             const on = g.items.some((it) => it.key === active);
             return (
-              <button key={g.group} type="button" title={g.group} onClick={() => select(g.items[0].key)} style={{
+              <button key={g.group} type="button" title={g.group} onClick={() => { const first = g.items && g.items[0]; if (first) select(first.key); }} style={{
                 width: 46, height: 46, border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
                 background: on ? 'var(--brand-soft)' : 'transparent', fontFamily: 'var(--font-sans)',

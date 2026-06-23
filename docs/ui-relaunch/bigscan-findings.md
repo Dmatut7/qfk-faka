@@ -106,9 +106,11 @@
 - 问题: 商品总览的「库存合计」统计卡 sub 文案硬编码 sub="以卡密加锁查询为准"。该卡是跨全部商品类型的聚合(rows.reduce 累加所有 r.stock,包含 goods_type=2知识/3资源/4权益),而权益类商品的码池称谓应为「权益码」(同文件其他处及 Cards.jsx 用 codeNoun 区分)。对只售权益/知识/资源的商户,这句「以卡密加锁查询为准」是错误术语,与全局 codeNoun 一致性约定冲突,命中『权益类处硬编码卡密』的已知模式。
 - 修法: 聚合卡跨类型,sub 不应绑定单一码种术语。改为类型中立表述,如 sub="以码池/卡密加锁查询为准" 或直接 sub="实时加锁查询为准",避免对非卡密店错配「卡密」字样。
 
-### [L5] {金额/JS 浮点做金额加减} frontend/app/src/console/merchant/Stats.jsx:96,109,122
+### [L5] {金额/JS 浮点做金额加减} frontend/app/src/console/merchant/Stats.jsx:96,109,122 — ✅ 已修(同 L9,Delta 源头修复)
 - 问题: 成交额/毛利的『今日 vs 昨日』差额走 ui.jsx 的 Delta 组件:Delta 内部 a=Number(today)、b=Number(yesterday) 后 diff=a-b、text=`¥${Math.abs(diff).toFixed(2)}`(ui.jsx:38-43)。后端 MerchantStatsService.php 返回的是 bcmath 字符串金额(Money::add 规整),前端却用 JS 浮点做减法再 toFixed,违反金额纪律,极端值(如 0.1/0.2 类)会出现浮点尾差。sales_today/yesterday(96)、profit_today/yesterday(122)均为金额;orders_today(109)是计数,可不计。
 - 修法: Delta 的金额模式不要用浮点相减:对金额差用整数分(Math.round(a*100)-Math.round(b*100) 再 /100 格式化)或复用后端/字符串 bcmath 口径;或由后端直接下发差额字符串,前端只渲染。
+- ✅ 已修:Delta 组件金额模式改整数分相减(ui.jsx),L5/L9 一并修复。
+
 
 ### [L6] {健壮性/错误吞掉无反馈} frontend/app/src/console/merchant/Promotions.jsx:107
 - 问题: confirmDelete 里 `catch { /* 静默 */ }`——删除活动失败时既不提示用户也不打日志,且 setRemoving(null) 仅在 try 成功路径调用,失败时弹窗不关、列表不刷新、无任何错误态,用户只会以为按钮没反应。对照同文件 submit() 与 Coupons.jsx:142 的删除都做了 setFormErr/ApiError 提示,此处是一致性与健壮性缺口。
@@ -122,13 +124,17 @@
 - 问题: 加载出错时会同时渲染两处错误:顶部 <ErrorBar message={report.error} onRetry={report.reload} />(82),以及 DataTable 内部因收到 error={report.error} 又自渲染一个 ErrorBar(DataTable 在 error 时 return ErrorBar,ui.jsx:150)。同一错误重复出现两条红条,且此时上方三张 StatCard 仍展示 ¥0.00,观感上像「有数据又报错」。
 - 修法: 二选一:要么去掉顶部 82 行的 ErrorBar 交给 DataTable 内部展示,要么给 DataTable 传 error={undefined} 由顶部统一展示;错误态下可隐藏/置灰 StatCard。
 
-### [L9] {金额} frontend/app/src/console/admin/Dashboard.jsx:65
+### [L9] {金额} frontend/app/src/console/admin/Dashboard.jsx:65 — ✅ 已修
 - 问题: 「平台利润」卡的 Delta 对金额做浮点加减:Delta 内部 (ui.jsx:38-43) 执行 a-b 后 toFixed(2)。Dashboard 把 profit.today/profit.yesterday(DECIMAL 金额)传入 money 模式,违反 CLAUDE.md 铁规则六(金额禁止浮点运算)。当后端金额含小数(如 0.3-0.1)时会产生浮点尾差,虽多被 toFixed(2) 四舍五入掩盖,但属规则禁止的金额浮点比较/相减。同处 BigScreen 不调用 Delta,故仅 Dashboard 命中。
 - 修法: 金额涨跌差改为整数分相减或字符串/ bcmath 等价方式计算后再格式化,避免对 DECIMAL 金额直接做 JS 浮点 a-b;或后端直接下发已算好的 delta 字段。
+- ✅ 已修:见 ui.jsx Delta 整数分相减;Dashboard 利润卡 delta 不再浮点。
 
-### [L10] {健壮性} frontend/app/src/console/admin/Dashboard.jsx:59-66
+
+### [L10] {健壮性} frontend/app/src/console/admin/Dashboard.jsx:59-66 — ✅ 已修
 - 问题: 「平台利润」主数值用 profit.today ?? commission.today 做了兜底,但同卡 Delta 与「昨日」只读 profit.today/profit.yesterday(无 commission 兜底)。当后端只返回 commission 不返回 profit 时,主数字正确显示佣金,但右侧 Delta 退化为 0-0 → 显示「→ ¥0.00 持平」,与上方非零数值自相矛盾,误导运营。
 - 修法: Delta 与「昨日」同样走 profit.* ?? commission.* 兜底,或在 profit 缺失时不渲染 Delta(返回 null),保持卡片内口径一致。
+- ✅ 已修:Dashboard 利润卡「昨日」与 Delta 补齐 `?? commission.X` 回退,与主数值口径一致。
+
 
 ### [L11] {一致性} frontend/app/src/console/admin/Orders.jsx:219
 - 问题: 退款确认弹窗硬编码「卡密回库重新可售」。后台跨商户退款覆盖全部 goods_type(含 goods_type=4 权益,其码池在商户侧称『权益码』,见 merchant/Cards.jsx:84 codeNoun)。权益类订单退款时文案仍称「卡密」,与权益码语义不符。Complaints.jsx:137/142 的『卡密回库/卡密确有问题』同样硬编码。注:merchant/Orders.jsx 亦沿用此约定,属既有惯例,故仅低危。
@@ -138,13 +144,17 @@
 - 问题: 「操作员」列 width=90,渲染 `管理员#{ctxOf(r).actor_id ?? '—'}`(如『管理员#123』约 6-7 个字符,12.5px),且 render 的 span 未设 whiteSpace:'nowrap'。DataTable 默认单元格样式(ui.jsx:166)对非 nowrap 列只给 maxWidth/overflow:hidden/textOverflow:ellipsis 而不锁定 nowrap,90px 宽度下中文『管理员#』+数字可能折行成两行,属已修过的『窄列缺 nowrap 逐字/折行』同类风险。相邻『时间』列 width=170 则较充裕无此问题。
 - 修法: 给操作员列 render 的 span 加 whiteSpace:'nowrap'(并按需 overflow:'hidden'、textOverflow:'ellipsis'),或适度放宽 width。
 
-### [L13] {健壮性(运行时崩点 undefined.x)} frontend/design-system/components/console/ConsoleShell.jsx:55
+### [L13] {健壮性(运行时崩点 undefined.x)} frontend/design-system/components/console/ConsoleShell.jsx:55 — ✅ 已修
 - 问题: 图标栏 nav.map 中 `onClick={() => select(g.items[0].key)}`,以及第26行 `flatten` 的 `g.items` 与第53行 `g.items.some(...)` 均假设每个分组 items 非空。若某个 nav 分组 items 为空数组(后端/配置返回空组),`g.items[0]` 为 undefined,点击图标即 `undefined.key` 抛错崩溃。
 - 修法: 渲染前过滤空组,或取首项时空值守卫:`const first = g.items && g.items[0]; if(!first) return null;` 并在 onClick 内判空。
+- ✅ 已修:rail 按钮 onClick 加空导航组守卫 `const first=g.items&&g.items[0]; if(first)…`,空 items 不再崩。
 
-### [L14] {金额(缺两位小数/￥格式)} frontend/design-system/components/core/PriceTag.jsx:22
+
+### [L14] {金额(缺两位小数/￥格式)} frontend/design-system/components/core/PriceTag.jsx:22 — ✅ 已修
 - 问题: parts(n) 仅当 `typeof n === 'number'` 时用 toLocaleString 补足两位小数;当 amount/original 传入字符串(如后端返回的 DECIMAL 字符串 '29.9' 或 '45')时直接 `{int:String(n), dec:''}`,原样渲染为「¥29.9」「¥45」——缺两位小数、且无 __dec 小数样式。发卡系统金额按规范是 DECIMAL 字符串,极易触发。
 - 修法: parts() 增加字符串数字分支:对可解析为金额的字符串走两位小数格式化(整数分/字符串补零,勿用 parseFloat 引入浮点误差),保证 ¥xx.xx 一致格式。
+- ✅ 已修:parts() 增字符串分支,后端 DECIMAL 字符串金额(如 '29.9'/'45')也补足两位小数显示。
+
 
 ### [L15] {状态机/发货路由(补发误用)} app/service/OrderService.php:270-326
 - 问题: deliverManually 未按订单快照 goods_type 判定是否走码池,对非码池订单(知识 goods_type=2 / 资源=3,order.goods_type 快照存在)也会执行发卡路径:lockedIds 必为空 → need=qty → 试图从该商品 cards 池锁 qty 张可售卡,而知识/资源商品本无 cards,直接抛 STOCK_NOT_ENOUGH(4005),商户无法对这类异常订单补发。与 NotifyService.php:176 用 Product::goodsTypeUsesPool((int)order->goods_type) 做路由的口径不一致。触发条件:知识/资源类订单进入 STATUS_EXCEPTION(如超时关闭后支付)后商户点补发。
