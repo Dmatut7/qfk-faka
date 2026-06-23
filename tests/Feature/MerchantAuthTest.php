@@ -82,6 +82,17 @@ class MerchantAuthTest extends TestCase
         $this->assertSame($m->store_slug, $body['data']['store_slug']);
     }
 
+    /** 安全#1:令牌经 ?token= 查询参数**不得**通过鉴权(防 URL/日志/Referer 泄漏),只认 Authorization 头 */
+    public function testQueryParamTokenIsRejected(): void
+    {
+        $m = $this->merchant('pw');
+        $token = $this->callJson('POST', '/merchant/login', ['username' => $m->username, 'password' => 'pw'])['data']['token'];
+        // 同一合法令牌:走 Authorization 头 → 放行
+        $this->assertSame(0, $this->callJson('GET', '/merchant/me', [], $this->bearer($token))['code']);
+        // 走 ?token= 查询参数(无头)→ 必须 401,回退已移除
+        $this->assertSame(401, $this->call('GET', '/merchant/me', ['token' => $token])->getCode(), '令牌经查询参数不得通过鉴权');
+    }
+
     public function testAdminTokenCannotAccessMerchantArea(): void
     {
         // 用 merchant 端点但传一个 admin 主体 token 应被拒(owner_type 不符)
