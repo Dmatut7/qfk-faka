@@ -39,6 +39,17 @@ class UploadService
         $ext = strtolower($file->getOriginalExtension() ?: $file->extension());
         $this->validateImage((int) $file->getSize(), $ext);
 
+        // 内容校验:仅凭扩展名不可信(可把任意文件改成 .png)。用 getimagesize 确认是真实图片,
+        // 且检测到的真实 MIME 在白名单内(防图片伪装 / polyglot)。
+        $info = @getimagesize($file->getPathname());
+        if ($info === false || empty($info['mime'])) {
+            throw new BizException(Code::PARAM_ERROR, '文件不是有效图片');
+        }
+        $allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!in_array((string) $info['mime'], $allowedMime, true)) {
+            throw new BizException(Code::PARAM_ERROR, '不支持的图片格式');
+        }
+
         $sub = date('Ym');
         $dir = public_path() . 'uploads' . DIRECTORY_SEPARATOR . $sub;
         if (!is_dir($dir)) {
