@@ -414,9 +414,10 @@ export default function Products({ api, session }) {
             <Input label="SKU(可选)" value={form.sku} onChange={set('sku')} placeholder="自定义货号" />
           </div>
 
-          {/* 限时折扣(可选):窗口内按折扣价售卖 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" error={fieldErrors.discount_price || undefined} type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
+          {/* 限时折扣(可选):窗口内按折扣价售卖。日期用原生 datetime-local(min-width≈200px 不可压缩),
+              故折扣价单独整行,两个日期各占一半,避免折扣价列被挤成竖排。 */}
+          <Input label="限时折扣价(可选)" hint="须低于价格;留空不参加" error={fieldErrors.discount_price || undefined} type="number" min="0" step="0.01" value={form.discount_price} onChange={set('discount_price')} placeholder="0.00" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Input label="折扣开始" error={fieldErrors.discount_start || undefined} type="datetime-local" value={form.discount_start} onChange={set('discount_start')} />
             <Input label="折扣结束" error={fieldErrors.discount_end || undefined} type="datetime-local" value={form.discount_end} onChange={set('discount_end')} />
           </div>
