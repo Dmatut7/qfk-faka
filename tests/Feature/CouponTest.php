@@ -54,6 +54,19 @@ class CouponTest extends TestCase
         $this->assertSame((int) $m->id, (int) $c->merchant_id);
     }
 
+    /** L24:生效时间晚于失效时间的券必须被拒(否则是永不可用/口径错乱的窗口) */
+    public function testRejectsInvertedValidWindow(): void
+    {
+        $m = $this->makeMerchant();
+        $tok = $this->bearer($this->merchantToken((int) $m->id));
+        $r = $this->callJson('POST', '/merchant/coupons', [
+            'code' => 'WIN' . substr(uniqid(), -6), 'value' => '5.00',
+            'valid_from' => date('Y-m-d H:i:s', strtotime('+2 day')),
+            'valid_to'   => date('Y-m-d H:i:s', strtotime('+1 day')),
+        ], $tok);
+        $this->assertSame(Code::PARAM_ERROR, $r['code'], '生效晚于失效的券必须被拒');
+    }
+
     public function testMerchantCannotDuplicateCode(): void
     {
         $m = $this->makeMerchant();

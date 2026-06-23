@@ -63,6 +63,21 @@ class PromotionTest extends TestCase
         $this->assertSame(Promotion::TYPE_FULL_DISCOUNT, (int) $ok->type);
     }
 
+    /** L24:开始时间晚于结束时间的限时活动必须被拒 */
+    public function testRejectsInvertedWindow(): void
+    {
+        try {
+            (new PromotionService())->create((int) $this->m->id, [
+                'type' => Promotion::TYPE_FULL_REDUCE, 'threshold' => '100.00', 'value' => '10',
+                'start_at' => date('Y-m-d H:i:s', strtotime('+2 day')),
+                'end_at'   => date('Y-m-d H:i:s', strtotime('+1 day')),
+            ]);
+            $this->fail('start_at 晚于 end_at 应被拒');
+        } catch (\app\common\BizException $e) {
+            $this->assertSame(\app\common\Code::PARAM_ERROR, $e->getBizCode());
+        }
+    }
+
     public function testBestPromotionPicksLargestApplicable(): void
     {
         $this->promo(Promotion::TYPE_FULL_REDUCE, '100.00', '10.00'); // 满100减10

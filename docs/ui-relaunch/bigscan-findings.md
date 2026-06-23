@@ -185,9 +185,10 @@
 - 问题: 待审金额合计用 ->column('amount') 把全部待审提现的金额逐条拉回 PHP 再 Money::add 累加,待审单量大时一次性载入全部行且 O(n) bcadd 循环。MySQL 对 DECIMAL 的 SUM 是精确无浮点误差的,本可直接 ->sum('amount') 既精确又高效(同文件外 AdminViewService.php:53 正是用 ->sum)。当前实现纯属冗余,且与同仓另一处口径写法不一致。
 - 修法: 改用 (string) Withdrawal::where($pendingWhere)->sum('amount') 再 Money::add(.,'0') 规整两位小数,删除 column+foreach 累加。
 
-### [L24] {时间窗一致性(促销时间窗用字符串比较且无 start<=end 校验)} app/service/PromotionService.php:128-147 + app/service/CouponService.php:125-131
+### [L24] {时间窗一致性(促销时间窗用字符串比较且无 start<=end 校验)} app/service/PromotionService.php:128-147 + app/service/CouponService.php:125-131 — ✅ 已修(含 TDD)
 - 问题: 促销 withinWindow 与券有效期均用 `trim((string)$x)` 直接和 `date('Y-m-d H:i:s')` 做字符串 `<`/`>` 比较。datetime 列由 ThinkPHP 返回 'Y-m-d H:i:s' 格式时比较正确;但 normWindow/create 对 start_at/end_at 不做格式归一与「start_at <= end_at」一致性校验,商户可传非标准格式(如 '2026/6/1 9:0:0' 或仅日期 '2026-06-01')→ 字符串比较口径与 'Y-m-d H:i:s' 错位,导致活动该生效不生效或该失效仍生效(时间窗判断失真)。同理券 valid_from/valid_to 不校验先后。
 - 修法: normWindow 用 strtotime 解析并统一格式化为 'Y-m-d H:i:s' 落库(解析失败抛 PARAM_ERROR);create/update 校验 start_at<=end_at、valid_from<=valid_to;比较前对 DB 值也按同格式归一,避免字符串口径不一致。
+- ✅ 已修:两服务 normWindow 改 strtotime→'Y-m-d H:i:s'(非法格式拒绝),create/update 均 assertWindowOrder 校验生效≤失效。落库即归一,下游字符串比较口径恒一致。测试 `CouponTest::testRejectsInvertedValidWindow`、`PromotionTest::testRejectsInvertedWindow`。
 
 ### [L25] {鉴权/暴力破解} route/app.php:134 (merchant/change-password) 与 app/service/MerchantService.php:222-236
 - 问题: 商户改密接口对 old_password 做 password_verify 校验,但该路由(merchant/change-password)未挂任何 RateLimit,且 changePassword 不限制尝试次数。持有有效 token 的会话(或被盗 token)可在改密接口上对 old_password 无限次撞库;另外新密码未校验是否等于旧密码,也未限制最大长度(bcrypt 72 字节静默截断)。

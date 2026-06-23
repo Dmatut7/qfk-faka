@@ -26,6 +26,10 @@ class PromotionService
         $type  = $this->normalizeType($d['type'] ?? Promotion::TYPE_FULL_REDUCE);
         $value = Money::add((string) ($d['value'] ?? '0'), '0');
         $this->validateValueByType($type, $value);
+        // L24 时间窗:规范化为 Y-m-d H:i:s 并校验 开始≤结束
+        $startAt = $this->normWindow($d['start_at'] ?? null);
+        $endAt   = $this->normWindow($d['end_at'] ?? null);
+        $this->assertWindowOrder($startAt, $endAt);
         return Promotion::create([
             'merchant_id' => $merchantId,
             'name'        => trim((string) ($d['name'] ?? '')),
@@ -33,8 +37,8 @@ class PromotionService
             'threshold'   => Money::add((string) ($d['threshold'] ?? '0'), '0'),
             'value'       => $value,
             'status'      => isset($d['status']) ? ((int) $d['status'] === 0 ? 0 : 1) : Promotion::STATUS_ON,
-            'start_at'    => $this->normWindow($d['start_at'] ?? null),
-            'end_at'      => $this->normWindow($d['end_at'] ?? null),
+            'start_at'    => $startAt,
+            'end_at'      => $endAt,
         ]);
     }
 
@@ -57,6 +61,12 @@ class PromotionService
             if (array_key_exists($k, $patch)) {
                 $patch[$k] = $this->normWindow($patch[$k]);
             }
+        }
+        // L24 开始≤结束:用补丁后的有效窗口复核(单改一端也要校验)
+        if (array_key_exists('start_at', $patch) || array_key_exists('end_at', $patch)) {
+            $effStart = array_key_exists('start_at', $patch) ? $patch['start_at'] : ($p->start_at !== null ? (string) $p->start_at : null);
+            $effEnd   = array_key_exists('end_at', $patch) ? $patch['end_at'] : ($p->end_at !== null ? (string) $p->end_at : null);
+            $this->assertWindowOrder($effStart, $effEnd);
         }
         if (array_key_exists('type', $patch) || array_key_exists('value', $patch)) {
             $effType  = array_key_exists('type', $patch) ? (int) $patch['type'] : (int) $p->type;
@@ -148,10 +158,26 @@ class PromotionService
     }
 
     /** 时间窗输入归一:空串/空白 → null(该端不限制) */
+    /** 时间窗规范化:空→null;否则 strtotime 解析为 Y-m-d H:i:s,非法格式拒绝(L24)。 */
     private function normWindow($v): ?string
     {
         $v = trim((string) ($v ?? ''));
-        return $v === '' ? null : $v;
+        if ($v === '') {
+            return null;
+        }
+        $ts = strtotime($v);
+        if ($ts === false) {
+            throw new BizException(Code::PARAM_ERROR, '时间格式不正确');
+        }
+        return date('Y-m-d H:i:s', $ts);
+    }
+
+    /** 开始时间不得晚于结束时间(两端均规范化为 Y-m-d H:i:s 后字符串比较即按时序)。 */
+    private function assertWindowOrder(?string $start, ?string $end): void
+    {
+        if ($start !== null && $end !== null && $start > $end) {
+            throw new BizException(Code::PARAM_ERROR, '开始时间不能晚于结束时间');
+        }
     }
 
     /** 当前时刻是否落在促销 [start_at, end_at] 窗口内(任一端为空=该端不限制) */

@@ -36,6 +36,10 @@ class CouponService
         $type  = $this->normalizeType($d['type'] ?? Coupon::TYPE_AMOUNT);
         $value = $this->money($d['value'] ?? '0');
         $this->validateValueByType($type, $value);
+        // L24 时间窗:规范化为 Y-m-d H:i:s(使下游字符串比较可靠)并校验 生效≤失效
+        $validFrom = $this->normWindow($d['valid_from'] ?? null);
+        $validTo   = $this->normWindow($d['valid_to'] ?? null);
+        $this->assertWindowOrder($validFrom, $validTo);
         return Coupon::create([
             'merchant_id'  => $merchantId,
             'code'         => $code,
@@ -46,8 +50,8 @@ class CouponService
             'max_discount' => $this->money($d['max_discount'] ?? '0'),
             'total'        => max(0, (int) ($d['total'] ?? 0)),
             'used'         => 0,
-            'valid_from'   => !empty($d['valid_from']) ? $d['valid_from'] : null,
-            'valid_to'     => !empty($d['valid_to']) ? $d['valid_to'] : null,
+            'valid_from'   => $validFrom,
+            'valid_to'     => $validTo,
             'status'       => isset($d['status']) ? ((int) $d['status'] === 0 ? Coupon::STATUS_OFF : Coupon::STATUS_ON) : Coupon::STATUS_ON,
         ]);
     }
@@ -71,9 +75,15 @@ class CouponService
             $patch['status'] = (int) $patch['status'] === 0 ? Coupon::STATUS_OFF : Coupon::STATUS_ON;
         }
         foreach (['valid_from', 'valid_to'] as $k) {
-            if (array_key_exists($k, $patch) && empty($patch[$k])) {
-                $patch[$k] = null;
+            if (array_key_exists($k, $patch)) {
+                $patch[$k] = $this->normWindow($patch[$k]); // 规范化/置空(L24)
             }
+        }
+        // L24 生效≤失效:用补丁后的有效窗口复核(单改一端也要校验)
+        if (array_key_exists('valid_from', $patch) || array_key_exists('valid_to', $patch)) {
+            $effFrom = array_key_exists('valid_from', $patch) ? $patch['valid_from'] : ($c->valid_from !== null ? (string) $c->valid_from : null);
+            $effTo   = array_key_exists('valid_to', $patch) ? $patch['valid_to'] : ($c->valid_to !== null ? (string) $c->valid_to : null);
+            $this->assertWindowOrder($effFrom, $effTo);
         }
         // 以补丁后的有效 type+value 复核边界(单改 value 或单改 type 都要校验)
         if (array_key_exists('type', $patch) || array_key_exists('value', $patch)) {
@@ -85,6 +95,28 @@ class CouponService
             $c->save($patch);
         }
         return $c;
+    }
+
+    /** 时间窗规范化:空→null;否则 strtotime 解析为 Y-m-d H:i:s,非法格式拒绝(L24)。 */
+    private function normWindow($v): ?string
+    {
+        $v = trim((string) ($v ?? ''));
+        if ($v === '') {
+            return null;
+        }
+        $ts = strtotime($v);
+        if ($ts === false) {
+            throw new BizException(Code::PARAM_ERROR, '时间格式不正确');
+        }
+        return date('Y-m-d H:i:s', $ts);
+    }
+
+    /** 生效时间不得晚于失效时间(两端均规范化为 Y-m-d H:i:s 后字符串比较即按时序)。 */
+    private function assertWindowOrder(?string $start, ?string $end): void
+    {
+        if ($start !== null && $end !== null && $start > $end) {
+            throw new BizException(Code::PARAM_ERROR, '生效时间不能晚于失效时间');
+        }
     }
 
     /** 折扣券 value∈(0,100)(90=九折);满减券 value>0。防 value=0/100 算出近乎0元或无效单。 */
