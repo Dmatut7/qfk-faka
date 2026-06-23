@@ -18,3 +18,24 @@
 - **#7**(medium,**误报**):`MerchantWalletService::balance($merchantId)` 按传入 id 直查,$merchantId 来自鉴权中间件而非用户输入,不存在跨租户枚举;agent 给的「`if($m->id!==$merchantId)`」修法本身是恒真,自证误报。
 
 > 方法:每条候选都经独立 agent 对抗式证伪(读实际代码+测试,默认怀疑)。其余 12 条候选在证伪阶段被否(已被守卫/测试覆盖或不可复现)。
+
+---
+
+# 第三轮深挖(CLI/下载签名/注入/未测并发)
+
+4 finder × disprove,12候选 → 4「确认」,但经我二次研判:**仅 1 项为真实缺陷**。
+
+## 确认并已修(1)
+
+| # | 严重度 | 缺陷 | 处置 | 测试 |
+|---|---|---|---|---|
+| 3 | medium | `stock:reconcile` 资金自检比 `SUM(amount)` 与**物理 balance**,但流水 amount 记的是逻辑净头寸(balance-debt)增减(B1) → **有负欠时误报资金漂移** | 改比 `balance-debt`,docblock 同步 | `StockReconcileTest::testFundCheckUsesLogicalNetPositionUnderDebt`(含 positive control) |
+
+## 二次研判为非缺陷 / 不修(3)
+
+- **#1 下载签名未绑定买家**(agent 评 critical):**误报**。DownloadService 是标准签名 URL(HMAC-SHA256、`hash_equals` 时序安全、绑定 order_no+expires、校验 DELIVERED+资源类型、30min 时效、强制密钥无硬编码回退)。agent 的「绑定 buyer_email」修法无效——email 会落在 URL 里,泄露链接照样泄露 email;签名 URL 的 bearer 语义本就如此(同 S3 presigned / 网盘分享链)。
+- **#2 order:clean × 回调竞态**(agent 评 high):**已正确处理**。`closeAndRelease` 在**行锁内重查状态**(OrderService.php:261)后才关单,且关单+释放卡+释放券在**同一事务原子完成**,不存在「半释放的 PENDING 单」;EXCEPTION 单保留 LOCKED 卡是供人工补发的有意设计。agent 描述的触发序列因事务原子性而不可能发生。
+- **#4 下载缺参错误码**(agent 评 low):`expires` 缺省 0 → 返回 STATE_INVALID 而非 PARAM_ERROR,**无安全绕过**(agent 自述),纯错误码精度问题,不值改。
+
+> 备注:本轮一个 hunt agent 经 Bash 在 tests/ 落了个引用不存在类的临时验证文件(未跟踪),已清理;真实覆盖以 StockReconcileTest 为准。
+> **趋势**:三轮深挖确认真实缺陷数 backlog清零→6→1,边际递减,代码趋于干净。

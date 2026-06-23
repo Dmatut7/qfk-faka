@@ -83,14 +83,15 @@ class StockReconcile extends Command
     }
 
     /**
-     * 资金一致性自检:SUM(fund_log.amount) 应等于 merchants.balance。
-     * 仅报告差异商户数,不改余额。返回差异商户数。
+     * 资金一致性自检:SUM(fund_log.amount) 应等于商户**逻辑净头寸 balance - debt**。
+     * 流水 amount 记的是逻辑净头寸的增减(B1 负欠隔离:入账先抵欠,balance_after 记 balance-debt),
+     * 故对账须比 balance-debt 而非物理 balance,否则有负欠时会误报漂移。仅报告,不改余额。
      */
     private function reconcileFunds(Output $output): int
     {
         $mismatch = 0;
 
-        Db::name('merchants')->field(['id', 'balance'])->chunk(500, function ($merchants) use (&$mismatch, $output) {
+        Db::name('merchants')->field(['id', 'balance', 'debt'])->chunk(500, function ($merchants) use (&$mismatch, $output) {
             foreach ($merchants as $m) {
                 $merchantId = (int) $m['id'];
                 $sumRaw     = Db::name('merchant_fund_logs')
@@ -99,12 +100,12 @@ class StockReconcile extends Command
 
                 // sum 返回 0 或字符串/数值;统一交给 Money 以 2 位小数比较。
                 $logged  = Money::round((string) $sumRaw);
-                $balance = (string) $m['balance'];
+                $logical = Money::sub((string) $m['balance'], (string) ($m['debt'] ?? '0')); // 逻辑净头寸
 
-                if (Money::cmp($logged, $balance) !== 0) {
-                    $diff = Money::sub($balance, $logged);
+                if (Money::cmp($logged, $logical) !== 0) {
+                    $diff = Money::sub($logical, $logged);
                     $output->writeln(
-                        "[stock:reconcile] merchant #{$merchantId} balance {$balance} != fund logs sum {$logged} (diff {$diff})"
+                        "[stock:reconcile] merchant #{$merchantId} 逻辑净头寸 {$logical}(balance {$m['balance']} - debt " . ($m['debt'] ?? '0') . ") != fund logs sum {$logged} (diff {$diff})"
                     );
                     $mismatch++;
                 }

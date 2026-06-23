@@ -94,6 +94,31 @@ class StockReconcileTest extends TestCase
         $this->assertSame(0, (int) Product::find($p->id)->stock);
     }
 
+    /** #3:有负欠时对账须比逻辑净头寸(balance-debt),不得把 SUM=balance-debt 的正常商户误报为漂移 */
+    public function testFundCheckUsesLogicalNetPositionUnderDebt(): void
+    {
+        // (a) 正常:balance=70, debt=30 → 逻辑净头寸=40;SUM(amount)=40 一致,不应误报
+        $ok = $this->makeMerchant(['balance' => '70.00']);
+        Db::name('merchants')->where('id', $ok->id)->update(['debt' => '30.00']);
+        MerchantFundLog::create([
+            'merchant_id' => (int) $ok->id, 'type' => MerchantFundLog::TYPE_INCOME,
+            'amount' => '40.00', 'balance_after' => '40.00',
+        ]);
+        // (b) 真漂移(positive control):balance=50, debt=0, SUM=99 → 必须被报告,
+        //     同时证明 fetch() 能捕获输出、且对账逻辑能区分真假漂移
+        $bad = $this->makeMerchant(['balance' => '50.00']);
+        MerchantFundLog::create([
+            'merchant_id' => (int) $bad->id, 'type' => MerchantFundLog::TYPE_INCOME,
+            'amount' => '99.00', 'balance_after' => '99.00',
+        ]);
+
+        $out = Console::call('stock:reconcile')->fetch();
+
+        // 对账须比 balance-debt(=40)而非物理 balance(=70):一致商户不得被误报
+        $this->assertStringNotContainsString("merchant #{$ok->id} ", $out, '有负欠时 SUM=balance-debt 不应误报漂移');
+        $this->assertStringContainsString("merchant #{$bad->id} ", $out, '真实漂移须被报告(并验证输出可捕获)');
+    }
+
     public function testFundCheckDoesNotMutateBalance(): void
     {
         // 故意制造不一致:余额 100,但只有一条 +30 流水(SUM=30 != 100)
