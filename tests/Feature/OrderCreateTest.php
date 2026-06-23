@@ -91,6 +91,21 @@ class OrderCreateTest extends TestCase
         $this->assertSame(0, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count());
     }
 
+    public function testQuantityHardUpperBound(): void
+    {
+        // 知识类(无 stock 约束)+ max_buy=0(不限购):仍不允许异常巨量
+        $kp = Product::create([
+            'merchant_id' => $this->m->id, 'title' => '课', 'price' => '1.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE, 'max_buy' => 0, 'stock' => 0,
+        ]);
+        try {
+            $this->svc->create(['product_id' => $kp->id, 'quantity' => 10000, 'buyer_email' => 'b@x.com']);
+            $this->fail('超大数量应被拒');
+        } catch (BizException $e) {
+            $this->assertSame(Code::BUY_LIMIT, $e->getBizCode());
+        }
+    }
+
     public function testFrozenMerchantProductCannotBeOrdered(): void
     {
         $p = $this->product();

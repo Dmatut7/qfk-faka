@@ -27,6 +27,9 @@ class OrderService
 
     private const MAX_DEADLOCK_RETRY = 3;
 
+    /** 单笔购买数量绝对上限(护栏:即便不限购也不允许异常巨量) */
+    private const HARD_MAX_QTY = 9999;
+
     public function create(array $input): Order
     {
         $productId = (int) ($input['product_id'] ?? 0);
@@ -100,6 +103,10 @@ class OrderService
             }
             if ((int) $product->max_buy > 0 && $quantity > (int) $product->max_buy) {
                 throw new BizException(Code::BUY_LIMIT, "超过单笔限购({$product->max_buy})");
+            }
+            // 绝对上限护栏:即便不限购(max_buy=0),也不允许异常巨量(防超大 quantity 制造畸形订单/金额)
+            if ($quantity > self::HARD_MAX_QTY) {
+                throw new BizException(Code::BUY_LIMIT, '单笔购买数量过大');
             }
 
             // 商品类型路由:走码池的类型(卡密/权益)行锁预占一物一售;知识/资源不占码、无库存约束。

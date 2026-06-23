@@ -94,7 +94,8 @@ export default function Stats({ api, session, onNavigate }) {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span>昨日 <Money amount={Number(s.sales_yesterday || 0)} color="#fff" /></span>
               <Delta money today={Number(s.sales_today || 0)} yesterday={Number(s.sales_yesterday || 0)} />
-              <span style={{ opacity: 0.85 }}>累计 <Money amount={Number(s.sales || 0)} color="#fff" /></span>
+              {/* sales 为"已收款(已支付+已发货)"对账口径,与本卡今日/昨日的"已发货"口径不同,故显式标注避免误加减 */}
+              <span style={{ opacity: 0.85 }}>累计收款 <Money amount={Number(s.sales || 0)} color="#fff" /></span>
             </span>
           }
         />
