@@ -62,6 +62,25 @@ class MerchantOrderTest extends TestCase
         $this->assertSame(403, $resp->getCode());
     }
 
+    /** L16:订单详情仅在已发货时返回卡密明文;待支付(LOCKED 预占)等状态一律不泄露 */
+    public function testDetailHidesCardSecretsUntilDelivered(): void
+    {
+        [$m, $p] = $this->ctx();
+        $order = $this->order($m, $p); // PENDING,2 张卡 LOCKED 预占
+        $token = $this->merchantToken((int) $m->id);
+
+        // 待支付:卡仅锁定预占、买家未付款 → 详情不得返回任何卡密明文
+        $d1 = $this->callJson('GET', '/merchant/orders/' . $order->id, [], $this->bearer($token));
+        $this->assertSame([], $d1['data']['cards'], '待支付订单不得泄露锁定卡明文');
+
+        // 模拟发货:订单置 DELIVERED,卡 LOCKED→SOLD
+        Db::name('orders')->where('id', $order->id)->update(['status' => Order::STATUS_DELIVERED]);
+        Db::name('cards')->where('order_id', $order->id)->update(['status' => Card::STATUS_SOLD]);
+
+        $d2 = $this->callJson('GET', '/merchant/orders/' . $order->id, [], $this->bearer($token));
+        $this->assertCount(2, $d2['data']['cards'], '已发货订单应返回售出卡密供客服');
+    }
+
     public function testFilterByStatus(): void
     {
         [$m, $p] = $this->ctx(4);

@@ -150,9 +150,10 @@
 - 问题: deliverManually 未按订单快照 goods_type 判定是否走码池,对非码池订单(知识 goods_type=2 / 资源=3,order.goods_type 快照存在)也会执行发卡路径:lockedIds 必为空 → need=qty → 试图从该商品 cards 池锁 qty 张可售卡,而知识/资源商品本无 cards,直接抛 STOCK_NOT_ENOUGH(4005),商户无法对这类异常订单补发。与 NotifyService.php:176 用 Product::goodsTypeUsesPool((int)order->goods_type) 做路由的口径不一致。触发条件:知识/资源类订单进入 STATUS_EXCEPTION(如超时关闭后支付)后商户点补发。
 - 修法: deliverManually 开头按 Product::goodsTypeUsesPool((int)$order->goods_type) 分支:非码池类直接用商品 delivery_message 写 delivered_content + 置 DELIVERED(与 NotifyService 非码池分支一致),仅码池类走现有发卡逻辑。
 
-### [L16] {信息泄露(卡密未脱敏)} app/service/MerchantOrderService.php:38
+### [L16] {信息泄露(卡密未脱敏)} app/service/MerchantOrderService.php:38 — ✅ 已修(含 TDD)
 - 问题: detail() 对任意状态订单无条件返回全部卡密明文:Card::where('order_id')->column('secret'),包括 STATUS_PENDING(卡仅 LOCKED 预占、买家尚未付款)与 STATUS_CLOSED/已关闭单。订单详情接口因此在未支付/已关闭时也吐出锁定卡的明文 secret。触发条件:商户调用订单详情查看一个待支付或已关闭订单。虽为商户查看自有库存,但与 BuyerOrderService 仅 DELIVERED 才返回卡密、且以 delivered_content 快照为唯一真相源的收敛原则不一致,扩大了明文暴露面。
 - 修法: detail() 仅在 (int)order->status===Order::STATUS_DELIVERED 时返回卡密,且优先读 order->delivered_content 快照而非实时查 cards;非发货态返回空数组或对 secret 做脱敏(保留前后若干位)。
+- ✅ 已修:detail() 仅当 status===DELIVERED 才返回卡密,且只取 SOLD 卡;待支付/已关闭/异常/已退款一律返回 `[]`,与买家侧口径一致。测试 `MerchantOrderTest::testDetailHidesCardSecretsUntilDelivered`。
 
 ### [L17] {校验边界(数量无上界)} app/service/OrderService.php:91-97 — ✅ 已修
 - 问题: quantity 仅有下界校验:控制器 buyer/Order.php:19-22 只校验 integer|egt:1,服务内 min_buy 下界 + max_buy 上界仅在 max_buy>0 时生效。当商户设 max_buy=0(不限购)时,买家可传入超大 quantity(如 2_000_000_000)。码池类会在 cards 库存不足处被拦(count<quantity → 4005,无超卖);但非码池类(知识/资源)无任何库存/数量约束 → 直接以超大 quantity 建单,original=Money::mul(unitPrice,quantity) 产生天文金额订单,并发批量提交可制造垃圾订单/放大下游计算。
