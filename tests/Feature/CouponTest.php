@@ -63,6 +63,34 @@ class CouponTest extends TestCase
         $this->assertNotSame(0, $r2['code']); // 同商户券码重复被拒
     }
 
+    public function testPercentCouponValueRangeValidated(): void
+    {
+        $m = $this->makeMerchant();
+        $tok = $this->bearer($this->merchantToken((int) $m->id));
+        // 折扣券 value 必须在 (0,100):0 / 100 / >100 全部拒绝(防 value=0 算出近乎0元单)
+        foreach (['0', '0.00', '100', '150'] as $bad) {
+            $r = $this->callJson('POST', '/merchant/coupons', [
+                'code' => 'PCT' . substr(uniqid(), -6), 'type' => Coupon::TYPE_PERCENT, 'value' => $bad,
+            ], $tok);
+            $this->assertSame(Code::PARAM_ERROR, $r['code'], "折扣 value={$bad} 应被拒");
+        }
+        // 合法折扣 90(九折)通过
+        $ok = $this->callJson('POST', '/merchant/coupons', [
+            'code' => 'PCTOK', 'type' => Coupon::TYPE_PERCENT, 'value' => '90',
+        ], $tok);
+        $this->assertSame(0, $ok['code']);
+    }
+
+    public function testAmountCouponValueMustBePositive(): void
+    {
+        $m = $this->makeMerchant();
+        $tok = $this->bearer($this->merchantToken((int) $m->id));
+        $r = $this->callJson('POST', '/merchant/coupons', [
+            'code' => 'AMT0', 'type' => Coupon::TYPE_AMOUNT, 'value' => '0',
+        ], $tok);
+        $this->assertSame(Code::PARAM_ERROR, $r['code']);
+    }
+
     // ===== 满减 =====
     public function testAmountCouponDiscount(): void
     {

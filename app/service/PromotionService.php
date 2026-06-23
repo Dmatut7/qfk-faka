@@ -23,12 +23,15 @@ class PromotionService
 
     public function create(int $merchantId, array $d): Promotion
     {
+        $type  = $this->normalizeType($d['type'] ?? Promotion::TYPE_FULL_REDUCE);
+        $value = Money::add((string) ($d['value'] ?? '0'), '0');
+        $this->validateValueByType($type, $value);
         return Promotion::create([
             'merchant_id' => $merchantId,
             'name'        => trim((string) ($d['name'] ?? '')),
-            'type'        => $this->normalizeType($d['type'] ?? Promotion::TYPE_FULL_REDUCE),
+            'type'        => $type,
             'threshold'   => Money::add((string) ($d['threshold'] ?? '0'), '0'),
-            'value'       => Money::add((string) ($d['value'] ?? '0'), '0'),
+            'value'       => $value,
             'status'      => isset($d['status']) ? ((int) $d['status'] === 0 ? 0 : 1) : Promotion::STATUS_ON,
             'start_at'    => $this->normWindow($d['start_at'] ?? null),
             'end_at'      => $this->normWindow($d['end_at'] ?? null),
@@ -55,10 +58,29 @@ class PromotionService
                 $patch[$k] = $this->normWindow($patch[$k]);
             }
         }
+        if (array_key_exists('type', $patch) || array_key_exists('value', $patch)) {
+            $effType  = array_key_exists('type', $patch) ? (int) $patch['type'] : (int) $p->type;
+            $effValue = array_key_exists('value', $patch) ? (string) $patch['value'] : (string) $p->value;
+            $this->validateValueByType($effType, $effValue);
+        }
         if ($patch) {
             $p->save($patch);
         }
         return $p;
+    }
+
+    /** 满折 value∈(0,100)(90=满减后九折);满减 value>0。防 value=0/100 算出近乎0元或无效活动。 */
+    private function validateValueByType(int $type, string $value): void
+    {
+        if ($type === Promotion::TYPE_FULL_DISCOUNT) {
+            if (Money::cmp($value, '0') <= 0 || Money::cmp($value, '100') >= 0) {
+                throw new BizException(Code::PARAM_ERROR, '满折折扣须在 1~99 之间(如 90 表示九折)');
+            }
+        } else {
+            if (Money::cmp($value, '0') <= 0) {
+                throw new BizException(Code::PARAM_ERROR, '满减金额须大于 0');
+            }
+        }
     }
 
     public function delete(int $merchantId, int $id): void

@@ -39,6 +39,30 @@ class PromotionTest extends TestCase
         return Promotion::create(['merchant_id' => $this->m->id, 'type' => $type, 'threshold' => $threshold, 'value' => $value, 'status' => Promotion::STATUS_ON]);
     }
 
+    public function testPromotionValueRangeValidatedOnCreate(): void
+    {
+        $svc = new PromotionService();
+        // 满折 value 必须 (0,100):0/100/150 拒绝(防 value=0 把满额单清成 0.01)
+        foreach (['0', '100', '150'] as $bad) {
+            try {
+                $svc->create((int) $this->m->id, ['type' => Promotion::TYPE_FULL_DISCOUNT, 'threshold' => '100.00', 'value' => $bad]);
+                $this->fail("满折 value={$bad} 应被拒");
+            } catch (\app\common\BizException $e) {
+                $this->assertSame(\app\common\Code::PARAM_ERROR, $e->getBizCode());
+            }
+        }
+        // 满减 value 必须 >0
+        try {
+            $svc->create((int) $this->m->id, ['type' => Promotion::TYPE_FULL_REDUCE, 'threshold' => '100.00', 'value' => '0']);
+            $this->fail('满减 value=0 应被拒');
+        } catch (\app\common\BizException $e) {
+            $this->assertSame(\app\common\Code::PARAM_ERROR, $e->getBizCode());
+        }
+        // 合法满折 90 通过
+        $ok = $svc->create((int) $this->m->id, ['type' => Promotion::TYPE_FULL_DISCOUNT, 'threshold' => '100.00', 'value' => '90']);
+        $this->assertSame(Promotion::TYPE_FULL_DISCOUNT, (int) $ok->type);
+    }
+
     public function testBestPromotionPicksLargestApplicable(): void
     {
         $this->promo(Promotion::TYPE_FULL_REDUCE, '100.00', '10.00'); // 满100减10

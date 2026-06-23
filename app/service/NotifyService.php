@@ -268,9 +268,13 @@ class NotifyService
             'remark' => '平台佣金',
         ]);
 
-        // 优惠券核销:订单用券则已用数 +1(仅首次结算执行,幂等由上游状态守卫保证)
+        // 优惠券核销:订单用券则已用数 +1(仅首次结算执行,幂等由上游状态守卫保证)。
+        // 条件自增:仅当未达上限(total=0 不限量,或 used<total)时才 +1,
+        // 防并发结算把 used 顶破 total(限量券超核销)。达上限则计数封顶不再增长。
         if ($order->coupon_id) {
-            Coupon::where('id', $order->coupon_id)->inc('used')->update();
+            Coupon::where('id', $order->coupon_id)
+                ->whereRaw('(total = 0 OR used < total)')
+                ->inc('used')->update();
         }
     }
 

@@ -90,6 +90,23 @@ class CouponOrderTest extends TestCase
         $this->assertSame(0, (int) Coupon::find($c->id)->used);
     }
 
+    /** 限量券(total=1)被两单同时下单(下单时均 used=0 通过),结算后 used 不得顶破 total。 */
+    public function testLimitedCouponNotOverRedeemed(): void
+    {
+        $c = $this->coupon(['code' => 'LIMIT1', 'total' => 1, 'min_amount' => '0.00', 'value' => '5.00']);
+        $svc = new OrderService();
+        // 两单都在 used=0 时下单成功(findUsable 仅一次性 used<total 检查)
+        $o1 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com', 'coupon_code' => $c->code]);
+        $o2 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com', 'coupon_code' => $c->code]);
+        $this->assertSame((int) $c->id, (int) $o1->coupon_id);
+        $this->assertSame((int) $c->id, (int) $o2->coupon_id);
+        // 两单都支付成功结算
+        $this->payNotify($o1);
+        $this->payNotify($o2);
+        // 核销计数被 total 封顶,不得为 2(否则限量形同虚设)
+        $this->assertSame(1, (int) Coupon::find($c->id)->used, 'used 不得超过 total');
+    }
+
     public function testOrderWithoutCouponUnchanged(): void
     {
         $order = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
