@@ -29,7 +29,8 @@ class SeedDemoTest extends TestCase
         // epay 渠道存在且启用
         $channel = PaymentChannel::where('code', 'epay')->find();
         $this->assertNotNull($channel);
-        $this->assertSame('EpayDriver', $channel->driver);
+        // driver 应与注册键一致(PayManager::DRIVERS['epay']),不再是内部类名
+        $this->assertSame('epay', $channel->driver);
         $this->assertSame(PaymentChannel::STATUS_ENABLED, (int) $channel->status);
         $this->assertTrue($channel->isEnabled());
         $this->assertIsArray($channel->config);

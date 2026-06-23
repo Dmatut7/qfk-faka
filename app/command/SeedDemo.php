@@ -18,7 +18,7 @@ use think\console\Output;
  *
  * 幂等地创建一套可直接体验的演示数据:
  *  - 默认平台管理员(username='admin',密码 'admin123' bcrypt);
- *  - 示例支付渠道(code='epay',driver='EpayDriver',启用);
+ *  - 示例支付渠道(code='epay',driver='epay',启用);
  *  - 一个演示商户(active)+ 一个商品 + 几张卡密。
  *
  * 所有创建都遵循「存在则跳过」:可重复执行,不报错、不重复插入。
@@ -72,7 +72,7 @@ class SeedDemo extends Command
             PaymentChannel::create([
                 'code'        => 'epay',
                 'name'        => '易支付',
-                'driver'      => 'EpayDriver',
+                'driver'      => 'epay',
                 'config'      => [
                     'pid'     => '1000',
                     'key'     => 'demo_epay_key',

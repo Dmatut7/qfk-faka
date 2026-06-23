@@ -22,7 +22,7 @@ export default function CronJobs() {
       id: 'stock-reconcile',
       name: '库存资金对账',
       command: 'stock:reconcile',
-      purpose: '重算 products.stock,报告资金流水与余额差异',
+      purpose: '重算各商品在售库存,核对资金流水与余额差异',
       freq: '每小时',
       manual: 'php think stock:reconcile',
     },

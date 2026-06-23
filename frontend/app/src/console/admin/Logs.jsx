@@ -5,9 +5,9 @@ import { Button } from '../../../../design-system/components/core/Button.jsx';
 
 /* 级别 → 药丸色调(error 红 / warning 琥珀 / info 灰) */
 const LEVEL = {
-  error: { tone: 'danger', label: 'error' },
-  warning: { tone: 'pending', label: 'warning' },
-  info: { tone: 'neutral', label: 'info' },
+  error: { tone: 'danger', label: '错误' },
+  warning: { tone: 'pending', label: '警告' },
+  info: { tone: 'neutral', label: '信息' },
 };
 
 /* 常见日志类型(对齐 system_logs.type) */
@@ -103,9 +103,9 @@ export default function Logs({ api }) {
             </select>
             <select value={level} onChange={(e) => setLevel(e.target.value)} style={selectStyle}>
               <option value="">全部级别</option>
-              <option value="error">error</option>
-              <option value="warning">warning</option>
-              <option value="info">info</option>
+              <option value="error">错误</option>
+              <option value="warning">警告</option>
+              <option value="info">信息</option>
             </select>
             <Button variant="primary" size="sm" iconLeft={<Icons.Search size={15} />}
               onClick={submitSearch}>搜索</Button>

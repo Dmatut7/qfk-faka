@@ -115,13 +115,9 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api,
                 setOk(false);
               }}
             />
-            {rate ? (
+            {rate && rateInfo && rateInfo.error == null ? (
               <div style={{ marginTop: 4, fontSize: 12, fontWeight: 600 }}>
-                {rateInfo && rateInfo.error == null ? (
-                  <span style={{ color: 'var(--brand)' }}>当前 {rateInfo.pct}%</span>
-                ) : (
-                  <span style={{ color: 'var(--text-muted)' }}>请输入 0~1 之间的小数(如 0.05 = 5%)</span>
-                )}
+                <span style={{ color: 'var(--brand)' }}>当前 {rateInfo.pct}%</span>
               </div>
             ) : null}
           </div>
@@ -323,7 +319,7 @@ export default function Settings({ api }) {
               <SettingRow
                 api={api}
                 settingKey="default_commission_rate"
-                label="默认抽佣率(default_commission_rate)"
+                label="默认抽佣率"
                 hint="平台对商户订单的默认抽佣比例,0~1 之间的小数(如 0.05 表示 5%)"
                 initial={get('default_commission_rate')}
                 rate
@@ -332,7 +328,7 @@ export default function Settings({ api }) {
               <SettingRow
                 api={api}
                 settingKey="withdraw_fee_rate"
-                label="提现手续费率(withdraw_fee_rate)"
+                label="提现手续费率"
                 hint="商户提现时扣取的手续费比例,0~1 之间的小数(如 0.01 表示 1%)"
                 initial={get('withdraw_fee_rate')}
                 rate

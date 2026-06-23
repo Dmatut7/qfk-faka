@@ -157,7 +157,7 @@ export default function Channels({ api, session }) {
       key: 'driver',
       title: '驱动',
       width: 120,
-      render: (row) => <Pill tone="brand">{row.driver}</Pill>,
+      render: (row) => <Pill tone="brand">{({ epay: '易支付', EpayDriver: '易支付' }[row.driver]) || row.driver}</Pill>,
     },
     {
       key: 'status',

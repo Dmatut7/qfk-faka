@@ -104,7 +104,7 @@ export default function Cards({ api, session }) {
 
   const columns = [
     {
-      key: 'secret', title: '卡密(脱敏)',
+      key: 'secret', title: `${codeNoun}(脱敏)`,
       render: (row) => (
         <span className="tnum" style={{ fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-strong)' }}>
           {maskSecret(row.secret)}
@@ -211,7 +211,7 @@ export default function Cards({ api, session }) {
       )}
 
       {selectedId != null && (
-        <Panel title="卡密列表" subtitle="脱敏展示,仅未售卡可作废 / 删除" padded={false}>
+        <Panel title={`${codeNoun}列表`} subtitle={`脱敏展示,仅未售${codeNoun}可作废 / 删除`} padded={false}>
           <Toolbar right={
             <div style={{ display: 'inline-flex', gap: 6 }}>
               <Button
