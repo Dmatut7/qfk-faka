@@ -315,7 +315,8 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
   const cards = Array.isArray(r.cards) ? r.cards : [];
   const noun = deliverNoun(r.goods_type);
   // 已收款订单(已发货/异常/已退款)可申请售后
-  const canComplain = [STATUS.DELIVERED, STATUS.EXCEPTION, 4].includes(statusNum);
+  // 与后端 ComplaintService.COMPLAINABLE 对齐:已支付(发货中)同样可申诉(最需售后的场景)
+  const canComplain = [STATUS.PAID, STATUS.DELIVERED, STATUS.EXCEPTION, STATUS.REFUNDED].includes(statusNum);
   // 知识类(goods_type=2)且已发货 → 可站内阅读章节
   const canRead = Number(r.goods_type) === 2 && statusNum === STATUS.DELIVERED;
 

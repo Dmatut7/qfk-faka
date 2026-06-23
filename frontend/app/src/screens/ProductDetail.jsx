@@ -257,7 +257,7 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
     }
   };
 
-  const savedAmount = hasOriginal ? ((Math.round(Number(p.original) * 100) - priceCents) / 100).toFixed(0) : '0';
+  const savedAmount = hasOriginal ? ((Math.round(Number(p.original) * 100) - priceCents) / 100).toFixed(2) : '0';
 
   // 卡片容器统一样式(淘宝风:白底、细描边、软阴影、圆角)
   const cardStyle = { background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: 18, boxShadow: 'var(--shadow-xs)' };

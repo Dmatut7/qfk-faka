@@ -388,8 +388,22 @@ export default function StorefrontHome({ shop, categories, products, loading, er
 
   const catNameById = React.useMemo(() => Object.fromEntries(cats.map((c) => [String(c.id), c.name])), [cats]);
 
-  const allCount = list.length;
-  const tabs = [{ id: 'all', name: '全部', goods_count: allCount }, ...cats];
+  // 分类/全部 chip 计数须与"点进去网格实际条数"一致:网格在分类筛选后还叠加了 typeFilter,
+  // 故计数也按当前 typeFilter 先过滤再算,而非用后端跨类型 goods_count(否则 chip 数字与可见条数对不上)。
+  const listOfType = React.useMemo(
+    () => (typeFilter ? list.filter((p) => Number(p.goods_type ?? 1) === typeFilter) : list),
+    [list, typeFilter],
+  );
+  const allCount = listOfType.length;
+  const catCountById = React.useMemo(() => {
+    const c = {};
+    for (const p of listOfType) { const k = normId(p.category_id); if (k != null) c[k] = (c[k] || 0) + 1; }
+    return c;
+  }, [listOfType]);
+  const tabs = [
+    { id: 'all', name: '全部', goods_count: allCount },
+    ...cats.map((c) => ({ ...c, goods_count: catCountById[normId(c.id)] || 0 })),
+  ];
   // 按销售类型计数(顶部 4 类型卡)
   const typeCounts = React.useMemo(() => {
     const c = {};
