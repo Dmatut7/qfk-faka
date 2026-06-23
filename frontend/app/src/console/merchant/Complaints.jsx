@@ -22,11 +22,17 @@ const FILTER_OPTIONS = [
   { value: '4', label: '已驳回' },
 ];
 
+const PAGE_SIZE = 20;
+
 export default function Complaints({ api }) {
   // 默认高亮「待处理」(status 0)
   const [status, setStatus] = React.useState('0');
-  const list = useAsync(() => api.complaints({ status }), [status]);
+  const [page, setPage] = React.useState(1);
+  const list = useAsync(() => api.complaints({ status, page }), [status, page]);
   const items = list.data?.items || [];
+  const total = list.data?.total || 0;
+  const curPage = list.data?.page || page;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [target, setTarget] = React.useState(null);
   const [reply, setReply] = React.useState('');
@@ -72,7 +78,7 @@ export default function Complaints({ api }) {
   return (
     <Panel title="投诉处理" subtitle="买家发起的售后投诉:及时回复;未解决买家可申请平台介入仲裁">
       <Toolbar right={<Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={list.reload}>刷新</Button>}>
-        共 {items.length} 条投诉
+        共 {total} 条投诉
       </Toolbar>
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -81,7 +87,7 @@ export default function Complaints({ api }) {
             key={o.value}
             size="sm"
             variant={status === o.value ? 'primary' : 'ghost'}
-            onClick={() => setStatus(o.value)}
+            onClick={() => { setStatus(o.value); setPage(1); }}
           >
             {o.label}
           </Button>
@@ -89,6 +95,13 @@ export default function Complaints({ api }) {
       </div>
 
       <DataTable columns={columns} rows={items} loading={list.loading} error={list.error} onReload={list.reload} empty="暂无投诉,继续保持好评" emptyIcon="ShieldCheck" />
+      {total > 0 && pages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
+          <Button size="sm" variant="neutral" disabled={curPage <= 1 || list.loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>上一页</Button>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>第 {curPage} / {pages} 页</span>
+          <Button size="sm" variant="neutral" disabled={curPage >= pages || list.loading} onClick={() => setPage((p) => p + 1)}>下一页</Button>
+        </div>
+      )}
 
       <Modal
         open={!!target}

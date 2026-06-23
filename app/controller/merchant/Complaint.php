@@ -15,7 +15,9 @@ class Complaint extends BaseApiController
     {
         $status = $this->input('status');
         $status = ($status === null || $status === '') ? null : (int) $status;
-        return $this->success(['items' => $svc->merchantList($this->authId(), $status)]);
+        $page = max(1, (int) ($this->input('page') ?: 1));
+        $res = $svc->merchantList($this->authId(), $status, $page);
+        return $this->success(['items' => $res['items'], 'total' => $res['total'], 'page' => $res['page']]);
     }
 
     public function reply(ComplaintService $svc, $id)

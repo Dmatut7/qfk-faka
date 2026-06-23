@@ -74,13 +74,15 @@ class ComplaintService
 
     // ===== 商户 =====
 
-    public function merchantList(int $merchantId, ?int $status = null): array
+    public function merchantList(int $merchantId, ?int $status = null, int $page = 1, int $size = 20): array
     {
         $q = Complaint::where('merchant_id', $merchantId)->order('id', 'desc');
         if ($status !== null) {
             $q->where('status', $status);
         }
-        return $q->select()->toArray();
+        $total = $q->count();
+        $items = $q->page($page, $size)->select()->toArray();
+        return ['total' => $total, 'page' => $page, 'items' => $items];
     }
 
     /** 商户回复:进行中投诉写回复,OPEN→REPLIED(介入中仍可补充回复但不改状态) */
@@ -106,9 +108,9 @@ class ComplaintService
      * status_counts 反映全局(忽略 status 筛选、保留 merchant 筛选)各状态总数,
      * 让统计卡不随分页/所选状态 tab 失真。口径同 AdminViewService::orders。
      *
-     * @return array{items: array, status_counts: array<int,int>}
+     * @return array{total:int, page:int, items: array, status_counts: array<int,int>}
      */
-    public function adminList(?int $status = null, ?int $merchantId = null): array
+    public function adminList(?int $status = null, ?int $merchantId = null, int $page = 1, int $size = 20): array
     {
         // 非 status 的基础筛选(merchant_id);供"列表"与"全局状态计数"共用
         $applyBase = function ($q) use ($merchantId) {
@@ -129,9 +131,10 @@ class ComplaintService
         if ($status !== null) {
             $q->where('status', $status);
         }
-        $items = $q->select()->toArray();
+        $total = $q->count();
+        $items = $q->page($page, $size)->select()->toArray();
 
-        return ['items' => $items, 'status_counts' => $statusCounts];
+        return ['total' => $total, 'page' => $page, 'items' => $items, 'status_counts' => $statusCounts];
     }
 
     /** 平台裁决-解决,refund=true 时联动退款(订单可退则退,已退则仅标记) */
