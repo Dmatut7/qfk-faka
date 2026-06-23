@@ -13,6 +13,14 @@ class Order extends Model
 {
     protected $name = 'orders';
 
+    /**
+     * 序列化时隐藏的敏感字段(security hunt #6/#7/#9)。
+     * query_password 是买家查单密码的 bcrypt 哈希,绝不可经 toArray()/JSON 下发
+     * (商户/平台订单列表与详情都会序列化订单)——泄漏后可离线爆破再冒充买家查单取卡。
+     * 注:模型属性访问(BuyerOrderService 直接读 $order->query_password 校验)不受 $hidden 影响。
+     */
+    protected $hidden = ['query_password'];
+
     protected $type = [
         'id'          => 'integer',
         'merchant_id' => 'integer',

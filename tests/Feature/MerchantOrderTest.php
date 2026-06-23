@@ -62,6 +62,21 @@ class MerchantOrderTest extends TestCase
         $this->assertSame(403, $resp->getCode());
     }
 
+    /** 安全#6/#9:订单列表与详情不得泄漏买家查单密码哈希 query_password */
+    public function testOrderResponsesDoNotLeakQueryPassword(): void
+    {
+        [$m, $p] = $this->ctx();
+        $order = $this->order($m, $p);
+        Db::name('orders')->where('id', $order->id)->update(['query_password' => password_hash('secret123', PASSWORD_BCRYPT)]);
+        $token = $this->merchantToken((int) $m->id);
+
+        $d = $this->callJson('GET', '/merchant/orders/' . $order->id, [], $this->bearer($token));
+        $this->assertArrayNotHasKey('query_password', $d['data'], '订单详情不得泄漏查单密码哈希');
+
+        $list = $this->callJson('GET', '/merchant/orders', [], $this->bearer($token));
+        $this->assertArrayNotHasKey('query_password', $list['data']['items'][0], '订单列表不得泄漏查单密码哈希');
+    }
+
     /** L16:订单详情仅在已发货时返回卡密明文;待支付(LOCKED 预占)等状态一律不泄露 */
     public function testDetailHidesCardSecretsUntilDelivered(): void
     {

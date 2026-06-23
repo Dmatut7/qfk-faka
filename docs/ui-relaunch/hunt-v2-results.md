@@ -59,3 +59,26 @@
 - **#4 店铺分类 tab 360px 需横滑**(low):**by-design**。tab 用 `flex:'none' + overflowX:auto`,横向滚动是有意降级,无截断/重叠(disprove agent 自行下调);非 bug。
 
 > **趋势**:四轮深挖确认真实缺陷 **清零→6→1→2**,后端面已挖透,前端尚有 2 个真实移动端可用性 bug(safe-area / toolbar 压缩),已修。
+
+---
+
+# 第五轮深挖(安全收口:鉴权/IDOR/批量赋值/角色边界)
+
+4 finder × disprove,9「确认」,二次研判:**3 类真实并已修,其余为误报/设计权衡/已被 #1 缓解**。
+
+## 确认并已修
+
+| # | 严重度 | 缺陷 | 处置 | 测试 |
+|---|---|---|---|---|
+| 1 | critical | `ExtractsBearerToken` 回退 `?token=` 查询参数 → 令牌泄漏进 URL/历史/access log/Referer(令牌 24h、无绑定,泄漏即重放) | 仅认 Authorization 头,移除回退(前端均用头,无兼容影响) | `MerchantAuthTest::testQueryParamTokenIsRejected` |
+| 6/7/9 | high | `Order` 无 `$hidden`,买家查单密码 **bcrypt 哈希 query_password** 经 toArray 泄漏到商户/平台订单列表与详情 → 可离线爆破再冒充买家查单取卡 | `Order::$hidden=['query_password']`(模型属性访问不受影响,买家校验仍可用) | `MerchantOrderTest::testOrderResponsesDoNotLeakQueryPassword` |
+
+## 二次研判为非缺陷 / 不修 / 已缓解
+
+- **#2 商户卡列表返回明文卡密**(agent critical):**非越权**——是商户**自有**库存、已校归属,开源卡网(独角数卡)同样让商户看自己的卡密。真正的诉求是「卡密落库加密」(预留项),非列表脱敏。
+- **#3 令牌进日志/Referer**(high):**已被 #1 修复缓解**——令牌不再出现在 URL,自然不入 access log/Referer。(可选再加 `Referrer-Policy` 头,低优。)
+- **#4 令牌无 IP/UA 绑定**(high):**设计权衡不修**——IP 绑定会误杀移动端换网用户,UA 绑定形同虚设;业界 bearer 令牌靠 HTTPS+短时效,本系统 24h+仅头传输已合理。
+- **#5 令牌无轮转/刷新**(high):**设计权衡**——24h 令牌对本类应用可接受;refresh token 是特性非缺陷,超出本期。
+- **#8 平台裁决备注对买家可见**(high):**by-design**——admin_remark 是裁决说明,与 merchant_reply 一样本就该让买家看到处理结果,非泄漏。
+
+> **五轮深挖收口**:真实缺陷 backlog清零→6→1→2→3。安全面收口后,确认问题集中在「敏感字段序列化暴露」(已修 query_password / 卡密门控),令牌传输已收紧。
