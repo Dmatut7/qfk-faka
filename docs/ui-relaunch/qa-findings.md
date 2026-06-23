@@ -1,6 +1,22 @@
 # UI 落地 · 对抗式审查发现与修复追踪
 
-> 来源:两轮 Opus 审查(视觉审查 4 agent + 深度审查 11 agent,移动+桌面 30+ 屏 vs design-brief §7 理想清单 + Kit)+ 逻辑回归审查 + 人工复核。截图证据:`frontend/app/e2e/{audit,newui,mobile}/`。
+> 来源:三轮 Opus 审查(视觉 4 agent + 深度 11 agent + 后台逐页 9 agent,移动+桌面 50+ 屏 vs design-brief §7 理想清单 + Kit)+ 逻辑回归审查 + 人工复核。截图证据:`frontend/app/e2e/{audit,newui,mobile,audit3}/`。
+
+## ✅ 第3轮(后台逐页 9 Opus agent,27 页整图+源码核对;全部修复并复验,composer test 437 绿)
+**显示串/英文残留(代码标识漏到 UI):**
+- 卡密管理 库存卡副标题硬编码 `product.stock` → 业务文案
+- 异常日志「级别」error/warning/info → 错误/警告/信息(列+下拉)
+- 支付渠道「驱动」EpayDriver(内部类名)→ 易支付;SeedDemo driver 改 'epay' 与注册键一致(+改测试断言)
+- 平台配置 费率标签去英文键 + 合并重复两行提示
+- 任务计划「用途」products.stock → 业务化中文
+- 卡密管理 列头/面板标题接入 codeNoun(权益类显示「权益码」)
+**表格排版错位:**
+- 商户订单「商品」列商品名被 CJK 逐字竖排 → nowrap+定宽;订单号/操作列定宽;商品「限购」断词 → nowrap
+- DataTable ≤640px 行转卡片(宽表不再横滚找金额/状态)
+**数据缺失(后端):**
+- 提现 approve/reject 补写 processed_at(此前恒 NULL,商户「处理时间」全显「—」)+ 前端历史数据回退 update_time + 测试断言
+**破图兜底:**
+- 分类图加载失败 → brand-soft 底+分类名首字 + 图 onError 隐藏
 
 ## ✅ 已修复并复验(本 session,已提交 ui-orange-relaunch 分支)
 
