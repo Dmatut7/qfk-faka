@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: composer test (PHP 7.4 + MySQL 8)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: qfk_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: pdo_mysql, bcmath, pcntl, gd, fileinfo
+          tools: composer
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Configure test env (CI 用 TCP 连 MySQL,而非本地 socket)
+        run: |
+          cat > .env.testing <<'EOF'
+          APP_DEBUG = true
+
+          [DATABASE]
+          TYPE = mysql
+          HOSTNAME = 127.0.0.1
+          DATABASE = qfk_test
+          USERNAME = root
+          PASSWORD =
+          HOSTPORT = 3306
+          SOCKET =
+          CHARSET = utf8mb4
+          PREFIX =
+
+          [LANG]
+          default_lang = zh-cn
+          EOF
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot --silent 2>/dev/null; then echo "MySQL ready"; break; fi
+            echo "waiting for mysql ($i)..."; sleep 2
+          done
+
+      - name: Run tests
+        run: composer test
+
+  frontend:
+    name: 前端构建 (Vite build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install & build
+        working-directory: frontend/app
+        run: |
+          npm ci || npm install
+          npm run build
