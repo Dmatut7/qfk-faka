@@ -10,11 +10,16 @@ use app\util\Money;
 /**
  * 平台对账报表(只读,跨商户)。
  *
- * 口径与 app\service\MerchantStatsService 一致:
+ * 口径(本报表为"已收款成交"对账,与仪表盘 AdminViewService 的"已发货成交"口径不同,勿混用):
  * - 时间按 create_time 半开区间 [start, end);start/end 为空则不限。
- * - 销售额:已支付(PAID)+ 已发货(DELIVERED)订单 total_amount 之和。
+ * - 销售额:已支付(PAID)+ 已发货(DELIVERED)订单 total_amount 之和(已收款口径)。
+ *   注:AdminViewService 仪表盘的 deliveredSales* 只统计 DELIVERED(已发货口径),二者刻意不同。
  * - 平台佣金:MerchantFundLog 中 type=TYPE_COMMISSION 的 amount 绝对值之和
  *   (commission 流水 amount 存的是负数,这里取正展示)。
+ * - 已知口径限制(M7,待产品确认):退款产生的佣金回冲流水(+A)按 create_time 计入其所在时间窗,
+ *   而被退款订单的销售额按订单 create_time 计入原时间窗——跨时间窗退款会使分窗报表出现
+ *   "有佣金无销售/有销售无对应佣金"。全时段(不限时间)汇总不受影响。是否改为"期内成交净额"
+ *   口径需业务拍板,见 docs/ui-relaunch/bigscan-findings.md。
  */
 class AdminReportService
 {

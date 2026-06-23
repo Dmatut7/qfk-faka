@@ -429,10 +429,12 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
         {!out && (() => {
           const hints = [];
           if (minBuy > 1) hints.push({ text: `${minBuy} 件起购`, hit: safeQty <= minBuy });
-          // 卡密类有效上限来自库存约束时显示「仅剩 N 件」,否则若 max_buy 限购显示「每单最多 N 件」
-          if (isCard && p.max_buy > 0 && p.stock < p.max_buy) {
+          // 仅当商户选择「精确显示库存」(show_stock_type=1)时才暴露具体「仅剩 N 件」;
+          // 模糊模式(=0)只靠上方徽标显示 充足/少量/缺货,不泄露精确库存。
+          const showExactStock = Number(p.show_stock_type) === 1;
+          if (isCard && showExactStock && p.max_buy > 0 && p.stock < p.max_buy) {
             hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
-          } else if (isCard && !(p.max_buy > 0) && p.stock < 99) {
+          } else if (isCard && showExactStock && !(p.max_buy > 0) && p.stock < 99) {
             hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
           } else if (p.max_buy > 0) {
             hints.push({ text: `每单最多 ${p.max_buy} 件`, hit: safeQty >= effMax });
