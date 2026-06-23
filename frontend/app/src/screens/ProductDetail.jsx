@@ -128,18 +128,24 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   // 数量/已用券变化时重新试算(含自动促销)。必须在任何早退之前调用,保证每次渲染 hook 顺序恒定。
   React.useEffect(() => {
     if (!product || !productId) return undefined;
-    const isCardP = Number(product.goods_type ?? 1) === 1;
-    const outP = isCardP ? product.stock <= 0 : false;
+    const usesPoolP = [1, 4].includes(Number(product.goods_type ?? 1));
+    const outP = usesPoolP ? product.stock <= 0 : false;
     if (outP) return undefined;
     const minB = Math.max(1, product.min_buy || 1);
-    const maxB = isCardP
+    const maxB = usesPoolP
       ? (product.max_buy > 0 ? Math.min(product.max_buy, product.stock) : product.stock)
       : (product.max_buy > 0 ? product.max_buy : 99);
     const sQty = Math.min(Math.max(qty, minB), Math.max(minB, maxB));
     let alive = true;
     api.checkoutPreview({ productId, quantity: sQty, couponCode: appliedCoupon || undefined })
       .then((r) => { if (alive) setPreview(r); })
-      .catch(() => { if (alive) setPreview(null); });
+      .catch(() => {
+        if (!alive) return;
+        setPreview(null);
+        // 券在当前数量下失效(如降量跌破门槛)→ 移除券并提示,避免把失效券带到下单导致整单失败;
+        // 清空 appliedCoupon 会触发本 effect 重跑、按无券重新试算出正确应付价。
+        if (appliedCoupon) { setAppliedCoupon(''); setCouponErr('优惠券在当前数量下不可用,已移除'); }
+      });
     return () => { alive = false; };
   }, [productId, qty, appliedCoupon, product]);
 
@@ -171,16 +177,18 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
 
   // ---- loaded ----
   const p = product;
-  // 非卡密类(知识/资源/权益)无卡库存概念,视为现货可购;仅卡密类受 stock 约束。
   const isCard = Number(p.goods_type ?? 1) === 1;
-  const out = isCard ? p.stock <= 0 : false;
+  // 码池类(卡密=1 / 权益=4)受真实卡库存约束(对齐后端 Product::usesCardPool);
+  // 知识=2 / 资源=3 无卡库存概念,视为现货可购。
+  const usesPool = [1, 4].includes(Number(p.goods_type ?? 1));
+  const out = usesPool ? p.stock <= 0 : false;
   const hasSold = p.sold != null;
   const hasOriginal = p.original != null && p.original > p.price;
   const goodsType = Number(p.goods_type) || 1;
 
-  // 库存展示:非卡密类显示「现货」;卡密类 show_stock_type=1 精确「库存 N」,=0 模糊(充足>20/少量1-20/缺货0)。
+  // 库存展示:非码池类显示「现货」;码池类 show_stock_type=1 精确「库存 N」,=0 模糊(充足>20/少量1-20/缺货0)。
   const stockBadge = (() => {
-    if (!isCard) return { variant: 'success', text: '现货' };
+    if (!usesPool) return { variant: 'success', text: '现货' };
     if (out) return { variant: 'danger', text: '缺货' };
     if (Number(p.show_stock_type) === 1) return { variant: 'success', text: `库存 ${p.stock}` };
     if (p.stock <= 20) return { variant: 'pending', text: '库存少量' };
@@ -188,10 +196,10 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
   })();
 
   const minBuy = Math.max(1, p.min_buy || 1);
-  // 卡密:max_buy>0 ? min(max_buy, stock) : stock;非卡密:仅受 max_buy 约束(无 stock 上限,缺省 99)
+  // 码池类:max_buy>0 ? min(max_buy, stock) : stock(受卡数上限);非码池类:仅受 max_buy 约束(缺省 99)
   const maxBuy = out
     ? minBuy
-    : (isCard
+    : (usesPool
       ? (p.max_buy > 0 ? Math.min(p.max_buy, p.stock) : p.stock)
       : (p.max_buy > 0 ? p.max_buy : 99));
   // 受 stock/限购约束的有效上限(至少 minBuy 以保证 stepper 合法)
@@ -239,7 +247,8 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
       const apiOrder = await api.createOrder({
         productId, quantity: safeQty, email: email.trim(),
         queryPassword: queryPassword.trim() || undefined,
-        couponCode: appliedCoupon || undefined,
+        // 仅当券在当前数量下确实生效(试算已确认)才提交,杜绝把失效券带到下单致整单失败
+        couponCode: (couponApplied && appliedCoupon) ? appliedCoupon : undefined,
       });
       onOrderCreated && onOrderCreated(apiOrder, email.trim(), p);
     } catch (e) {
@@ -432,9 +441,9 @@ export default function ProductDetail({ productId, initialProduct, shop, onBack,
           // 仅当商户选择「精确显示库存」(show_stock_type=1)时才暴露具体「仅剩 N 件」;
           // 模糊模式(=0)只靠上方徽标显示 充足/少量/缺货,不泄露精确库存。
           const showExactStock = Number(p.show_stock_type) === 1;
-          if (isCard && showExactStock && p.max_buy > 0 && p.stock < p.max_buy) {
+          if (usesPool && showExactStock && p.max_buy > 0 && p.stock < p.max_buy) {
             hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
-          } else if (isCard && showExactStock && !(p.max_buy > 0) && p.stock < 99) {
+          } else if (usesPool && showExactStock && !(p.max_buy > 0) && p.stock < 99) {
             hints.push({ text: `仅剩 ${p.stock} 件`, hit: safeQty >= effMax });
           } else if (p.max_buy > 0) {
             hints.push({ text: `每单最多 ${p.max_buy} 件`, hit: safeQty >= effMax });

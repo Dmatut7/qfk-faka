@@ -270,7 +270,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
       )}
 
       {/* 结果区 */}
-      {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} contactPassword={password.trim()} />}
+      {result && <OrderResult result={result} flashToast={flashToast} contactEmail={email.trim()} contactPassword={password.trim()} directMode={directMode} refreshing={loading} onRefresh={search} />}
 
       {/* toast「已复制」统一样式 */}
       <div role="status" aria-live="polite" aria-atomic="true">
@@ -308,7 +308,7 @@ export default function OrderLookup({ initialResult, onBack, queryTips }) {
 const DELIVER_NOUN = { 1: '卡密', 2: '内容', 3: '资源', 4: '权益' };
 const deliverNoun = (gt) => DELIVER_NOUN[Number(gt) || 1] || '卡密';
 
-function OrderResult({ result, flashToast, contactEmail = '', contactPassword = '' }) {
+function OrderResult({ result, flashToast, contactEmail = '', contactPassword = '', directMode = false, refreshing = false, onRefresh }) {
   const r = result;
   const statusNum = Number(r.status);
   const key = statusKey(statusNum);
@@ -486,8 +486,8 @@ function OrderResult({ result, flashToast, contactEmail = '', contactPassword = 
               <Button as="a" href={/^https?:\/\//i.test(r.download_url) ? r.download_url : BASE + r.download_url} target="_blank" rel="noopener noreferrer" variant="primary" size="md" iconLeft={<Icons.Package size={17} color="#fff" />}>
                 下载资源
               </Button>
-              {!directMode && (
-                <Button variant="secondary" size="md" loading={loading} onClick={search} iconLeft={<Icons.RefreshCw size={16} />}>
+              {!directMode && onRefresh && (
+                <Button variant="secondary" size="md" loading={refreshing} onClick={onRefresh} iconLeft={<Icons.RefreshCw size={16} />}>
                   刷新下载链
                 </Button>
               )}
