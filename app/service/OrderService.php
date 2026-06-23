@@ -6,6 +6,7 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
+use app\model\Coupon;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
 use app\model\Order;
@@ -142,13 +143,18 @@ class OrderService
             $discountLabel = $b['label'];
             $final         = Money::sub($original, $discount);
 
-            // 3.2) 限量券「下单即占额」(B2 真限量):原子条件自增,售罄(并发抢到最后一张后)立即拒单回滚。
+            // 3.2) 限量券「下单即占额」(B2 真限量):原子条件自增,售罄或券在读取后被并发停用/过期则立即拒单回滚。
+            //      占额条件并入券有效性(状态/有效期/数量),与 findUsable 之后的并发券编辑赛跑也安全;
             //      占额在 closeAndRelease(未付款关单/超时回收)释放;已付款订单永久占用(退款不返还,防退款循环超发)。
             if ($couponId) {
                 $occupied = Db::name('coupons')->where('id', $couponId)
-                    ->whereRaw('(total = 0 OR used < total)')->inc('used')->update();
+                    ->where('status', Coupon::STATUS_ON)
+                    ->whereRaw('(valid_from IS NULL OR valid_from <= ?)', [$now])
+                    ->whereRaw('(valid_to IS NULL OR valid_to >= ?)', [$now])
+                    ->whereRaw('(total = 0 OR used < total)')
+                    ->inc('used')->update();
                 if ($occupied < 1) {
-                    throw new BizException(Code::PARAM_ERROR, '优惠券已领完');
+                    throw new BizException(Code::PARAM_ERROR, '优惠券不可用或已领完');
                 }
             }
 

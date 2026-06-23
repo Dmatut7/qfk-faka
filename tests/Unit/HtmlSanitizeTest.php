@@ -51,4 +51,31 @@ class HtmlSanitizeTest extends TestCase
         $this->assertSame('', Html::sanitize(''));
         $this->assertSame('', Html::sanitize(null));
     }
+
+    /** H2:此前可绕过的危险协议(无引号 / 实体编码 / vbscript / data)必须全部被中和。 */
+    public function testNeutralizesProtocolBypasses(): void
+    {
+        foreach ([
+            '<a href=javascript:alert(document.cookie)>x</a>',     // 无引号
+            '<a href="java&#115;cript:alert(1)">x</a>',            // 实体编码
+            '<a href="  javascript:alert(1)">x</a>',               // 前导空白
+            '<a href="vbscript:msgbox(1)">x</a>',
+            '<img src="data:text/html,<b>x</b>">',
+        ] as $payload) {
+            $out = strtolower(html_entity_decode(Html::sanitize($payload), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $out = (string) preg_replace('/[\x00-\x20]+/', '', $out);
+            $this->assertStringNotContainsString('javascript:', $out, "未中和: $payload");
+            $this->assertStringNotContainsString('vbscript:', $out, "未中和: $payload");
+            $this->assertStringNotContainsString('data:', $out, "未中和: $payload");
+        }
+    }
+
+    /** 合法协议与相对路径不被误伤。 */
+    public function testKeepsSafeLinks(): void
+    {
+        $this->assertStringContainsString('https://ok.com/p', Html::sanitize('<a href="https://ok.com/p">g</a>'));
+        $this->assertStringContainsString('/uploads/a.png', Html::sanitize('<a href="/uploads/a.png">r</a>'));
+        $this->assertStringContainsString('#sec', Html::sanitize('<a href="#sec">a</a>'));
+        $this->assertStringContainsString('mailto:a@b.com', Html::sanitize('<a href="mailto:a@b.com">m</a>'));
+    }
 }
