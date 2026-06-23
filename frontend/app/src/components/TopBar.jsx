@@ -73,7 +73,7 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
                   letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}
               >
-                {title || shopName || '极客发卡'}
+                {title || shopName || '秒卡'}
               </span>
               {!title && shopIntro && (
                 <span className="mk-topbar-intro" style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

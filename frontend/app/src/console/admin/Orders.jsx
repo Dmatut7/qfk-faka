@@ -216,7 +216,7 @@ export default function Orders({ api }) {
         {refundErr ? <div style={{ marginBottom: 12 }}><Pill tone="danger">{refundErr}</Pill></div> : null}
         <div style={{ fontSize: 13.5, color: 'var(--text-body)', lineHeight: 1.6, marginBottom: 12 }}>
           确认对订单 <b>{refundTarget?.order_no}</b>(应付 <Money amount={refundTarget?.total_amount} />)发起退款?
-          <br />将:卡密回库重新可售、商户结算金额原路冲回、用券则反核销。此操作不可撤销。
+          <br />将:卡密 / 权益码回库重新可售、商户结算金额原路冲回、用券则反核销。此操作不可撤销。
         </div>
         <Input label="退款原因(可选)" value={refundReason} placeholder="如:买家协商退款 / 商品质量问题"
           onChange={(e) => setRefundReason(e.target.value)} />

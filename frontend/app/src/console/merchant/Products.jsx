@@ -298,7 +298,7 @@ export default function Products({ api, session }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <StatCard label="商品总数" value={total} icon="Package" tone="brand" />
         <StatCard label="在售中" value={onSale} icon="Zap" tone="success" />
-        <StatCard label="库存合计" value={stockSum} icon="Inbox" tone="neutral" sub="以卡密加锁查询为准" />
+        <StatCard label="库存合计" value={stockSum} icon="Inbox" tone="neutral" sub="各商品码池在售合计(卡密 / 权益码)" />
         <StatCard label="累计销量" value={salesSum} icon="Check" tone="brand" />
       </div>
 

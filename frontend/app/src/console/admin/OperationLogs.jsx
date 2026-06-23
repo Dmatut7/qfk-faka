@@ -38,7 +38,7 @@ export default function OperationLogs({ api }) {
       return <Pill tone={a.tone}>{a.label}</Pill>;
     } },
     { key: 'message', title: '说明', render: (r) => <span style={{ fontSize: 13 }}>{r.message}</span> },
-    { key: 'actor', title: '操作员', width: 90, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>管理员#{ctxOf(r).actor_id ?? '—'}</span> },
+    { key: 'actor', title: '操作员', width: 90, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>管理员#{ctxOf(r).actor_id ?? '—'}</span> },
     { key: 'create_time', title: '时间', width: 170, render: (r) => <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.create_time || '—'}</span> },
   ];
 
