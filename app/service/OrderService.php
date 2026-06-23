@@ -7,6 +7,7 @@ use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
 use app\model\Merchant;
+use app\model\MerchantFundLog;
 use app\model\Order;
 use app\model\Product;
 use app\util\Money;
@@ -315,6 +316,15 @@ class OrderService
                 }
                 if ($status !== Order::STATUS_PAID && $status !== Order::STATUS_EXCEPTION) {
                     throw new BizException(Code::STATE_INVALID, '仅已支付/异常订单可补发');
+                }
+                // B3:区分异常子类型。card_shortage(已结算,商户已收款)可补发;
+                // closed_then_paid(过期后付款、未结算,货款在平台待退买家)不可补发——
+                // 否则商户白送货、买家货款挂账。这类单须改为退款处理(平台经网关退款给买家)。
+                if ($status === Order::STATUS_EXCEPTION) {
+                    $settled = MerchantFundLog::where('order_id', $orderId)->where('type', MerchantFundLog::TYPE_INCOME)->count() > 0;
+                    if (!$settled) {
+                        throw new BizException(Code::STATE_INVALID, '该异常订单为过期后付款、未结算,不可补发,请改为退款处理');
+                    }
                 }
 
                 // 非码池类(知识/资源)无卡库存:补发=按内容发货(delivered_content=商品 delivery_message),

@@ -6,6 +6,7 @@ namespace tests\Feature;
 use app\common\Code;
 use app\model\Card;
 use app\model\Merchant;
+use app\model\MerchantFundLog;
 use app\model\Order;
 use app\model\Product;
 use app\service\OrderService;
@@ -118,6 +119,8 @@ class MerchantOrderTest extends TestCase
         $one = Card::where('order_id', $order->id)->where('status', Card::STATUS_LOCKED)->find();
         Db::name('cards')->where('id', $one->id)->update(['status' => Card::STATUS_UNSOLD, 'order_id' => null]);
         Db::name('orders')->where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+        // card_shortage 异常单是已结算的(doSettle 已入账);补结算流水使其忠实于真实态(B3 允许已结算异常单补发)
+        MerchantFundLog::create(['merchant_id' => $m->id, 'type' => MerchantFundLog::TYPE_INCOME, 'amount' => '20.00', 'balance_after' => '20.00', 'order_id' => $order->id, 'remark' => 'x']);
         // 商户补一张新卡
         $s = 'NEW-' . uniqid();
         Card::create(['merchant_id' => $m->id, 'product_id' => $p->id, 'secret' => $s, 'secret_hash' => Card::hashSecret($s)]);

@@ -84,8 +84,7 @@ class GoodsTypeOrderTest extends TestCase
 
     public function testManualDeliverNonCardOrderUsesContentNotCardPool(): void
     {
-        // 知识/资源类异常单(如延迟回调 closed_then_paid)补发应按内容发货,
-        // 而非误走发卡路径在空卡池上报"库存不足"导致永远无法补发。
+        // 已结算的非码池异常单补发应按内容发货,而非误走发卡路径在空卡池上报"库存不足"。
         $content = '课程地址 https://x/learn 提取码 6666';
         $p = Product::create([
             'merchant_id' => $this->m->id, 'title' => '课', 'price' => '10.00',
@@ -94,6 +93,8 @@ class GoodsTypeOrderTest extends TestCase
         ]);
         $order = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
         Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+        // 模拟已结算(商户已入账)→ B3 允许补发(仅拦未结算的 closed_then_paid)
+        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_INCOME, 'amount' => '10.00', 'balance_after' => '10.00', 'order_id' => $order->id, 'remark' => 'x']);
 
         (new OrderService())->deliverManually((int) $order->id);
 
@@ -101,6 +102,26 @@ class GoodsTypeOrderTest extends TestCase
         $this->assertSame(Order::STATUS_DELIVERED, (int) $fresh->status);
         $this->assertSame($content, $fresh->delivered_content);
         $this->assertSame(0, Card::where('order_id', $order->id)->count());
+    }
+
+    /** B3:closed_then_paid 异常单(过期后付款、未结算)不可补发——防商户白送货,须改退款。 */
+    public function testManualDeliverRejectedForUnsettledExceptionOrder(): void
+    {
+        $p = Product::create([
+            'merchant_id' => $this->m->id, 'title' => '课', 'price' => '10.00',
+            'status' => Product::STATUS_ON, 'goods_type' => Product::GOODS_TYPE_KNOWLEDGE,
+            'delivery_message' => 'x', 'stock' => 0,
+        ]);
+        $order = (new OrderService())->create(['product_id' => $p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        // 异常但无结算流水 = closed_then_paid(未结算)
+        Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+        try {
+            (new OrderService())->deliverManually((int) $order->id);
+            $this->fail('未结算异常单不可补发');
+        } catch (\app\common\BizException $e) {
+            $this->assertSame(\app\common\Code::STATE_INVALID, $e->getBizCode());
+        }
+        $this->assertSame(Order::STATUS_EXCEPTION, (int) Order::find($order->id)->status);
     }
 
     public function testNonCardCallbackDeliversDeliveryMessageAndSettles(): void
