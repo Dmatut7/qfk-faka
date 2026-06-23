@@ -5,6 +5,7 @@ namespace tests\Feature;
 
 use app\common\BizException;
 use app\model\Card;
+use app\model\Coupon;
 use app\model\Order;
 use app\model\Product;
 use app\service\OrderService;
@@ -45,6 +46,7 @@ class OrderConcurrencyTest extends TestCase
             $pids = Product::where('merchant_id', $this->merchantId)->column('id');
             Db::name('cards')->where('merchant_id', $this->merchantId)->delete();
             Db::name('orders')->where('merchant_id', $this->merchantId)->delete();
+            Db::name('coupons')->where('merchant_id', $this->merchantId)->delete();
             if ($pids) {
                 Db::name('products')->whereIn('id', $pids)->delete();
             }
@@ -76,7 +78,7 @@ class OrderConcurrencyTest extends TestCase
     /**
      * 并发跑一轮:$n 个买家各买 $qty 张,返回 ['ok'=>int, 'fail'=>int, 'cardIds'=>[], 'orderIds'=>[]]。
      */
-    private function race(int $productId, int $n, int $qty): array
+    private function race(int $productId, int $n, int $qty, string $couponCode = ''): array
     {
         $startAt = microtime(true) + 0.10; // 起跑栅栏
         $pids = [];
@@ -103,7 +105,9 @@ class OrderConcurrencyTest extends TestCase
                 }
                 $out = 'ERR';
                 try {
-                    $order = (new OrderService())->create(['product_id' => $productId, 'quantity' => $qty, 'buyer_email' => 'c@x.com']);
+                    $payload = ['product_id' => $productId, 'quantity' => $qty, 'buyer_email' => 'c@x.com'];
+                    if ($couponCode !== '') { $payload['coupon_code'] = $couponCode; }
+                    $order = (new OrderService())->create($payload);
                     $cardIds = Card::where('order_id', $order->id)->column('id');
                     $out = 'OK ' . $order->id . ' ' . implode(',', $cardIds);
                 } catch (BizException $e) {
@@ -188,6 +192,34 @@ class OrderConcurrencyTest extends TestCase
             $this->assertSame(1, Card::where('product_id', $p->id)->where('status', Card::STATUS_UNSOLD)->count());
             $this->assertSame(4, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count());
             $this->assertSame(1, (int) Product::where('id', $p->id)->value('stock'));
+        }
+    }
+
+    /** B2 真并发:8 进程抢同一张 total=1 限量券,恰好 1 单占额成功,其余拒单;used 绝不被顶破。 */
+    public function testCouponHardLimitUnderConcurrency(): void
+    {
+        $rounds = 10;
+        $n = 8;      // 8 个并发买家
+        $cards = 8;  // 卡充足(限制因素是券,不是卡)
+
+        for ($r = 0; $r < $rounds; $r++) {
+            $p = $this->freshProductWithCards($cards);
+            $code = 'CONC' . $r . '_' . substr(uniqid(), -5);
+            Coupon::create([
+                'merchant_id' => $this->merchantId, 'code' => $code, 'type' => Coupon::TYPE_AMOUNT,
+                'value' => '0.50', 'min_amount' => '0.00', 'total' => 1, 'used' => 0, 'status' => Coupon::STATUS_ON,
+            ]);
+
+            $res = $this->race((int) $p->id, $n, 1, $code);
+
+            // 券 total=1 → 恰好 1 单占额成功,其余因"优惠券已领完"拒单
+            $this->assertSame(1, $res['ok'], "第 $r 轮:券限量1应恰好1单成功");
+            $this->assertSame($n - 1, $res['fail'], "第 $r 轮:其余应被券领完拒单");
+            // used 精确为 1,绝不被并发顶破
+            $this->assertSame(1, (int) Coupon::where('code', $code)->value('used'), "第 $r 轮:used 不得超 total");
+            // 失败单不得泄漏占用卡(只有成功那 1 单锁 1 张,其余卡释放)
+            $this->assertSame(1, Card::where('product_id', $p->id)->where('status', Card::STATUS_LOCKED)->count(), "第 $r 轮:失败单泄漏了卡");
+            $this->assertSame($cards - 1, Card::where('product_id', $p->id)->where('status', Card::STATUS_UNSOLD)->count());
         }
     }
 
