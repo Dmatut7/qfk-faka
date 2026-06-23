@@ -7,7 +7,7 @@
 
 ## 0. 现状与定调(已知,勿重复确认)
 
-- **设计系统唯一来源**:`/Users/a1/Desktop/qfk/frontend/design-system/`(已是橙色版,readme.md 为权威风格规范)。
+- **设计系统唯一来源**:`frontend/design-system/`(已是橙色版,readme.md 为权威风格规范)。
 - **主色**:淘宝橙 `--brand #FF5000`;价格大红 `--price-accent #FA2C19`;语义 绿=有货/已付、琥珀=待支付、红=缺货/失败、teal=担保/加密。**禁止蓝/靛/紫当主色或强调。**
 - **App 如何取色**:`frontend/app/src/main.jsx` 与 `console/main.jsx` 各 `import '../../design-system/styles.css'`;颜色全走 CSS 变量。**改 token 即全站变色**(已生效)。部分屏直接 import 了 design-system 的 `.jsx` 组件(Button/Input/PriceTag/CardKey/CheckoutSteps 等),橙色版 API 兼容(构建已验证)。
 - **店铺主题**:`frontend/app/src/themes.js` 预设按 key 与后端 `Merchant::THEMES` 对齐;默认已设 `淘宝橙 #FF5000`。其余预设(emerald/rose/sky/violet…)是商户可选换肤,**保留**。

@@ -28,7 +28,7 @@ mysql -uroot -e "CREATE DATABASE qfk CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 # 3. 配置环境(已提供 .env 示例;生产请覆盖)
 #    .env        → 开发库 qfk(本机经 unix socket 连接)
 #    .env.testing→ 测试库 qfk_test(测试自动使用,有库名护栏)
-cp .example.env .env   # 按需修改
+cp .env.example .env   # 按需修改
 
 # 4. 执行迁移建表
 php think migrate:run
