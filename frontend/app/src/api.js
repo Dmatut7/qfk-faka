@@ -117,9 +117,9 @@ export const api = {
   /** 申请平台介入 */
   escalateComplaint: ({ id, orderNo, email }) =>
     call(`/buyer/complaint/${encodeURIComponent(id)}/escalate`, { method: 'POST', body: { order_no: orderNo, email } }),
-  /** 发起支付:返回 { payment_no, pay:{ method,url,params{...,sign} } } */
-  pay: (orderNo, channel = PAY_CHANNEL) =>
-    call(`/buyer/order/${encodeURIComponent(orderNo)}/pay`, { method: 'POST', body: { channel } }),
+  /** 发起支付:返回 { payment_no, pay:{ method,url,params{...,sign} } }。return_url 用于网关付款后跳回 */
+  pay: (orderNo, channel = PAY_CHANNEL, returnUrl = '') =>
+    call(`/buyer/order/${encodeURIComponent(orderNo)}/pay`, { method: 'POST', body: { channel, return_url: returnUrl } }),
   /** 查单/取卡:返回订单 +(仅 status=2)cards[];凭证二选一:email 或 password */
   queryOrder: ({ orderNo, email, password }) =>
     call('/buyer/order/query', {

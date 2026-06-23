@@ -36,8 +36,6 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   const [phase, setPhase] = React.useState(PHASE.IDLE);
   const [err, setErr] = React.useState('');            // ApiError.message
   const [waitMsg, setWaitMsg] = React.useState('');    // 等待态副提示(轮询 onTick)
-  // 二维码刷新:递增 key 让占位二维码重绘(本地演示无真实二维码图,仅作可视刷新反馈)
-  const [qrKey, setQrKey] = React.useState(0);
 
   // 倒计时:用 order.expireAt 算剩余秒
   const expireTs = React.useMemo(() => parseBackendTime(order.expireAt), [order.expireAt]);
@@ -74,8 +72,10 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
     setPhase(PHASE.WAITING);
     setWaitMsg('正在创建支付…');
     try {
-      // 渠道恒为 epay(api.pay 内部默认 PAY_CHANNEL),聚合支付,不区分钱包
-      const { pay } = await api.pay(order.orderNo);
+      // 渠道恒为 epay(api.pay 内部默认 PAY_CHANNEL),聚合收银台内选微信/支付宝。
+      // return_url 让网关付款后把买家跳回本页(异步发货仍由 notify 回调驱动)。
+      const returnUrl = (typeof window !== 'undefined' && window.location) ? window.location.href : '';
+      const { pay } = await api.pay(order.orderNo, undefined, returnUrl);
       // 跳转支付网关:携带后端签好的完整参数(GET 拼 query / POST 自动提交表单)。
       // 新开页去网关付款,本页轮询订单状态——发货由网关异步回调(notify)驱动。
       try {
@@ -184,12 +184,11 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
     }
   };
 
-  // 二维码刷新:仅清空 idle 阶段的发起失败错误并重绘占位二维码,不动状态机。
-  // 已进入异步流程(paying / 终态)时不允许刷新,避免与轮询/已支付状态冲突。
+  // 重新发起支付:仅清空 idle 阶段的发起失败/过期错误,不动状态机。
+  // 已进入异步流程(paying / 终态)时不允许,避免与轮询/已支付状态冲突。
   const handleRefreshQr = () => {
     if (paying || phase !== PHASE.IDLE) return;
     setErr('');
-    setQrKey((k) => k + 1);
   };
 
   const inWaiting = phase === PHASE.WAITING;
@@ -305,66 +304,27 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
         </div>
       )}
 
-      {/* 前往支付说明区:实际为跳转聚合收银台(window.open),非本地可扫码,故诚实表述(过期后由后端 4003 兜底) */}
-      {phase === PHASE.IDLE && (
-        <div style={{ marginTop: 18 }}>
-          <div style={sectionLabel}>前往支付</div>
-          <div style={{ ...card, padding: 18, display: 'flex', gap: 16, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 'none' }}>
-              <div key={qrKey} style={{
-                width: 128, height: 128, borderRadius: 'var(--radius-md)',
-                border: '1.5px solid var(--border)', background: 'var(--brand-soft)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                filter: expired ? 'grayscale(1)' : 'none', opacity: expired ? 0.45 : 1,
-              }}>
-                <Icons.Lock size={64} color="var(--brand, #FF5000)" />
-              </div>
-              {expired && (
-                <button
-                  type="button"
-                  onClick={handleRefreshQr}
-                  style={{
-                    position: 'absolute', inset: 0, borderRadius: 'var(--radius-md)',
-                    background: 'rgba(255,255,255,0.86)', border: 'none', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: 6, color: 'var(--brand-active)', fontSize: 12.5, fontWeight: 700,
-                  }}
-                >
-                  <Icons.RefreshCw size={22} color="var(--brand, #FF5000)" />
-                  支付链接已过期 · 点击刷新
-                </button>
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text-strong)' }}>前往收银台支付</div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-                聚合收银台 · 支持微信 / 支付宝 · 付款后自动发货。点击下方按钮前往收银台完成支付,新窗口可能被浏览器拦截,请允许弹窗。
-              </div>
-              {expired ? (
-                <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={16} />}
-                  onClick={handleRefreshQr} style={{ marginTop: 12 }}>刷新支付链接</Button>
-              ) : (
-                <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'var(--secure-fg)' }}>
-                  <Icons.Check size={15} color="var(--secure-solid)" />点击下方按钮前往收银台完成支付
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 支付方式:聚合支付单入口(后端仅 epay,不让用户选具体钱包,固定选中) */}
+      {/* 支付方式:易支付聚合收银台(submit.php 跳转,网关页内选微信/支付宝)。
+          采用页面跳转模式,故本端不自渲染二维码——诚实呈现「去收银台」入口。 */}
       {phase === PHASE.IDLE && (
         <div style={{ marginTop: 18 }} role="radiogroup" aria-label="支付方式">
           <div style={sectionLabel}>支付方式</div>
           <PaymentOption
-            name="聚合收银台"
-            desc="支持微信 / 支付宝 · 即时到账 · 付款后自动发货"
+            name="聚合收银台 · 微信 / 支付宝"
+            desc="点击下方「去支付」前往收银台,选择微信或支付宝完成付款 · 付款后自动发货"
             tag="推荐"
             icon={<Icons.Lock size={22} color="var(--brand-active)" />}
             selected
             onSelect={() => {}}
           />
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <Icons.Check size={14} color="var(--secure-solid)" style={{ flex: 'none', marginTop: 2 }} />
+            <span>收银台在新窗口打开,若被浏览器拦截请允许弹窗;付款后本页自动确认并发货。</span>
+          </div>
+          {expired && (
+            <Button variant="secondary" size="sm" iconLeft={<Icons.RefreshCw size={16} />}
+              onClick={handleRefreshQr} style={{ marginTop: 12 }}>重新发起支付</Button>
+          )}
         </div>
       )}
 
