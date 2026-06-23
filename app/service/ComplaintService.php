@@ -61,15 +61,18 @@ class ComplaintService
     public function escalate(string $orderNo, string $email, int $id): Complaint
     {
         $order = $this->verifyOrder($orderNo, $email);
-        $c = Complaint::where('id', $id)->where('order_id', $order->id)->find();
-        if (!$c) {
-            throw new BizException(Code::NOT_FOUND, '投诉不存在');
-        }
-        if (!in_array((int) $c->status, [Complaint::STATUS_OPEN, Complaint::STATUS_REPLIED], true)) {
-            throw new BizException(Code::STATE_INVALID, '当前状态不可申请介入');
-        }
-        $c->save(['status' => Complaint::STATUS_INTERVENE]);
-        return $c;
+        // L29 并发安全:事务 + 行锁内重查状态再写,统一状态机入口口径(同 adminResolve)
+        return Db::transaction(function () use ($order, $id) {
+            $c = Complaint::where('id', $id)->where('order_id', $order->id)->lock(true)->find();
+            if (!$c) {
+                throw new BizException(Code::NOT_FOUND, '投诉不存在');
+            }
+            if (!in_array((int) $c->status, [Complaint::STATUS_OPEN, Complaint::STATUS_REPLIED], true)) {
+                throw new BizException(Code::STATE_INVALID, '当前状态不可申请介入');
+            }
+            $c->save(['status' => Complaint::STATUS_INTERVENE]);
+            return $c;
+        });
     }
 
     // ===== 商户 =====
@@ -141,7 +144,7 @@ class ComplaintService
     public function adminResolve(int $id, string $remark, bool $refund): Complaint
     {
         return Db::transaction(function () use ($id, $remark, $refund) {
-            $c = $this->activeById($id);
+            $c = $this->activeById($id, true);
             $refunded = (int) $c->refunded;
 
             if ($refund) {
@@ -168,21 +171,23 @@ class ComplaintService
     /** 平台裁决-驳回 */
     public function adminReject(int $id, string $remark): Complaint
     {
-        $c = $this->activeById($id);
-        $c->save(['status' => Complaint::STATUS_REJECTED, 'admin_remark' => trim($remark)]);
-        return $c;
+        // L29 并发安全:事务 + 行锁内重查 isActive 再写,防与 resolve/重复 reject 竞态
+        return Db::transaction(function () use ($id, $remark) {
+            $c = $this->activeById($id, true);
+            $c->save(['status' => Complaint::STATUS_REJECTED, 'admin_remark' => trim($remark)]);
+            return $c;
+        });
     }
 
     // ===== 内部 =====
 
     private function verifyOrder(string $orderNo, string $email): Order
     {
+        // L28 防订单枚举:订单不存在 与 邮箱不匹配 必须返回**完全相同**的错误,
+        // 否则攻击者可凭错误码差异判定某 order_no 是否存在。
         $order = Order::where('order_no', trim($orderNo))->find();
-        if (!$order) {
-            throw new BizException(Code::ORDER_NOT_FOUND, '订单不存在');
-        }
-        if (strcasecmp((string) $order->buyer_email, trim($email)) !== 0) {
-            throw new BizException(Code::FORBIDDEN, '邮箱与订单不匹配');
+        if (!$order || strcasecmp((string) $order->buyer_email, trim($email)) !== 0) {
+            throw new BizException(Code::FORBIDDEN, '订单不存在或邮箱与订单不匹配');
         }
         return $order;
     }
@@ -202,9 +207,13 @@ class ComplaintService
         return $c;
     }
 
-    private function activeById(int $id): Complaint
+    private function activeById(int $id, bool $lock = false): Complaint
     {
-        $c = Complaint::find($id);
+        $query = Complaint::where('id', $id);
+        if ($lock) {
+            $query->lock(true); // 事务内行锁:重查状态防并发裁决竞态(L29)
+        }
+        $c = $query->find();
         if (!$c) {
             throw new BizException(Code::NOT_FOUND, '投诉不存在');
         }

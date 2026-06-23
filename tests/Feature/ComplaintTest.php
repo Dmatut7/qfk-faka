@@ -92,6 +92,21 @@ class ComplaintTest extends TestCase
         $this->assertSame(Code::FORBIDDEN, $r['code']);
     }
 
+    /** L28 防订单枚举:不存在的订单号 与 邮箱不匹配 必须返回完全相同的错误码,不可区分 */
+    public function testFileDoesNotLeakOrderExistence(): void
+    {
+        $order = $this->paidOrder();
+        // (a) 真实订单 + 错误邮箱
+        $wrongEmail = $this->callJson('POST', '/buyer/complaint', ['order_no' => $order->order_no, 'email' => 'attacker@x.com', 'type' => 4, 'description' => 'x']);
+        // (b) 完全不存在的订单号(同样的邮箱)
+        $noSuchOrder = $this->callJson('POST', '/buyer/complaint', ['order_no' => 'NO-SUCH-ORDER-XYZ', 'email' => 'attacker@x.com', 'type' => 4, 'description' => 'x']);
+
+        $this->assertSame(Code::FORBIDDEN, $wrongEmail['code']);
+        $this->assertSame(Code::FORBIDDEN, $noSuchOrder['code'], '订单不存在不得返回与邮箱不匹配不同的错误码(防枚举)');
+        $this->assertSame($wrongEmail['code'], $noSuchOrder['code'], '两种失败必须不可区分');
+        $this->assertSame($wrongEmail['msg'], $noSuchOrder['msg'], '两种失败的提示文案也必须一致');
+    }
+
     public function testCannotFileDuplicateActiveComplaint(): void
     {
         $order = $this->paidOrder();

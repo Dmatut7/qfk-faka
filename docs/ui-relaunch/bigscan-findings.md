@@ -200,13 +200,15 @@
 - 问题: 固定窗口限流为「读 Cache::get → 判断 → set/inc」非原子操作,存在 TOCTOU:高并发同一窗口内多个请求同时读到 count<limit 后各自放行,实际可超出阈值;且首请求 set 后由 inc 续增,inc 是否保留窗口 TTL 依赖缓存驱动(file 驱动 inc 为读改写,行为与注释假设的「保留剩余 TTL」未必一致,可能造成窗口被意外延长或计数漂移)。对登录/注册防爆破场景,阈值可被并发突破。
 - 修法: 用原子自增并在首次自增时设置 TTL(如 Redis INCR + 首次 EXPIRE,或 Lua/原子计数器),避免读改写竞态;确认所用缓存驱动 inc 的 TTL 语义。
 
-### [L28] {信息泄露} app/service/ComplaintService.php:171
+### [L28] {信息泄露} app/service/ComplaintService.php:171 — ✅ 已修(含测试)
 - 问题: verifyOrder 对「订单不存在」(Code::ORDER_NOT_FOUND,第172行)与「邮箱与订单不匹配」(Code::FORBIDDEN,第175行)返回可区分的错误,允许通过订单号枚举判断某订单号是否真实存在。订单号(app/util/OrderNo.php)由 YmdHis+PID+5位随机+自增序构成,随机段仅 5 位,在已知大致下单时间时存在被探测的可能。触发:攻击者用同一邮箱对一批猜测订单号调用买家投诉/查单接口,据错误码区分订单是否存在。
 - 修法: 订单不存在与邮箱不匹配统一返回同一模糊错误(如「订单不存在或邮箱不匹配」),避免存在性预言机。
+- ✅ 已修:verifyOrder 不存在/邮箱不匹配均返回 `FORBIDDEN`「订单不存在或邮箱与订单不匹配」,码与文案一致不可区分。测试 `ComplaintTest::testFileDoesNotLeakOrderExistence`。
 
-### [L29] {并发/事务} app/service/ComplaintService.php:54
+### [L29] {并发/事务} app/service/ComplaintService.php:54 — ✅ 已修
 - 问题: escalate() 在事务外、无行锁地读 status 再 save(第57-64行),两个并发请求可同时通过 OPEN/REPLIED 校验后都写 INTERVENE。状态机为幂等写(都置同一目标态)故危害很小,但与项目「状态变更入口加锁」的纪律不一致;同理 adminReject(第159行)也无事务/锁,而 adminResolve 已用 Db::transaction。
 - 修法: escalate/adminReject 改为 Db::transaction + lock(true) 重查状态后再写,统一状态机入口的并发安全口径。
+- ✅ 已修:escalate / adminReject 均包 `Db::transaction` + `lock(true)` 重查后再写;`activeById($id, $lock=true)` 锁内重查,顺带强化 adminResolve。
 
 ### [L30] {上传安全} app/service/UploadService.php:34
 - 问题: store() 仅按扩展名白名单(EXTS)与大小校验,未做真实内容/MIME 校验(如 getimagesize / finfo)。攻击者可上传内容非图片但扩展名为 .png 的文件(图片伪装/polyglot)。当前危害有限:svg 不在白名单、文件落 public/uploads 由静态服务直出不会被 PHP 执行,故主要是伪装文件占位与潜在客户端解析风险,而非 RCE。
