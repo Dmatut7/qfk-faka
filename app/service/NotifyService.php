@@ -6,7 +6,6 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
-use app\model\Coupon;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
 use app\model\Order;

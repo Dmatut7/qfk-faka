@@ -6,7 +6,6 @@ namespace app\service;
 use app\common\BizException;
 use app\common\Code;
 use app\model\Card;
-use app\model\Coupon;
 use app\model\Merchant;
 use app\model\MerchantFundLog;
 use app\model\Order;
@@ -15,9 +14,12 @@ use app\util\Money;
 use think\facade\Db;
 
 /**
- * 退款闭环:状态置退款 + 卡密回库 + 反向资金流水(精确依据该订单实际结算流水)+ 优惠券反核销。
+ * 退款闭环:状态置退款 + 卡密处理 + 反向资金流水(精确依据该订单实际结算流水)。
  * 仅对已收款订单(已支付/已发货/异常)可退;事务 + 行锁 + 状态重查保证幂等与并发安全。
- * 资金口径:已结算商户净额从余额冲回,平台佣金回冲;已提现导致余额转负则商户负欠(默认允许,不可提现)。
+ * 卡密:LOCKED(未交付)回库;SOLD(已交付)作废不回库(spec §10.5,防二次售卖)。
+ * 资金(B1 负欠隔离):已结算净额从「逻辑净头寸 balance-debt」冲回,平台佣金回冲;
+ *   若货款已被提现致冲回后为负,差额落入 merchants.debt(余额保底 0,有负欠则禁提现)。
+ * 优惠券(B2):券额下单即占用,退款**不返还**(已付款单永久占用,防退款循环套券)。
  */
 class RefundService
 {
