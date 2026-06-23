@@ -123,10 +123,18 @@ class NotifyService
                         // 并发回调已处理本单 → 幂等成功应答
                         return $this->ack($driver->successResponse(), false, Code::DUPLICATE_NOTIFY);
                     }
-                    // 交易号撞库但本单仍未入账(网关复用/错配 trade_no)→ 止重试并转人工核查
-                    $this->log('settle_exception', SystemLog::LEVEL_ERROR, '渠道交易号唯一冲突且本单未入账,止网关重试转人工', [
+                    // 交易号撞库但本单仍未入账 = 跨单 trade_no 冲突(该 trade_no 归属另一笔支付/订单,
+                    // 网关复用/错配)。本单支付未能记录,**必须置 EXCEPTION 待人工**:否则订单仍为
+                    // PENDING,会被 order:clean 当未支付单自动关单而静默丢单(买家可能已真实付款却无货无退)。
+                    // 仍成功应答止网关无限重投(唯一冲突是永久态,重试不会自愈)。
+                    if ($ord && $status === Order::STATUS_PENDING) {
+                        Db::name('orders')->where('id', $ord->id)->where('status', Order::STATUS_PENDING)
+                            ->update(['status' => Order::STATUS_EXCEPTION, 'update_time' => date('Y-m-d H:i:s')]);
+                    }
+                    $this->log('settle_exception', SystemLog::LEVEL_ERROR, '渠道交易号跨单唯一冲突,本单未入账已置异常待人工核查', [
                         'order_id'         => (int) $payment->order_id,
                         'channel_trade_no' => (string) $parsed['channel_trade_no'],
+                        'note'             => 'trade_no 归属另一笔支付,需人工确认本单是否真实付款',
                     ], $ord ? (string) $ord->order_no : null);
                     return $this->ack($driver->successResponse(), false, Code::ORDER_EXCEPTION);
                 }

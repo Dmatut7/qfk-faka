@@ -275,9 +275,10 @@ class PaymentNotifyTest extends TestCase
         // 核心:必须成功应答止重试,绝不能 fail(否则网关无限重投同一回调)
         $this->assertSame('success', $ack, '唯一约束冲突须成功应答止重试,而非 fail 致网关无限重投');
 
-        // 本单无法入账 → 不发货、卡仍锁定、余额零(绝不因撞库而误发/误结算)
-        $this->assertSame(Order::STATUS_PENDING, Order::find($this->order->id)->status);
+        // 跨单 trade_no 冲突:本单未入账 → 不发货、卡仍锁定、余额零(绝不因撞库而误发/误结算)
         $this->assertSame(2, Card::where('order_id', $this->order->id)->where('status', Card::STATUS_LOCKED)->count());
         $this->assertSame('0.00', Merchant::find($this->m->id)->balance);
+        // 且本单必须被置为「异常待人工」,绝不能停留 PENDING(否则会被 order:clean 静默自动关单丢单)
+        $this->assertSame(Order::STATUS_EXCEPTION, Order::find($this->order->id)->status, '跨单冲突单须转异常待人工,不得停留待支付被自动关单');
     }
 }
