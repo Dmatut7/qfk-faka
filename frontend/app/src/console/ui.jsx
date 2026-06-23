@@ -125,14 +125,33 @@ export function ErrorBar({ message, onRetry, onClose }) {
   );
 }
 
-/* 数据表:columns=[{key,title,render?,align?,width?}],rows=[...] */
+/* 数据表:columns=[{key,title,render?,align?,width?}],rows=[...]。
+   ≤640px 自动「行转卡片」:表头隐藏,每行变独立卡片,每格左为列名右为值,
+   不再横向滚动找金额/状态(对标移动端可读性)。 */
+const DT_CSS = `
+@media (max-width: 640px){
+  table.mk-dt{ display:block; width:100%; }
+  table.mk-dt thead{ display:none; }
+  table.mk-dt tbody{ display:block; width:100%; }
+  table.mk-dt tr{ display:block; border:1px solid var(--border) !important; border-radius:12px; margin-bottom:10px; background:#fff; overflow:hidden; }
+  table.mk-dt td{ display:flex !important; align-items:center; justify-content:space-between; gap:14px;
+    max-width:none !important; overflow:visible !important; text-overflow:clip !important; white-space:normal !important;
+    text-align:right !important; padding:9px 14px !important; border-bottom:1px solid var(--slate-100); min-height:40px; }
+  table.mk-dt tr td:last-child{ border-bottom:none; }
+  table.mk-dt td::before{ content:attr(data-label); flex:none; font-weight:700; font-size:12px; color:var(--text-muted); text-align:left; white-space:nowrap; }
+  table.mk-dt td[data-label=""]::before{ display:none; }
+}`;
+if (typeof document !== 'undefined' && !document.getElementById('mk-dt-css')) {
+  const s = document.createElement('style'); s.id = 'mk-dt-css'; s.textContent = DT_CSS; document.head.appendChild(s);
+}
+
 export function DataTable({ columns, rows, loading, error, onReload, rowKey = 'id', empty = '暂无数据', emptyIcon = 'Inbox' }) {
   if (loading) return <div style={{ padding: '40px 0', textAlign: 'center' }}><Spinner /></div>;
   if (error) return <ErrorBar message={error} onRetry={onReload} />;
   if (!rows || rows.length === 0) return <EmptyState icon={emptyIcon} text={empty} />;
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+      <table className="mk-dt" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
         <thead>
           <tr>
             {columns.map((c) => (
@@ -144,7 +163,7 @@ export function DataTable({ columns, rows, loading, error, onReload, rowKey = 'i
           {rows.map((r, i) => (
             <tr key={r[rowKey] ?? i} style={{ borderBottom: '1px solid var(--slate-100)' }}>
               {columns.map((c) => (
-                <td key={c.key} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle', ...(c.nowrap ? { whiteSpace: 'nowrap' } : { maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
+                <td key={c.key} data-label={c.title || ''} style={{ padding: '11px 12px', textAlign: c.align || 'left', color: 'var(--text-body)', verticalAlign: 'middle', ...(c.nowrap ? { whiteSpace: 'nowrap' } : { maxWidth: c.width || 280, overflow: 'hidden', textOverflow: 'ellipsis' }) }}>
                   {c.render ? c.render(r) : r[c.key]}
                 </td>
               ))}
