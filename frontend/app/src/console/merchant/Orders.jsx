@@ -138,6 +138,8 @@ export default function Orders({ api, session }) {
     {
       key: 'order_no',
       title: '订单号',
+      width: 172,
+      nowrap: true,
       render: (r) => (
         <span className="tnum" style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{r.order_no}</span>
       ),
@@ -145,9 +147,10 @@ export default function Orders({ api, session }) {
     {
       key: 'product_id',
       title: '商品',
+      width: 200,
       render: (r) => (
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: 'var(--text-strong)', fontWeight: 600 }}>
+          <div style={{ color: 'var(--text-strong)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {orderProductName(r)}{' '}
             <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>×{r.quantity}</span>
           </div>
@@ -184,7 +187,7 @@ export default function Orders({ api, session }) {
     {
       key: 'actions',
       title: '操作',
-      width: 220,
+      width: 248,
       align: 'right',
       render: (r) => (
         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

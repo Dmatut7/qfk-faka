@@ -257,7 +257,7 @@ export default function Products({ api, session }) {
     { key: 'sales_count', title: '已售', align: 'right', render: (r) => <span>{r.sales_count ?? 0}</span> },
     {
       key: 'buy', title: '限购', align: 'center', render: (r) => (
-        <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
           {(r.min_buy ?? 1)} ~ {Number(r.max_buy) > 0 ? r.max_buy : '不限'}
         </span>
       ),
