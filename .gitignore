@@ -18,3 +18,6 @@
 # 说明:.env.testing 故意纳入版本库(本地测试库配置,无敏感信息),便于测试可复现
 frontend/app/e2e/audit3/
 frontend/app/e2e/audit4/
+
+# 临时审计工作流脚本(scratch,可复跑不入库)
+.claude/wf-*.js
