@@ -61,7 +61,7 @@ class MerchantStatsService
     private function commission(int $merchantId, string $start, string $end): string
     {
         $q = MerchantFundLog::where('merchant_id', $merchantId)
-            ->where('type', MerchantFundLog::TYPE_COMMISSION);
+            ->whereIn('type', [MerchantFundLog::TYPE_COMMISSION, MerchantFundLog::TYPE_REFUND_COMMISSION]);
         if ($start !== '') {
             $q->where('create_time', '>=', $start);
         }

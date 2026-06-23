@@ -110,7 +110,7 @@ class AdminViewService
      */
     private function commissionTotal(string $start, string $end): string
     {
-        $q = MerchantFundLog::where('type', MerchantFundLog::TYPE_COMMISSION);
+        $q = MerchantFundLog::whereIn('type', [MerchantFundLog::TYPE_COMMISSION, MerchantFundLog::TYPE_REFUND_COMMISSION]);
         if ($start !== '') {
             $q->where('create_time', '>=', $start);
         }

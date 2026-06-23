@@ -11,6 +11,7 @@ const FUND_TYPE = {
   2: { label: '平台佣金', tone: 'neutral', icon: 'ShieldCheck' },
   3: { label: '提现', tone: 'pending', icon: 'Clock' },
   4: { label: '退款', tone: 'danger', icon: 'AlertTriangle' },
+  5: { label: '退款佣金回冲', tone: 'success', icon: 'ShieldCheck' },
 };
 
 // 提现状态(Withdrawal::STATUS_*)

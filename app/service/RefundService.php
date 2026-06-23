@@ -80,7 +80,7 @@ class RefundService
                     'remark' => '订单退款冲收入 ' . $order->order_no,
                 ]);
                 MerchantFundLog::create([
-                    'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_COMMISSION,
+                    'merchant_id' => $merchant->id, 'type' => MerchantFundLog::TYPE_REFUND_COMMISSION,
                     'amount' => Money::sub('0', $commSum), 'balance_after' => $afterCommReverse, 'order_id' => $order->id,
                     'remark' => '退款佣金回冲 ' . $order->order_no,
                 ]);

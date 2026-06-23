@@ -92,6 +92,19 @@ class RefundTest extends TestCase
         $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND)->count());
     }
 
+    /** M2:恢复的 uniq(order_id,type) 兜底——同一订单同类型流水至多一条(防重复结算入账)。 */
+    public function testFundLogUniqOrderTypeBackstop(): void
+    {
+        $order = $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_INCOME)->count());
+        // 再插一条同 (order_id, INCOME) → 唯一索引拒绝(结算幂等的 DB 级兜底)
+        $this->expectException(\think\db\exception\PDOException::class);
+        MerchantFundLog::create([
+            'merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_INCOME,
+            'amount' => '1.00', 'balance_after' => '1.00', 'order_id' => $order->id, 'remark' => 'dup',
+        ]);
+    }
+
     /** M5:未结算异常单(closed_then_paid)退款不应触碰商户资金(无 income 流水 → 不反向)。 */
     public function testRefundUnsettledExceptionDoesNotTouchBalance(): void
     {

@@ -11,6 +11,7 @@ use app\model\Payment;
 use app\model\PaymentChannel;
 use app\model\Product;
 use app\model\Withdrawal;
+use app\util\Money;
 use app\util\OrderNo;
 use tests\TestCase;
 
@@ -75,24 +76,30 @@ class PaymentTablesTest extends TestCase
         $this->assertTrue($found->isEnabled());
     }
 
-    public function testFundLogAllowsReversalEntries(): void
+    public function testFundLogReversalUsesDistinctTypesUnderUniq(): void
     {
         // 结算两条:订单收入 + 平台佣金
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_INCOME, 'amount' => '4.71', 'balance_after' => '4.71', 'order_id' => $this->o->id]);
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_COMMISSION, 'amount' => '-0.29', 'balance_after' => '4.71', 'order_id' => $this->o->id]);
-        // 无订单(提现)多条允许
+        // 无订单(提现)多条允许(NULL order_id 不受 uniq 约束)
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_WITHDRAW, 'amount' => '-1.00', 'balance_after' => '3.71']);
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_WITHDRAW, 'amount' => '-1.00', 'balance_after' => '2.71']);
 
-        // 退款反向流水:同订单需再记一条 COMMISSION(佣金回冲)+ 一条 REFUND。
-        // uniq(order_id,type) 已移除(幂等改由订单行锁+状态重查保证),故同订单同类型可再记。
-        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_COMMISSION, 'amount' => '0.29', 'balance_after' => '0.00', 'order_id' => $this->o->id]);
+        // 退款反向:佣金回冲用**独立** TYPE_REFUND_COMMISSION(与结算 COMMISSION 不同 type,
+        // 故 uniq(order_id,type) 不冲突,可与结算流水共存)+ 一条 TYPE_REFUND 冲收入。
+        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_REFUND_COMMISSION, 'amount' => '0.29', 'balance_after' => '0.00', 'order_id' => $this->o->id]);
         MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_REFUND, 'amount' => '-4.71', 'balance_after' => '-0.29', 'order_id' => $this->o->id]);
-
-        // 该订单两条 COMMISSION 净额为 0(结算 -0.29 + 退款回冲 +0.29)
-        $commLogs = MerchantFundLog::where('order_id', $this->o->id)->where('type', MerchantFundLog::TYPE_COMMISSION)->count();
-        $this->assertSame(2, $commLogs);
         $this->assertSame(6, MerchantFundLog::where('merchant_id', $this->m->id)->count());
+        // 该订单佣金净额 = COMMISSION(-0.29) + REFUND_COMMISSION(+0.29) = 0
+        $net = Money::add(
+            (string) MerchantFundLog::where('order_id', $this->o->id)->whereIn('type', [MerchantFundLog::TYPE_COMMISSION, MerchantFundLog::TYPE_REFUND_COMMISSION])->sum('amount'),
+            '0'
+        );
+        $this->assertSame('0.00', $net);
+
+        // 同订单同类型再插一条 → uniq(order_id,type) 拒绝(结算幂等 DB 级兜底)
+        $this->expectException(\think\db\exception\PDOException::class);
+        MerchantFundLog::create(['merchant_id' => $this->m->id, 'type' => MerchantFundLog::TYPE_COMMISSION, 'amount' => '-0.29', 'balance_after' => '0', 'order_id' => $this->o->id]);
     }
 
     public function testWithdrawalDefaults(): void

@@ -24,8 +24,9 @@ class MerchantFundLog extends Model
         'type'        => 'integer',
     ];
 
-    public const TYPE_INCOME     = 1; // 订单收入
-    public const TYPE_COMMISSION = 2; // 平台佣金
-    public const TYPE_WITHDRAW   = 3; // 提现
-    public const TYPE_REFUND     = 4; // 退款
+    public const TYPE_INCOME            = 1; // 订单收入
+    public const TYPE_COMMISSION        = 2; // 平台佣金(结算扣)
+    public const TYPE_WITHDRAW          = 3; // 提现
+    public const TYPE_REFUND            = 4; // 退款冲收入
+    public const TYPE_REFUND_COMMISSION = 5; // 退款佣金回冲(独立 type,使 uniq(order_id,type) 在 settle/refund 间不冲突)
 }
