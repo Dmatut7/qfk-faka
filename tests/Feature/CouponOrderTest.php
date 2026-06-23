@@ -86,25 +86,45 @@ class CouponOrderTest extends TestCase
         $this->assertSame('130.00', Money::add((string) $order->total_amount, '0')); // total=应付
         $this->assertSame((int) $c->id, (int) $order->coupon_id);
         $this->assertSame($c->code, $order->coupon_code);
-        // 下单尚未核销(核销在支付成功时)
-        $this->assertSame(0, (int) Coupon::find($c->id)->used);
+        // B2「下单即占额」:下单时即占用 1 张券额(支付成功结算不再二次自增)
+        $this->assertSame(1, (int) Coupon::find($c->id)->used);
+        $this->payNotify($order);
+        $this->assertSame(1, (int) Coupon::find($c->id)->used, '结算不再二次核销');
     }
 
-    /** 限量券(total=1)被两单同时下单(下单时均 used=0 通过),结算后 used 不得顶破 total。 */
-    public function testLimitedCouponNotOverRedeemed(): void
+    /** 限量券(total=1)真限量:第一单占额成功后,第二单下单即被拒(不再"先放行后封顶")。 */
+    public function testLimitedCouponHardLimitRejectsSecondOrder(): void
     {
         $c = $this->coupon(['code' => 'LIMIT1', 'total' => 1, 'min_amount' => '0.00', 'value' => '5.00']);
         $svc = new OrderService();
-        // 两单都在 used=0 时下单成功(findUsable 仅一次性 used<total 检查)
         $o1 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com', 'coupon_code' => $c->code]);
-        $o2 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com', 'coupon_code' => $c->code]);
         $this->assertSame((int) $c->id, (int) $o1->coupon_id);
+        $this->assertSame(1, (int) Coupon::find($c->id)->used, '第一单已占满 total=1');
+        // 第二单下单即被拒(券已领完),且 used 不被顶破
+        try {
+            $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com', 'coupon_code' => $c->code]);
+            $this->fail('限量券已领完,第二单应被拒');
+        } catch (BizException $e) {
+            $this->assertSame(Code::PARAM_ERROR, $e->getBizCode());
+        }
+        $this->assertSame(1, (int) Coupon::find($c->id)->used);
+    }
+
+    /** 未付款关单(超时回收)释放占用的券额,名额可再被他人使用。 */
+    public function testUnpaidCloseReleasesCouponSlot(): void
+    {
+        $c = $this->coupon(['code' => 'REL1', 'total' => 1, 'min_amount' => '0.00', 'value' => '5.00']);
+        $svc = new OrderService();
+        $o1 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'a@x.com', 'coupon_code' => $c->code]);
+        $this->assertSame(1, (int) Coupon::find($c->id)->used);
+        // 人为过期后回收 → 释放券额
+        Order::where('id', $o1->id)->update(['expire_at' => date('Y-m-d H:i:s', time() - 60)]);
+        $svc->reclaimExpired();
+        $this->assertSame(Order::STATUS_CLOSED, (int) Order::find($o1->id)->status);
+        $this->assertSame(0, (int) Coupon::find($c->id)->used, '关单释放券额');
+        // 名额已释放,新单可再用
+        $o2 = $svc->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com', 'coupon_code' => $c->code]);
         $this->assertSame((int) $c->id, (int) $o2->coupon_id);
-        // 两单都支付成功结算
-        $this->payNotify($o1);
-        $this->payNotify($o2);
-        // 核销计数被 total 封顶,不得为 2(否则限量形同虚设)
-        $this->assertSame(1, (int) Coupon::find($c->id)->used, 'used 不得超过 total');
     }
 
     public function testOrderWithoutCouponUnchanged(): void

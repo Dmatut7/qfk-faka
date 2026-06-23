@@ -166,14 +166,15 @@ class RefundTest extends TestCase
         $this->assertSame(0, Card::where('order_id', $order->id)->count());
     }
 
-    public function testRefundCouponOrderRestoresCouponUse(): void
+    /** B2 后:已付款订单退款**不返还**券额(券下单即占额,已付款单永久占用,防退款循环反复套同一限量券)。 */
+    public function testRefundDoesNotRestoreCouponUse(): void
     {
         $c = Coupon::create(['merchant_id' => $this->m->id, 'code' => 'R10', 'type' => Coupon::TYPE_AMOUNT, 'value' => '5.00', 'min_amount' => '0.00', 'total' => 10, 'used' => 0, 'status' => Coupon::STATUS_ON]);
         $order = $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 2, 'buyer_email' => 'b@x.com', 'coupon_code' => 'R10']); // 20-5=15
-        $this->assertSame(1, (int) Coupon::find($c->id)->used); // 已核销
+        $this->assertSame(1, (int) Coupon::find($c->id)->used); // 下单即占额
 
         (new RefundService())->refund((int) $order->id);
-        $this->assertSame(0, (int) Coupon::find($c->id)->used); // 反核销
+        $this->assertSame(1, (int) Coupon::find($c->id)->used, '已付款单退款不返还券额');
     }
 
     public function testCannotRefundPendingOrder(): void

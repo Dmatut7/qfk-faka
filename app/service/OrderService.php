@@ -141,6 +141,16 @@ class OrderService
             $discountLabel = $b['label'];
             $final         = Money::sub($original, $discount);
 
+            // 3.2) 限量券「下单即占额」(B2 真限量):原子条件自增,售罄(并发抢到最后一张后)立即拒单回滚。
+            //      占额在 closeAndRelease(未付款关单/超时回收)释放;已付款订单永久占用(退款不返还,防退款循环超发)。
+            if ($couponId) {
+                $occupied = Db::name('coupons')->where('id', $couponId)
+                    ->whereRaw('(total = 0 OR used < total)')->inc('used')->update();
+                if ($occupied < 1) {
+                    throw new BizException(Code::PARAM_ERROR, '优惠券已领完');
+                }
+            }
+
             // 4) 建订单
             $order = Order::create([
                 'order_no'      => OrderNo::generate(),
@@ -262,6 +272,12 @@ class OrderService
 
             if ($released > 0) {
                 Db::name('products')->where('id', $order->product_id)->inc('stock', $released)->update();
+            }
+
+            // B2:未付款关单 → 释放下单时占用的券额(floor 0)。已付款订单不经此路径,其占额永久消耗。
+            if ($order->coupon_id) {
+                Db::name('coupons')->where('id', $order->coupon_id)->where('used', '>', 0)
+                    ->dec('used')->update();
             }
 
             return true;

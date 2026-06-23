@@ -82,15 +82,8 @@ class RefundService
                     'amount' => Money::sub('0', $commSum), 'balance_after' => $afterCommReverse, 'order_id' => $order->id,
                     'remark' => '退款佣金回冲 ' . $order->order_no,
                 ]);
-
-                // 3) 优惠券反核销(券在结算时已核销;floor 0)
-                if ($order->coupon_id) {
-                    $coupon = Coupon::where('id', $order->coupon_id)->lock(true)->find();
-                    if ($coupon && (int) $coupon->used > 0) {
-                        Db::name('coupons')->where('id', $order->coupon_id)
-                            ->update(['used' => Db::raw('used - 1'), 'update_time' => $now]);
-                    }
-                }
+                // 注:B2「下单即占额」后,券额不在退款时返还——已付款订单永久占用其券额
+                // (防退款循环反复套同一限量券)。未付款关单的释放在 OrderService::closeAndRelease。
             }
 
             // 4) 订单置退款
