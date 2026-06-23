@@ -76,9 +76,32 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
     try {
       // 渠道恒为 epay(api.pay 内部默认 PAY_CHANNEL),聚合支付,不区分钱包
       const { pay } = await api.pay(order.orderNo);
-      // best-effort 打开模拟网关;本地演示无法真正回跳,故转入轮询发货
+      // 跳转支付网关:携带后端签好的完整参数(GET 拼 query / POST 自动提交表单)。
+      // 新开页去网关付款,本页轮询订单状态——发货由网关异步回调(notify)驱动。
       try {
-        if (pay && pay.url) window.open(pay.url, '_blank', 'noopener');
+        if (pay && pay.url) {
+          const method = String(pay.method || 'GET').toUpperCase();
+          const params = pay.params || {};
+          if (method === 'POST') {
+            const w = window.open('', '_blank');
+            if (w) {
+              const form = w.document.createElement('form');
+              form.method = 'POST';
+              form.action = pay.url;
+              Object.keys(params).forEach((k) => {
+                const input = w.document.createElement('input');
+                input.type = 'hidden'; input.name = k; input.value = String(params[k]);
+                form.appendChild(input);
+              });
+              w.document.body.appendChild(form);
+              form.submit();
+            }
+          } else {
+            const qs = new URLSearchParams(params).toString();
+            const url = pay.url + (qs ? (pay.url.includes('?') ? '&' : '?') + qs : '');
+            window.open(url, '_blank', 'noopener');
+          }
+        }
       } catch { /* 弹窗被拦截也无妨,继续轮询 */ }
       if (!aliveRef.current) return;
       setWaitMsg('等待支付确认,发货中…');
