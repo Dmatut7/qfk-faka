@@ -17,6 +17,13 @@ const KNOWN_KEYS = [
   'default_commission_rate',
   'withdraw_fee_rate',
   'registration_require_invite',
+  'notify_on_deliver',
+  'smtp_host',
+  'smtp_port',
+  'smtp_user',
+  'smtp_from',
+  'smtp_secure',
+  'smtp_pass_set',
 ];
 
 // 费率字段(金融高危):0~1 之间的小数。展示换算百分比、保存前严格校验。
@@ -38,7 +45,7 @@ function validateRate(raw) {
 
 // 单项「保存」行:回填现值,变更后调 api.setSetting(key,value)。
 // rate=true 时为费率字段:展示换算百分比并在保存前做 0~1 范围校验。
-function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api, rate, boolean }) {
+function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api, rate, boolean, password, isSet }) {
   const [value, setValue] = React.useState(initial != null ? String(initial) : '');
   const [saving, setSaving] = React.useState(false);
   const [err, setErr] = React.useState('');
@@ -123,7 +130,8 @@ function SettingRow({ settingKey, label, hint, initial, multiline, onSaved, api,
           <div style={{ flex: 1, minWidth: 0 }}>
             <Input
               value={value}
-              placeholder={hint}
+              type={password ? 'password' : undefined}
+              placeholder={password && isSet ? '已配置,留空表示不修改' : hint}
               onChange={(e) => {
                 setValue(e.target.value);
                 setOk(false);
@@ -373,6 +381,30 @@ export default function Settings({ api }) {
                 multiline
                 onSaved={reload}
               />
+            </section>
+
+            {/* 发货邮件通知 */}
+            <section>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icons.MessageCircle /> 发货邮件通知
+              </h3>
+              <SettingRow api={api} settingKey="notify_on_deliver" label="开启发货邮件" boolean
+                hint="开启后,订单发货成功自动给买家邮箱发送卡密 / 取卡通知(需配好下方 SMTP)"
+                initial={get('notify_on_deliver')} onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_host" label="SMTP 服务器"
+                hint="如 smtp.qq.com / smtp.exmail.qq.com" initial={get('smtp_host')} onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_port" label="SMTP 端口"
+                hint="465(SSL)或 587(STARTTLS)" initial={get('smtp_port')} onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_secure" label="加密方式"
+                hint="ssl(465)/ tls(587)/ none(25,不推荐)" initial={get('smtp_secure')} onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_user" label="SMTP 账号"
+                hint="邮箱登录名,常即发件邮箱" initial={get('smtp_user')} onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_pass" label="SMTP 密码 / 授权码" password
+                isSet={get('smtp_pass_set') === true}
+                hint="邮箱 SMTP 授权码(多数邮箱非登录密码);出于安全不回显,留空表示不修改"
+                onSaved={reload} />
+              <SettingRow api={api} settingKey="smtp_from" label="发件人地址"
+                hint="留空则用 SMTP 账号;如 noreply@yoursite.com" initial={get('smtp_from')} onSaved={reload} />
             </section>
           </div>
         )}

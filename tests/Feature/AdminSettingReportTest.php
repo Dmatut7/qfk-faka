@@ -96,6 +96,25 @@ class AdminSettingReportTest extends TestCase
         $this->assertSame('dark', $r['data']['items']['theme']);
     }
 
+    /** 安全:smtp_pass 敏感键不得明文下发,且留空保存=不修改(防泄漏/防误清) */
+    public function testSmtpPassMaskedAndKeptOnEmpty(): void
+    {
+        $this->callJson('POST', '/admin/settings', ['key' => 'smtp_pass', 'value' => 'topsecret'], $this->hdr());
+
+        // GET 脱敏:不回传明文,只给 *_set 标志
+        $items = $this->callJson('GET', '/admin/settings', [], $this->hdr())['data']['items'];
+        $this->assertArrayNotHasKey('smtp_pass', $items, 'smtp_pass 明文不得下发');
+        $this->assertTrue($items['smtp_pass_set'], '应给出已配置标志 smtp_pass_set');
+
+        $svc = new \app\service\SettingService();
+        // 留空保存 = 不修改(沿用原密钥)
+        $this->callJson('POST', '/admin/settings', ['key' => 'smtp_pass', 'value' => ''], $this->hdr());
+        $this->assertSame('topsecret', $svc->get('smtp_pass'), '留空保存不得清空已配置密钥');
+        // 传新值 = 更新
+        $this->callJson('POST', '/admin/settings', ['key' => 'smtp_pass', 'value' => 'newsecret'], $this->hdr());
+        $this->assertSame('newsecret', $svc->get('smtp_pass'));
+    }
+
     public function testSettingsRequireAdminAuth(): void
     {
         $this->assertSame(401, $this->call('GET', '/admin/settings')->getCode());
