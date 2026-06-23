@@ -48,10 +48,9 @@ class AdminWithdrawService
             $pendingWhere['merchant_id'] = (int) $filter['merchant_id'];
         }
         $pendingCount  = Withdrawal::where($pendingWhere)->count();
-        $pendingAmount = '0.00';
-        foreach (Withdrawal::where($pendingWhere)->column('amount') as $amt) {
-            $pendingAmount = Money::add($pendingAmount, (string) $amt);
-        }
+        // 金额合计下推 SQL SUM(DECIMAL 聚合精确无浮点误差),再 Money 规整两位小数;
+        // 免去把全部待审单 amount 列回传 PHP 再逐行 bcadd(待审堆积时的全量内存/循环)。
+        $pendingAmount = Money::add((string) Withdrawal::where($pendingWhere)->sum('amount'), '0');
 
         return [
             'total'           => $total,

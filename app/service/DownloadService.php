@@ -23,9 +23,13 @@ class DownloadService
         if ($k !== '') {
             return $k;
         }
-        // 回退:用应用配置或固定盐(生产应在 .env 配 DOWNLOAD_SECRET)
         $appKey = (string) config('app.app_key');
-        return $appKey !== '' ? $appKey : 'qfk_download_salt_v1';
+        if ($appKey !== '') {
+            return $appKey;
+        }
+        // 不再回退到硬编码盐(否则任何人可伪造下载签名绕过防盗链)。
+        // 必须配置 DOWNLOAD_SECRET(环境变量)或 app_key,否则拒绝签发。
+        throw new \RuntimeException('未配置下载签名密钥:请设置环境变量 DOWNLOAD_SECRET 或 app.app_key');
     }
 
     private function sign(string $orderNo, int $expires): string

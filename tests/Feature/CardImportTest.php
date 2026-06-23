@@ -36,6 +36,20 @@ class CardImportTest extends TestCase
         $this->assertSame(3, Product::find($this->p->id)->stock);
     }
 
+    /** H4:单次导入超过行数硬上限(10000)被拒,防无界导入撑爆内存/INSERT。 */
+    public function testImportRowLimitEnforced(): void
+    {
+        $raw = implode("\n", array_map(static fn ($i) => 'K' . $i, range(1, 10001)));
+        try {
+            $this->svc->import((int) $this->m->id, (int) $this->p->id, $raw);
+            $this->fail('超过导入上限应被拒');
+        } catch (\app\common\BizException $e) {
+            $this->assertSame(\app\common\Code::PARAM_ERROR, $e->getBizCode());
+        }
+        // 拒绝时不应写入任何卡
+        $this->assertSame(0, Card::where('product_id', $this->p->id)->count());
+    }
+
     public function testInternalDuplicatesSkipped(): void
     {
         $r = $this->svc->import((int) $this->m->id, (int) $this->p->id, "AAA\nAAA\nBBB");

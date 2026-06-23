@@ -18,6 +18,9 @@ use think\facade\Console;
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// 测试环境提供下载签名密钥(生产读真实环境变量;DownloadService 不再回退硬编码盐)
+putenv('DOWNLOAD_SECRET=test_download_secret_for_phpunit');
+
 $app = new App();
 $app->setEnvName('testing');
 $app->initialize();

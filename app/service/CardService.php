@@ -17,6 +17,9 @@ use think\facade\Db;
  */
 class CardService
 {
+    /** 单次导入行数硬上限(防无界导入撑爆内存/单条 INSERT 触达 max_allowed_packet) */
+    private const MAX_IMPORT = 10000;
+
     /**
      * 批量导入卡密(文本按行)。返回 {imported, duplicated, empty, total, stock}。
      *
@@ -30,6 +33,9 @@ class CardService
 
         $lines = preg_split('/\r\n|\r|\n/', $raw) ?: [];
         $total = count($lines);
+        if ($total > self::MAX_IMPORT) {
+            throw new BizException(Code::PARAM_ERROR, '单次导入不超过 ' . self::MAX_IMPORT . ' 行,请分批导入');
+        }
 
         $empty       = 0;
         $internalDup = 0;
