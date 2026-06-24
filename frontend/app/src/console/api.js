@@ -104,6 +104,7 @@ export const merchantApi = {
   me: () => call('/merchant/me'),
   logout: () => call('/merchant/logout', { method: 'POST' }),
   changePassword: (old_password, new_password) => call('/merchant/change-password', { method: 'POST', body: { old_password, new_password } }),
+  generateApiCredentials: () => call('/merchant/api-credentials', { method: 'POST' }),
 
   shop: () => call('/merchant/shop'),
   updateShop: (d) => call('/merchant/shop', { method: 'POST', body: d }),

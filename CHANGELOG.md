@@ -2,6 +2,11 @@
 
 本项目版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。每个版本对应一个 git tag 与 GitHub Release。
 
+## [未发布]
+
+### 新增
+- **商户开放 API**:接通预留的 `api_key`/`api_secret`。商户后台「开放 API」可生成/重置签名凭据;`POST /api/products`、`POST /api/order/query` 供商户系统程序化拉取本店商品/库存与订单(签名 = `HMAC-SHA256(键名升序的 k=v 串, api_secret)`,`timestamp` ±300s 防重放,仅本商户数据)。
+
 ## [v1.1.1] — 安全补丁
 
 > ⚠ 使用 v1.1 的部署**强烈建议升级到本版**。

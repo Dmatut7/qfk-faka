@@ -28,6 +28,7 @@ const MERCHANT_NAV = [
   ] },
   { group: '店铺', items: [
     { key: 'm-shop', label: '店铺装修', icon: 'ShieldCheck' },
+    { key: 'm-api', label: '开放 API', icon: 'Lock' },
   ] },
 ];
 const ADMIN_NAV = [

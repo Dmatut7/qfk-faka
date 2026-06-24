@@ -9,6 +9,7 @@ import MerchantCoupons from './merchant/Coupons.jsx';
 import MerchantPromotions from './merchant/Promotions.jsx';
 import MerchantComplaints from './merchant/Complaints.jsx';
 import MerchantWallet from './merchant/Wallet.jsx';
+import MerchantApiAccess from './merchant/ApiAccess.jsx';
 
 import AdminDashboard from './admin/Dashboard.jsx';
 import AdminMerchants from './admin/Merchants.jsx';
@@ -41,6 +42,7 @@ export const SCREENS = {
   'm-coupons': MerchantCoupons,
   'm-promotions': MerchantPromotions,
   'm-wallet': MerchantWallet,
+  'm-api': MerchantApiAccess,
   // 平台后台
   'a-dashboard': AdminDashboard,
   'a-bigscreen': AdminBigScreen,
