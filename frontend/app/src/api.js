@@ -42,12 +42,24 @@ export class ApiError extends Error {
   }
 }
 
-async function call(path, { method = 'GET', body } = {}) {
+/* 买家登录令牌(可选账号):持久化到 localStorage,authed 请求带 Authorization 头 */
+let _buyerToken = '';
+try { _buyerToken = (typeof localStorage !== 'undefined' && localStorage.getItem('qfk_buyer_token')) || ''; } catch { /* SSR/隐私模式 */ }
+export function setBuyerToken(t) {
+  _buyerToken = t || '';
+  try { t ? localStorage.setItem('qfk_buyer_token', t) : localStorage.removeItem('qfk_buyer_token'); } catch { /* ignore */ }
+}
+export function getBuyerToken() { return _buyerToken; }
+
+async function call(path, { method = 'GET', body, auth = false } = {}) {
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/x-www-form-urlencoded';
+  if (auth && _buyerToken) headers['Authorization'] = 'Bearer ' + _buyerToken;
   let res;
   try {
     res = await fetch(BASE + path, {
       method,
-      headers: body ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {},
+      headers,
       body: body ? new URLSearchParams(body).toString() : undefined,
     });
   } catch {
@@ -134,6 +146,19 @@ export const api = {
    *  { site:{title,name}, kefu:{qq,wechat,mobile,qrcode}, order_query_tips }
    *  缺省键返回空串。 */
   config: () => call('/config'),
+
+  /* ===== 买家账号(可选;游客仍可下单/查单) ===== */
+  /** 注册:返回 { token, buyer:{id,email,...} } */
+  buyerRegister: ({ email, password, contact }) =>
+    call('/buyer/register', { method: 'POST', body: { email, password, ...(contact ? { contact } : {}) } }),
+  /** 登录:返回 { token, buyer } */
+  buyerLogin: ({ email, password }) =>
+    call('/buyer/login', { method: 'POST', body: { email, password } }),
+  /** 我的信息(需登录):{ buyer } */
+  buyerMe: () => call('/buyer/account/me', { auth: true }),
+  /** 我的订单(需登录,按邮箱关联):{ total, page, items[] } */
+  buyerOrders: ({ page = 1, size = 20 } = {}) =>
+    call(`/buyer/account/orders?page=${page}&size=${size}`, { auth: true }),
 };
 
 /* ------------------------------------------------------------

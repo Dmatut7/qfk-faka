@@ -4,6 +4,7 @@ import StorefrontHome from './screens/StorefrontHome.jsx';
 import ProductDetail from './screens/ProductDetail.jsx';
 import PaymentScreen from './screens/PaymentScreen.jsx';
 import OrderLookup from './screens/OrderLookup.jsx';
+import BuyerAccount from './screens/BuyerAccount.jsx';
 import Articles from './screens/Articles.jsx';
 import Portal from './screens/Portal.jsx';
 import Forbidden from './screens/Forbidden.jsx';
@@ -85,6 +86,7 @@ export default function App() {
     screen === 'faq' ? { back: true, onBack: () => go('home'), title: '常见问题' } :
     screen === 'portal' ? { back: true, onBack: () => go('home'), title: '平台首页' } :
     screen === 'forbidden' ? { back: true, onBack: () => go('home'), title: '禁售目录' } :
+    screen === 'account' ? { back: true, onBack: () => go('home'), title: '我的账号' } :
     {};
 
   return (
@@ -99,6 +101,7 @@ export default function App() {
         onNews={() => go('news')}
         onFaq={() => go('faq')}
         onPortal={() => go('portal')}
+        onAccount={() => go('account')}
         {...barProps}
       />
 
@@ -133,6 +136,8 @@ export default function App() {
       )}
 
       {screen === 'lookup' && <OrderLookup onBack={() => go('home')} queryTips={config?.order_query_tips} />}
+
+      {screen === 'account' && <BuyerAccount />}
 
       {screen === 'news' && <Articles type={1} onBack={() => go('home')} />}
       {screen === 'faq' && <Articles type={2} onBack={() => go('home')} />}

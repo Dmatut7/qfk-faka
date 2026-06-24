@@ -10,7 +10,7 @@ import logoMark from '../../../design-system/assets/logo-mark.svg';
  * 全部回调(onHome/onLookup/onNews/onFaq/onPortal)与 back/onBack/title 返回态原样保留。
  * 配色全走 CSS 变量,无硬编码蓝/靛/紫。
  */
-export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, onFaq, onPortal, back, onBack, title }) {
+export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, onFaq, onPortal, onAccount, back, onBack, title }) {
   return (
     <>
       {/* 顶栏高度抽成全局 CSS 变量,供 sticky 分类 tab 等用 top:var(--topbar-h) 对齐,避免硬编码 60。 */}
@@ -130,6 +130,16 @@ export default function TopBar({ shopName, shopIntro, onHome, onLookup, onNews, 
             >
               取卡<span className="mk-cta-full"> / 查单</span>
             </Button>
+            {onAccount && (
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={onAccount}
+                style={{ borderRadius: 'var(--radius-pill)' }}
+              >
+                我的
+              </Button>
+            )}
           </div>
         </div>
       </header>
