@@ -12,8 +12,9 @@ use think\facade\Log;
 /**
  * 库存预警:卡密库存跌破阈值时邮件提醒商户补货(对标开源卡网「库存不足通知」)。
  *
- * 触发:stock:reconcile 重算库存后调用,库存数据最新。只处理**自动发卡**(有真实卡池)
- *       的**在售**商品——手动发货商品无卡池,stock 恒为 0,纳入会持续误报。
+ * 触发:stock:reconcile 重算库存后调用,库存数据最新。只处理**有真实卡池**的**在售自动发卡**
+ *       商品——即 type=自动发卡 且 goods_type ∈ {卡密, 权益}(与 Product::usesCardPool 一致)。
+ *       手动发货、知识/资源类无卡池,reconcile 会把其 stock 强制为 0,纳入会持续误报缺货。
  * 去重:products.low_stock_notified 标记「已发过」;补货回升超过阈值后清零再武装,
  *       避免每轮 cron 重复轰炸同一商户。阈值 low_stock_threshold≤0 时整体关闭。
  * fire-and-forget:单商品发信失败只记日志、保留未通知态以便下轮重试,
@@ -49,6 +50,9 @@ class LowStockAlertService
 
         Product::where('type', Product::TYPE_AUTO)
             ->where('status', Product::STATUS_ON)
+            // 只预警走码池的 goods_type(卡密/权益)。知识/资源类即便 type=自动发卡 也无码池,
+            // reconcile 会把其 stock 强制为 0 → 否则会永久误报缺货且无法回升再武装。
+            ->whereIn('goods_type', [Product::GOODS_TYPE_CARD, Product::GOODS_TYPE_RIGHTS])
             ->field(['id', 'merchant_id', 'title', 'stock', 'low_stock_notified'])
             ->chunk(500, function ($products) use ($threshold, $mailer, $site, &$sent, $log) {
                 foreach ($products as $p) {

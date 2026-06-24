@@ -107,6 +107,36 @@ class LowStockAlertTest extends TestCase
         $this->assertCount(0, $rec->sent);
     }
 
+    public function testIgnoresAutoNonCardPoolProducts(): void
+    {
+        // 自动发卡但 goods_type 为知识/资源:无卡池,reconcile 会把 stock 强制为 0,
+        // 不应据此误报「缺货」(且永远无法回升再武装)。只有走码池的 goods_type(卡密/权益)才预警。
+        (new SettingService())->set('low_stock_threshold', '5');
+        $this->product(0, ['goods_type' => Product::GOODS_TYPE_KNOWLEDGE]);
+        $this->product(0, ['goods_type' => Product::GOODS_TYPE_RESOURCE]);
+        $rec = new RecordingMailer();
+        LowStockAlertService::setTestMailer($rec);
+
+        $sent = (new LowStockAlertService())->run();
+
+        $this->assertSame(0, $sent, '无卡池的自动发卡商品(知识/资源)不应触发库存预警');
+        $this->assertCount(0, $rec->sent);
+    }
+
+    public function testAlertsRightsProductsWhichUseCardPool(): void
+    {
+        // 权益(会员/权益码)走码池,库存真实,应纳入预警。
+        (new SettingService())->set('low_stock_threshold', '5');
+        [$m] = $this->product(2, ['goods_type' => Product::GOODS_TYPE_RIGHTS]);
+        $rec = new RecordingMailer();
+        LowStockAlertService::setTestMailer($rec);
+
+        $sent = (new LowStockAlertService())->run();
+
+        $this->assertSame(1, $sent, '权益类走码池,低库存应预警');
+        $this->assertSame($m->email, $rec->last()['to']);
+    }
+
     public function testRetriesNextRunWhenSendFails(): void
     {
         (new SettingService())->set('low_stock_threshold', '5');
