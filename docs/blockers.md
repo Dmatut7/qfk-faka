@@ -142,3 +142,10 @@
 - ✅ **L2 最小提现额**:1.00 元护栏,已落地 +TDD。
 - ⏳ **M3 提现两步态**(approve→APPROVED→PAID):无真实银行打款集成下偏仪式性,且需改后台审核 UI;价值有限,保留待定。
 - ⏳ **L2 手续费**:withdraw_fee_rate 是否启用属业务政策,且需与前端展示口径对齐(FE-M6);保留待定。
+
+## [2026-06-24] 待 owner:对账报表对「已结算的 EXCEPTION 单(card_shortage)」口径不一致(低危·仅报表)
+- 背景:对抗式审计发现。`card_shortage` 单(已付款但锁定卡丢失/不足)在 `NotifyService::settle` 走 EXCEPTION 但**仍 doSettle**(NotifyService.php:226 写 INCOME+COMMISSION,商户实账正确)。而 `AdminReportService` 里 **sales 按订单状态白名单**(`PAID_STATUSES=[PAID,DELIVERED]`,排除 EXCEPTION)、**commission 按资金流水**(不看订单状态)。
+- 卡点:于是这类单的**佣金计入报表、销售额却不计入** → 平台结算报表 sales 与 commission 对不齐(商户自身账本不受影响)。
+- 已尝试:**未改**。审计建议的「把 EXCEPTION 加进 PAID_STATUSES」是**错的**——另两条 EXCEPTION 路径(closed_then_paid @188、duplicate_trade_no @140)是 EXCEPTION 但**未结算**(无佣金流水),纳入后会把它们的金额计入 sales 却无对应佣金,制造反向 skew。正确修法需先定报表语义,属金额路径,不擅自猜(CLAUDE.md#5/#6)。
+- 备选方案:① sales 改为「有 INCOME 流水的单」与 commission 同源(但退款单 gross 会回流入 sales,需另定退款口径);② 仅把「EXCEPTION 且已结算(有 INCOME 流水)」并入 sales;③ card_shortage 改为不自动结算、转人工(改资金时序,较重)。
+- 需要你定:对账报表对「已收款已结算但未发货(EXCEPTION)」的销售额口径按哪种?(影响面极小,card_shortage 在 reserve 锁卡后罕见)

@@ -277,7 +277,7 @@ class NotifyService
 
     /**
      * 结算:商户「逻辑净头寸 balance-debt」+= 入账(net),先抵负欠再入可提余额(B1);记两条流水。
-     * 幂等:由上游 settle() 的订单行锁 + 锁内状态重查保证(DB uniq(order_id,type) 已移除,见 MerchantFundLog 注释)。
+     * 幂等:由上游 settle() 的订单行锁 + 锁内状态重查保证,另有 DB uniq(order_id,type) 兜底(见 MerchantFundLog 注释)。
      */
     private function doSettle(Order $order, string $now): void
     {

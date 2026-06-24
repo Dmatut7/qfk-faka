@@ -8,7 +8,8 @@ use think\Model;
 /**
  * 商户资金流水(只增不改的账本)。无 update_time。
  * 结算幂等由 NotifyService 的「订单行锁 + 锁内状态重查」保证(应用层);DB 层 uniq(order_id,type)
- * 已移除(退款会对同一订单再写一条 COMMISSION 回冲,与结算的 COMMISSION 冲突)。
+ * 为兜底(20260623040000 恢复)。退款佣金回冲用独立 type=5(REFUND_COMMISSION),与结算佣金
+ * type=2 不在同一 (order_id,type),故不冲突,唯一索引可共存。
  * balance_after 语义:记「逻辑净头寸 balance-debt」(B1 负欠隔离),无负欠时即等于 merchants.balance。
  */
 class MerchantFundLog extends Model
