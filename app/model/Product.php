@@ -20,6 +20,7 @@ class Product extends Model
         'type'        => 'integer',
         'goods_type'  => 'integer',
         'stock'       => 'integer',
+        'low_stock_notified' => 'integer',
         'sales_count' => 'integer',
         'min_buy'     => 'integer',
         'max_buy'     => 'integer',

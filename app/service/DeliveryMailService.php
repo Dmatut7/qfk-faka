@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace app\service;
 
 use app\model\Order;
+use app\service\mail\MailerFactory;
 use app\service\mail\MailerInterface;
-use app\service\mail\SmtpMailer;
 use think\facade\Log;
 
 /**
@@ -51,25 +51,13 @@ class DeliveryMailService
         }
     }
 
-    /** 据平台配置构建 SMTP mailer;未开启或缺 host 返回 null。 */
+    /** 据平台配置构建 SMTP mailer;未开启发货通知或缺 host 返回 null。 */
     private function buildMailer(SettingService $setting): ?MailerInterface
     {
         if ((string) $setting->get('notify_on_deliver', '0') !== '1') {
             return null;
         }
-        $host = trim((string) $setting->get('smtp_host', ''));
-        if ($host === '') {
-            return null;
-        }
-        $user = (string) $setting->get('smtp_user', '');
-        return new SmtpMailer(
-            $host,
-            (int) ((string) $setting->get('smtp_port', '465') ?: '465'),
-            $user,
-            (string) $setting->get('smtp_pass', ''),
-            (string) ($setting->get('smtp_from', '') ?: $user),
-            (string) ($setting->get('smtp_secure', 'ssl') ?: 'ssl')
-        );
+        return MailerFactory::fromSettings($setting);
     }
 
     /** 组装通知邮件主题与 HTML 正文(含订单号 + 发货内容/卡密)。 */

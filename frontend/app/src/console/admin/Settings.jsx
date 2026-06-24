@@ -24,6 +24,7 @@ const KNOWN_KEYS = [
   'smtp_from',
   'smtp_secure',
   'smtp_pass_set',
+  'low_stock_threshold',
 ];
 
 // 费率字段(金融高危):0~1 之间的小数。展示换算百分比、保存前严格校验。
@@ -405,6 +406,16 @@ export default function Settings({ api }) {
                 onSaved={reload} />
               <SettingRow api={api} settingKey="smtp_from" label="发件人地址"
                 hint="留空则用 SMTP 账号;如 noreply@yoursite.com" initial={get('smtp_from')} onSaved={reload} />
+            </section>
+
+            {/* 库存预警 */}
+            <section>
+              <h3 style={{ margin: '0 0 12px', fontSize: 15, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icons.AlertTriangle /> 库存预警
+              </h3>
+              <SettingRow api={api} settingKey="low_stock_threshold" label="低库存阈值"
+                hint="自动发卡商品可售卡密 ≤ 此数时,邮件提醒对应商户补货(需配好上方 SMTP);填 0 关闭。补货回升后自动恢复监控,不会重复轰炸。"
+                initial={get('low_stock_threshold')} onSaved={reload} />
             </section>
           </div>
         )}

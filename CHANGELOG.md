@@ -5,6 +5,7 @@
 ## [未发布]
 
 ### 新增
+- **库存预警**:自动发卡商品可售卡密跌破阈值(平台设置 `low_stock_threshold`,0=关闭)时,`stock:reconcile` 重算库存后邮件提醒对应商户补货。按商品去重(`low_stock_notified` 标记,补货回升超阈值自动清零再武装),不重复轰炸;发信失败保留未通知态下轮重试;复用发货邮件的 SMTP 配置(`MailerFactory` 统一构建)。
 - **订单 CSV 导出**:商户后台订单页「导出CSV」按当前筛选导出订单(元数据,不含卡密;UTF-8 BOM 便于 Excel,行数上限防内存)。
 - **商户开放 API**:接通预留的 `api_key`/`api_secret`。商户后台「开放 API」可生成/重置签名凭据;`POST /api/products`、`POST /api/order/query` 供商户系统程序化拉取本店商品/库存与订单(签名 = `HMAC-SHA256(键名升序的 k=v 串, api_secret)`,`timestamp` ±300s 防重放,仅本商户数据)。
 

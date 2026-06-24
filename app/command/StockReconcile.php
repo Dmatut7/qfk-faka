@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\command;
 
 use app\model\Card;
+use app\service\LowStockAlertService;
 use app\util\Money;
 use think\console\Command;
 use think\console\Input;
@@ -41,8 +42,12 @@ class StockReconcile extends Command
         try {
             $fixed     = $this->reconcileStock($output);
             $mismatch  = $this->reconcileFunds($output);
+            // 库存重算后做低库存预警(阈值由平台设置 low_stock_threshold 控制,≤0 关闭)。
+            $alerted   = (new LowStockAlertService())->run(static function (string $msg) use ($output) {
+                $output->writeln($msg);
+            });
 
-            $output->writeln("[stock:reconcile] stock fixed {$fixed} product(s); fund mismatch {$mismatch} merchant(s)");
+            $output->writeln("[stock:reconcile] stock fixed {$fixed} product(s); fund mismatch {$mismatch} merchant(s); low-stock alerts {$alerted}");
         } finally {
             Db::query("SELECT RELEASE_LOCK('qfk:stock:reconcile')");
         }
