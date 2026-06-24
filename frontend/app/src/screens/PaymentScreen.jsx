@@ -36,7 +36,7 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
   const [phase, setPhase] = React.useState(PHASE.IDLE);
   const [err, setErr] = React.useState('');            // ApiError.message
   const [waitMsg, setWaitMsg] = React.useState('');    // 等待态副提示(轮询 onTick)
-  const [payGatewayUrl, setPayGatewayUrl] = React.useState(''); // GET 网关地址,弹窗被拦截时给手动「前往支付」兜底
+  const [manualPay, setManualPay] = React.useState(null); // 支付描述符 {method,url,params},弹窗被拦截时给手动「前往支付」兜底(GET/POST 通用)
 
   // 倒计时:用 order.expireAt 算剩余秒
   const expireTs = React.useMemo(() => parseBackendTime(order.expireAt), [order.expireAt]);
@@ -64,6 +64,39 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
 
   const total = Number(order.total || 0);
 
+  /* 跳转支付网关:携带后端签好的完整参数。GET 拼 query 直接打开(noopener,安全);
+     POST 新窗口内自动提交隐藏表单。返回是否成功打开(弹窗被拦截 → false)。
+     抽成函数供首次发起与「前往支付」兜底按钮共用——兜底点击是用户手势,不会被弹窗拦截,
+     且 GET/POST 都能正确重开(此前兜底仅支持 GET,POST 网关被拦截会无按钮可点)。 */
+  const openGateway = (pay) => {
+    try {
+      if (!pay || !pay.url) return false;
+      const method = String(pay.method || 'GET').toUpperCase();
+      const params = pay.params || {};
+      if (method === 'POST') {
+        const w = window.open('', '_blank');
+        if (!w) return false;
+        const form = w.document.createElement('form');
+        form.method = 'POST';
+        form.action = pay.url;
+        Object.keys(params).forEach((k) => {
+          const input = w.document.createElement('input');
+          input.type = 'hidden'; input.name = k; input.value = String(params[k]);
+          form.appendChild(input);
+        });
+        w.document.body.appendChild(form);
+        form.submit();
+        return true;
+      }
+      const qs = new URLSearchParams(params).toString();
+      const url = pay.url + (qs ? (pay.url.includes('?') ? '&' : '?') + qs : '');
+      const w = window.open(url, '_blank', 'noopener');
+      return !!w;
+    } catch {
+      return false;
+    }
+  };
+
   const handlePay = async () => {
     // 倒计时仅作展示提示,不再因本地 expired 阻止支付:设备时钟/时区偏差会让
     // remain 误判为 0 把未过期订单卡死。真正的过期由后端 4003(CLOSED 分支)兜底。
@@ -79,36 +112,10 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
       const { pay } = await api.pay(order.orderNo, undefined, returnUrl);
       // 跳转支付网关:携带后端签好的完整参数(GET 拼 query / POST 自动提交表单)。
       // 新开页去网关付款,本页轮询订单状态——发货由网关异步回调(notify)驱动。
-      // 弹窗被拦截时(移动端常见)存下网关地址,渲染「前往支付」按钮让买家手动点(用户手势不被拦截)。
-      let opened = false;
-      try {
-        if (pay && pay.url) {
-          const method = String(pay.method || 'GET').toUpperCase();
-          const params = pay.params || {};
-          if (method === 'POST') {
-            const w = window.open('', '_blank');
-            if (w) {
-              const form = w.document.createElement('form');
-              form.method = 'POST';
-              form.action = pay.url;
-              Object.keys(params).forEach((k) => {
-                const input = w.document.createElement('input');
-                input.type = 'hidden'; input.name = k; input.value = String(params[k]);
-                form.appendChild(input);
-              });
-              w.document.body.appendChild(form);
-              form.submit();
-              opened = true;
-            }
-          } else {
-            const qs = new URLSearchParams(params).toString();
-            const url = pay.url + (qs ? (pay.url.includes('?') ? '&' : '?') + qs : '');
-            setPayGatewayUrl(url); // 兜底:弹窗被拦截时给可点链接
-            const w = window.open(url, '_blank', 'noopener');
-            opened = !!w;
-          }
-        }
-      } catch { opened = false; }
+      // 始终存下支付描述符:无论 GET/POST,弹窗被拦截(移动端常见)时都给「前往支付」按钮,
+      // 让买家手动点(用户手势不被拦截);成功打开后按钮仍在,可在误关弹窗后重开。
+      setManualPay(pay || null);
+      const opened = openGateway(pay);
       if (!opened) {
         setWaitMsg('浏览器拦截了支付窗口,请点下方「前往支付」继续付款');
       }
@@ -272,9 +279,9 @@ export default function PaymentScreen({ order, onBack, onPaid }) {
               <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 {waitMsg || '若已在新窗口完成支付,卡密将自动发放,请稍候。'}
               </div>
-              {payGatewayUrl && (
+              {manualPay && (
                 <Button variant="primary" size="md" style={{ marginTop: 4 }}
-                  onClick={() => window.open(payGatewayUrl, '_blank', 'noopener')}>
+                  onClick={() => openGateway(manualPay)}>
                   前往支付
                 </Button>
               )}
