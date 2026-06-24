@@ -205,5 +205,14 @@ Route::group('merchant', function () {
         // 统计
         Route::get('stats/summary', 'merchant.Stats/summary');
         Route::get('stats/top-products', 'merchant.Stats/topProducts');
+
+        // 开放 API 凭据(生成/重置 api_key+api_secret,secret 仅返回一次)
+        Route::post('api-credentials', 'merchant.ApiCredential/generate');
     })->middleware(\app\middleware\MerchantAuth::class);
 });
+
+// ============ 商户开放 API(签名鉴权:app_key + timestamp + HMAC-SHA256 sign)============
+Route::group(function () {
+    Route::post('api/products', 'api.Open/products');       // 本商户商品+库存
+    Route::post('api/order/query', 'api.Open/orderQuery');  // 按订单号查本商户订单
+})->middleware(\app\middleware\MerchantApiAuth::class)->middleware(\app\middleware\RateLimit::class, 120, 60);
