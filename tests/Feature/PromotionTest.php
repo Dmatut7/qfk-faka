@@ -175,6 +175,30 @@ class PromotionTest extends TestCase
         $this->assertSame(0, (int) Coupon::where('code', 'SM5')->find()->used); // 券未被核销
     }
 
+    /**
+     * 防 0 元单(订单级满减):满减 value 仅校验 >0、不限于 threshold 以下,故 value ≥ 订单额时
+     * 全靠 discountOf 的「订单额-0.01」防线兜底。应付须永远 ≥ 0.01,绝不出现 0 元/负数单。
+     * 走完整下单链路(end-to-end),锁死该不变量(此前仅券路径有测,促销路径无)。
+     */
+    public function testFullReduceFlooredToPreventZeroYuanOrder(): void
+    {
+        // 满100减100:create 不拦(满减仅 >0),全靠 0.01 防线
+        $this->promo(Promotion::TYPE_FULL_REDUCE, '100.00', '100.00');
+
+        $order = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        $this->assertSame('100.00', Money::add((string) $order->original_amount, '0'));
+        $this->assertSame('99.99', Money::add((string) $order->discount_amount, '0'), '优惠应被封顶到 订单额-0.01');
+        $this->assertSame('0.01', Money::add((string) $order->total_amount, '0'), '应付须 ≥ 0.01,绝不 0 元单');
+    }
+
+    /** discountOf 单元:满减 value 远超订单额(满100减500)仍封顶到 99.99,不产生负优惠/负应付。 */
+    public function testFullReduceValueExceedingAmountStillFloored(): void
+    {
+        $this->promo(Promotion::TYPE_FULL_REDUCE, '100.00', '500.00');
+        $r = (new PromotionService())->bestPromotion((int) $this->m->id, '100.00');
+        $this->assertSame('99.99', $r['discount'], 'value 超订单额也只优惠到 订单额-0.01');
+    }
+
     public function testMerchantCrudEndpoint(): void
     {
         $tok = $this->bearer($this->merchantToken((int) $this->m->id));
