@@ -99,7 +99,9 @@ class AdminSettingReportTest extends TestCase
     /** 安全:smtp_pass 敏感键不得明文下发,且留空保存=不修改(防泄漏/防误清) */
     public function testSmtpPassMaskedAndKeptOnEmpty(): void
     {
-        $this->callJson('POST', '/admin/settings', ['key' => 'smtp_pass', 'value' => 'topsecret'], $this->hdr());
+        $post = $this->callJson('POST', '/admin/settings', ['key' => 'smtp_pass', 'value' => 'topsecret'], $this->hdr());
+        // POST 响应也不得回显明文密钥(防响应/日志/缓存泄漏)
+        $this->assertNotSame('topsecret', $post['data']['value'], 'POST 不得回显 smtp_pass 明文');
 
         // GET 脱敏:不回传明文,只给 *_set 标志
         $items = $this->callJson('GET', '/admin/settings', [], $this->hdr())['data']['items'];

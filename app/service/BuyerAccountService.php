@@ -33,15 +33,24 @@ class BuyerAccountService
             throw new BizException(Code::STATE_INVALID, '该邮箱已注册');
         }
 
-        $now   = date('Y-m-d H:i:s');
-        $buyer = Buyer::create([
-            'email'       => $email,
-            'password'    => password_hash($password, PASSWORD_BCRYPT),
-            'contact'     => trim($contact) !== '' ? trim($contact) : null,
-            'status'      => Buyer::STATUS_NORMAL,
-            'create_time' => $now,
-            'update_time' => $now,
-        ]);
+        $now = date('Y-m-d H:i:s');
+        try {
+            $buyer = Buyer::create([
+                'email'       => $email,
+                'password'    => password_hash($password, PASSWORD_BCRYPT),
+                'contact'     => trim($contact) !== '' ? trim($contact) : null,
+                'status'      => Buyer::STATUS_NORMAL,
+                'create_time' => $now,
+                'update_time' => $now,
+            ]);
+        } catch (\think\db\exception\PDOException $e) {
+            // 并发同邮箱注册:check 与 create 间的竞态命中唯一约束 1062 → 返回干净业务错误,而非裸 500
+            $msg = $e->getMessage();
+            if (false !== stripos($msg, 'Duplicate entry') || false !== strpos($msg, '1062')) {
+                throw new BizException(Code::STATE_INVALID, '该邮箱已注册');
+            }
+            throw $e;
+        }
 
         return $this->issueFor($buyer);
     }

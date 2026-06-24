@@ -34,9 +34,13 @@ class System extends BaseApiController
             'key' => 'require|length:1,64',
         ]);
         $value = array_key_exists('value', $d) && $d['value'] !== null ? (string) $d['value'] : null;
-        // 敏感键留空 = 不修改(沿用原值),避免保存表单时把已配置的密钥清空
-        if (in_array((string) $d['key'], self::SENSITIVE_KEYS, true) && ($value === null || $value === '')) {
-            return $this->success(['key' => $d['key'], 'value' => '(unchanged)']);
+        // 敏感键:留空=不修改(沿用原值);设了新值则保存但**不回显明文**(避免响应/日志/缓存泄漏)
+        if (in_array((string) $d['key'], self::SENSITIVE_KEYS, true)) {
+            if ($value === null || $value === '') {
+                return $this->success(['key' => $d['key'], 'value' => '(unchanged)']);
+            }
+            $svc->set((string) $d['key'], $value);
+            return $this->success(['key' => $d['key'], 'value' => '(set)']);
         }
         $svc->set((string) $d['key'], $value);
 
