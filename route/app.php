@@ -40,6 +40,14 @@ Route::post('buyer/complaint', 'buyer.Complaint/create')->middleware(\app\middle
 Route::post('buyer/complaint/query', 'buyer.Complaint/query');
 Route::post('buyer/complaint/:id/escalate', 'buyer.Complaint/escalate');
 
+// ============ 买家账号(可选;游客仍可下单/查单,无需账号)============
+Route::post('buyer/register', 'buyer.Account/register')->middleware(\app\middleware\RateLimit::class, 10, 60); // 注册防刷
+Route::post('buyer/login', 'buyer.Account/login')->middleware(\app\middleware\RateLimit::class, 10, 60);       // 登录暴破限流
+Route::group(function () {
+    Route::get('buyer/account/me', 'buyer.Account/me');
+    Route::get('buyer/account/orders', 'buyer.Account/orders'); // 我的订单(按邮箱关联,含此前游客单)
+})->middleware(\app\middleware\BuyerAuth::class);
+
 // ============ 支付异步回调(公开,靠验签)============
 Route::rule('pay/notify/:channel', 'pay.Notify/index')->middleware(\app\middleware\RateLimit::class, 120, 60);
 
