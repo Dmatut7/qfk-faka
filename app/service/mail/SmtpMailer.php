@@ -32,13 +32,16 @@ class SmtpMailer implements MailerInterface
         $this->port    = $port > 0 ? $port : 465;
         $this->user    = $user;
         $this->pass    = $pass;
-        $this->from    = $from !== '' ? $from : $user;
+        // 去 CR/LF:防 from 注入 SMTP 命令/邮件头
+        $this->from    = self::sanitizeAddr($from !== '' ? $from : $user);
         $this->secure  = in_array($secure, ['ssl', 'tls', 'none'], true) ? $secure : 'ssl';
         $this->timeout = $timeout > 0 ? $timeout : 8;
     }
 
     public function send(string $to, string $subject, string $html): bool
     {
+        // 去 CR/LF:防收件人地址注入 RCPT TO / To 头(SMTP 命令/邮件头注入)
+        $to = self::sanitizeAddr($to);
         $transport = $this->secure === 'ssl' ? 'ssl://' : 'tcp://';
         $fp = @stream_socket_client(
             $transport . $this->host . ':' . $this->port,
@@ -127,6 +130,12 @@ class SmtpMailer implements MailerInterface
         if ($got !== $code) {
             throw new RuntimeException("SMTP 期望 {$code} 实得:" . trim($resp));
         }
+    }
+
+    /** 去除地址里的 CR/LF(及首尾空白),防 SMTP 命令/邮件头注入。 */
+    private static function sanitizeAddr(string $addr): string
+    {
+        return trim(str_replace(["\r", "\n", "\0"], '', $addr));
     }
 
     /** EHLO 主机名:取 from 的域名,缺省 localhost(避免泄露内网名)。 */

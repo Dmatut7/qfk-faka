@@ -67,7 +67,12 @@ class CardSecret
         $tag = substr($raw, 12, 16);
         $ct  = substr($raw, 28);
         $pt  = openssl_decrypt($ct, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
-        return $pt === false ? $stored : $pt;
+        if ($pt === false) {
+            // 密文解密失败=密钥被改/丢失或数据损坏:告警让运维察觉(切勿静默把密文当卡密发出)
+            \think\facade\Log::error('[card-secret] 解密失败(CARD_SECRET_KEY 是否被更改/丢失?)');
+            return $stored;
+        }
+        return $pt;
     }
 
     /** 是否为本工具加密后的密文。 */
