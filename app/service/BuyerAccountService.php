@@ -68,10 +68,16 @@ class BuyerAccountService
         return ['token' => $token, 'buyer' => $buyer->toArray()];
     }
 
-    /** 我的订单:按邮箱(大小写不敏感)关联,分页倒序。 */
+    /**
+     * 我的订单:按 **buyer_id** 关联(登录状态下单时绑定),分页倒序。
+     *
+     * 安全:不按 buyer_email 认领历史游客单——注册无邮箱验证,按邮箱认领会让任何人
+     * 注册他人邮箱即可看其订单与卡密。仅展示确实绑定到本账号(凭令牌下单)的订单。
+     * 历史游客单仍可在「订单查询」凭订单号+邮箱取卡。
+     */
     public function listOrders(Buyer $buyer, int $page = 1, int $size = 20): array
     {
-        $q = Order::whereRaw('LOWER(buyer_email) = ?', [strtolower((string) $buyer->email)]);
+        $q = Order::where('buyer_id', (int) $buyer->id);
         $total = $q->count();
         $items = $q->order('id', 'desc')->page($page, $size)->select()->toArray();
 

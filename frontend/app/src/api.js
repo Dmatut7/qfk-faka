@@ -105,6 +105,7 @@ export const api = {
   createOrder: ({ productId, quantity, email, queryPassword, couponCode }) =>
     call('/buyer/order', {
       method: 'POST',
+      auth: true, // 已登录则带令牌:把订单绑定到买家账号(游客无令牌,照常下单)
       body: {
         product_id: productId,
         quantity,

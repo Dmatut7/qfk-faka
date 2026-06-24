@@ -25,6 +25,14 @@ class Order extends BaseApiController
         ]);
 
         $d['client_ip'] = $this->request->ip();
+        // 可选:带买家令牌则把订单绑定到该买家账号(凭令牌,不按邮箱认领,防越权看他人单)
+        $auth = (string) $this->request->header('authorization', '');
+        if (stripos($auth, 'bearer ') === 0) {
+            $info = (new \app\service\TokenService())->verify(trim(substr($auth, 7)));
+            if ($info && $info['owner_type'] === \app\model\AccessToken::OWNER_BUYER) {
+                $d['buyer_id'] = (int) $info['owner_id'];
+            }
+        }
         $order = $svc->create($d);
 
         return $this->success([

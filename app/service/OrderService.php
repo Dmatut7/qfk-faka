@@ -166,6 +166,8 @@ class OrderService
                 'product_title' => $product->title, // 商品名快照(改名/删除后订单仍显示当时商品名)
                 'goods_type'    => (int) $product->goods_type, // 类型快照,决定发货路由
                 'buyer_email'   => trim((string) $input['buyer_email']),
+                // 已登录买家下单则绑定其账号(用于「我的订单」,安全:仅凭买家令牌绑定,不按邮箱认领)
+                'buyer_id'      => isset($input['buyer_id']) && (int) $input['buyer_id'] > 0 ? (int) $input['buyer_id'] : null,
                 'buyer_contact' => $input['buyer_contact'] ?? null,
                 'query_password' => $this->hashQueryPassword($input['query_password'] ?? ''),
                 'quantity'      => $quantity,
