@@ -249,6 +249,29 @@ class RefundTest extends TestCase
         $this->assertSame(1, (int) Coupon::find($c->id)->used, '已付款单退款不返还券额');
     }
 
+    /**
+     * 已结算的异常单(card_shortage:doSettle 已入账 + 佣金,随后置 EXCEPTION)退款须**反向冲账**。
+     * 区别于 testRefundUnsettledExceptionDoesNotTouchBalance(未结算异常单不动钱)——这里有真实
+     * 已结算流水,退款必须把已入账货款冲回。锁死「status=EXCEPTION ∧ 已结算」这条退款分支
+     * (对应 blockers.md Finding B 的 card_shortage 已收款场景)。
+     */
+    public function testRefundSettledExceptionReversesFunds(): void
+    {
+        // 走真实结算(余额 +9 净、佣金 -1),再模拟 card_shortage 末态:置 EXCEPTION
+        $order = $this->paidOrder(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
+        $this->assertSame('9.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'));
+        $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_INCOME)->count());
+        Order::where('id', $order->id)->update(['status' => Order::STATUS_EXCEPTION]);
+
+        (new RefundService())->refund((int) $order->id, 'card_shortage 退款');
+
+        $this->assertSame(Order::STATUS_REFUNDED, (int) Order::find($order->id)->status);
+        $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->balance, '0'), '已结算异常单退款须把货款冲回 0');
+        $this->assertSame('0.00', Money::add((string) Merchant::find($this->m->id)->debt, '0'), '未提现下退款不产生负欠');
+        $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND)->count(), '应有冲收入流水');
+        $this->assertSame(1, MerchantFundLog::where('order_id', $order->id)->where('type', MerchantFundLog::TYPE_REFUND_COMMISSION)->count(), '应有佣金回冲流水');
+    }
+
     public function testCannotRefundPendingOrder(): void
     {
         $order = (new OrderService())->create(['product_id' => $this->p->id, 'quantity' => 1, 'buyer_email' => 'b@x.com']);
