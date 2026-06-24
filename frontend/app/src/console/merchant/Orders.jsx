@@ -87,6 +87,23 @@ export default function Orders({ api, session }) {
     setQuery((q) => ({ ...q, page: Math.min(Math.max(1, p), totalPages) }));
   }
 
+  /* 按当前筛选导出订单 CSV */
+  const [exporting, setExporting] = React.useState(false);
+  async function doExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const blob = await api.exportOrders({ status: query.status, order_no: query.order_no, buyer_email: query.buyer_email });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'orders.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch { /* 导出失败静默,保持页面 */ } finally {
+      setExporting(false);
+    }
+  }
+
   /* 详情弹窗 */
   const [detailId, setDetailId] = React.useState(null);
   const detail = useAsync(() => (detailId == null ? Promise.resolve(null) : api.order(detailId)), [detailId]);
@@ -233,9 +250,14 @@ export default function Orders({ api, session }) {
 
       <Toolbar
         right={
-          <Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={list.reload}>
-            刷新
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="ghost" iconLeft={<Icons.Package />} loading={exporting} onClick={doExport}>
+              导出CSV
+            </Button>
+            <Button variant="ghost" iconLeft={<Icons.RefreshCw />} onClick={list.reload}>
+              刷新
+            </Button>
+          </div>
         }
       >
         <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>

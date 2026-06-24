@@ -176,6 +176,7 @@ Route::group('merchant', function () {
 
         // 订单管理
         Route::get('orders', 'merchant.Order/index');
+        Route::get('orders/export', 'merchant.Order/export'); // 订单 CSV 导出(同筛选)
         Route::get('orders/:id', 'merchant.Order/detail');
         Route::post('orders/:id/close', 'merchant.Order/close');
         Route::post('orders/:id/redeliver', 'merchant.Order/redeliver');

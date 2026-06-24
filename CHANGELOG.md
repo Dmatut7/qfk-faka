@@ -5,6 +5,7 @@
 ## [未发布]
 
 ### 新增
+- **订单 CSV 导出**:商户后台订单页「导出CSV」按当前筛选导出订单(元数据,不含卡密;UTF-8 BOM 便于 Excel,行数上限防内存)。
 - **商户开放 API**:接通预留的 `api_key`/`api_secret`。商户后台「开放 API」可生成/重置签名凭据;`POST /api/products`、`POST /api/order/query` 供商户系统程序化拉取本店商品/库存与订单(签名 = `HMAC-SHA256(键名升序的 k=v 串, api_secret)`,`timestamp` ±300s 防重放,仅本商户数据)。
 
 ## [v1.1.1] — 安全补丁

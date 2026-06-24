@@ -145,6 +145,13 @@ export const merchantApi = {
   deleteCard: (id) => call(`/merchant/cards/${id}/delete`, { method: 'POST' }),
 
   orders: (params) => call('/merchant/orders' + qs(params)),
+  exportOrders: async (params) => {
+    const res = await fetch(BASE + '/merchant/orders/export' + qs(params), {
+      headers: _token ? { Authorization: 'Bearer ' + _token } : {},
+    });
+    if (!res.ok) throw new ApiError(res.status, '导出失败');
+    return res.blob();
+  },
   order: (id) => call(`/merchant/orders/${id}`),
   closeOrder: (id) => call(`/merchant/orders/${id}/close`, { method: 'POST' }),
   redeliverOrder: (id) => call(`/merchant/orders/${id}/redeliver`, { method: 'POST' }),

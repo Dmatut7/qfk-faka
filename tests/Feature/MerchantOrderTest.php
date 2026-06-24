@@ -47,6 +47,20 @@ class MerchantOrderTest extends TestCase
         $this->assertSame((int) $mA->id, $list['data']['items'][0]['merchant_id']);
     }
 
+    public function testExportOrdersCsv(): void
+    {
+        [$m, $p] = $this->ctx();
+        $order = $this->order($m, $p);
+        $token = $this->merchantToken((int) $m->id);
+
+        $resp = $this->call('GET', '/merchant/orders/export', [], $this->bearer($token));
+        $csv = (string) $resp->getContent();
+
+        $this->assertStringContainsString('订单号', $csv, 'CSV 应含表头');
+        $this->assertStringContainsString($order->order_no, $csv, 'CSV 应含订单号');
+        $this->assertStringNotContainsString('"code"', $csv, '应是原始 CSV 而非 JSON 信封');
+    }
+
     public function testDetailOwnershipAndCards(): void
     {
         [$m, $p] = $this->ctx();
